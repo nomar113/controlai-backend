@@ -18,6 +18,7 @@ class PurchaseController(
 ) {
 
     @PostMapping
+    @RequestMapping("/from-notification")
     @ResponseStatus(HttpStatus.CREATED)
     fun createPurchase(@Validated @RequestBody request: PurchaseRequest): Purchase {
         val purchase = Purchase(
