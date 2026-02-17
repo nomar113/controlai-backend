@@ -9,6 +9,7 @@ plugins {
 group = "br.com.nomar"
 version = "0.0.1-SNAPSHOT"
 description = "Controlaí backend"
+val awsSdkVersion = "2.30.31"
 
 java {
 	toolchain {
@@ -23,6 +24,7 @@ repositories {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("software.amazon.awssdk:sqs:$awsSdkVersion")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-mysql")

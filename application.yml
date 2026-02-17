@@ -20,3 +20,8 @@ logging:
     org.flywaydb: DEBUG
     org.springframework.jdbc: DEBUG
 
+aws:
+  region: ${AWS_REGION:us-east-2}
+  sqs:
+    endpoint: ${AWS_SQS_ENDPOINT:}
+    purchase-from-notification-queue-url: ${AWS_SQS_PURCHASE_FROM_NOTIFICATION_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/111710312790/purchase-from-notification}
