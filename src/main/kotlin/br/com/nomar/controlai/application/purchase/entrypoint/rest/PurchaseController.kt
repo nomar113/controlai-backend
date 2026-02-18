@@ -1,9 +1,10 @@
 package br.com.nomar.controlai.application.purchase.entrypoint.rest
 
-import br.com.nomar.controlai.application.purchase.application.PurchaseFromNotificationQueuePublisher
+import br.com.nomar.controlai.application.purchase.application.NotifyPurchaseFromNotificationQueueProvider
 import br.com.nomar.controlai.application.purchase.entrypoint.database.model.Purchase
 import br.com.nomar.controlai.application.purchase.entrypoint.database.repository.PurchaseRepository
 import br.com.nomar.controlai.application.purchase.entrypoint.rest.request.PurchaseRequest
+import br.com.nomar.controlai.domain.purchase.usecase.NotifyPurchaseFromNotificationQueueUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.PostMapping
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/purchases")
 class PurchaseController(
     private val purchaseRepository: PurchaseRepository,
-    private val purchaseFromNotificationQueuePublisher: PurchaseFromNotificationQueuePublisher,
+    private val notificationQueueUseCase: NotifyPurchaseFromNotificationQueueUseCase,
 ) {
 
     @PostMapping
@@ -42,7 +43,7 @@ class PurchaseController(
             merchantName = request.merchantName
         )
 
-        purchaseFromNotificationQueuePublisher.publish(purchase)
+        notificationQueueUseCase.execute(purchase)
         return purchase
     }
 }
