@@ -26,5 +26,6 @@ aws:
   secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
   sqs:
     endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
-    payments-notifications-queue-url: ${AWS_SQS_PAYMENTS_NOTIFICATIONS_QUEUE_URL:http://localhost:4566/000000000000/payments-notifications}
-    purchases-invoices-queue-url: ${AWS_SQS_PURCHASES_INVOICES_QUEUE_URL:http://localhost:4566/000000000000/purchases-invoices}
+    account-id: ${AWS_ACCOUNT_ID:000000000000}
+    payments-notifications-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/payments-notifications
+    purchases-invoices-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/purchases-invoices
