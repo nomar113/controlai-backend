@@ -26,4 +26,4 @@ aws:
   secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
   sqs:
     endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
-    purchase-from-notification-queue-url: ${AWS_SQS_PURCHASE_FROM_NOTIFICATION_QUEUE_URL:http://localhost:4566/000000000000/purchase-from-notification}
+    payments-notifications-queue-url: ${AWS_SQS_PAYMENTS_NOTIFICATIONS_QUEUE_URL:http://localhost:4566/000000000000/payments-notifications}
