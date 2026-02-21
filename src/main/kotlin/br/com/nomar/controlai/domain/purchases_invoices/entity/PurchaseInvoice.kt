@@ -1,0 +1,28 @@
+package br.com.nomar.controlai.domain.purchases_invoices.entity
+
+import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.AccessKey
+import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.Cnpj
+import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.InvoiceUrl
+import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.TotalItems
+import com.fasterxml.jackson.annotation.JsonFormat
+import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+
+class PurchaseInvoice(
+    val id: Long? = null,
+    @param:JsonFormat(pattern = "dd/MM/yyyy HH:mm:ssXXX")
+    val date: OffsetDateTime,
+    val merchantName: String,
+    val merchantAddress: String,
+    val cnpj: Cnpj,
+    val totalItems: TotalItems,
+    val invoiceUrl: InvoiceUrl,
+    val accessKey: AccessKey,
+    val subtotal: BigDecimal,
+    val total: BigDecimal,
+    val taxes: BigDecimal,
+    val discount: BigDecimal,
+    val createdAt: LocalDateTime?,
+    val updatedAt: LocalDateTime?
+)

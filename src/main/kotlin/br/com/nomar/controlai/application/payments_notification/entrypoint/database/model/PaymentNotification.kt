@@ -10,7 +10,7 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "payments_notifications")
+@Table(name = "payment_notifications")
 data class PaymentNotification(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,

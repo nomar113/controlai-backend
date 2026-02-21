@@ -1,5 +1,5 @@
 -- V1__create_payments_notifications_table.sql
-CREATE TABLE IF NOT EXISTS payments_notifications (
+CREATE TABLE IF NOT EXISTS payment_notifications (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   card_last_digits CHAR(4) NOT NULL,
   purchased_at TIMESTAMP NOT NULL,
