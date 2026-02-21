@@ -27,3 +27,4 @@ aws:
   sqs:
     endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
     payments-notifications-queue-url: ${AWS_SQS_PAYMENTS_NOTIFICATIONS_QUEUE_URL:http://localhost:4566/000000000000/payments-notifications}
+    purchases-invoices-queue-url: ${AWS_SQS_PURCHASES_INVOICES_QUEUE_URL:http://localhost:4566/000000000000/purchases-invoices}
