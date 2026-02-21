@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/controlai}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/controlai}
+    username: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -21,7 +21,9 @@ logging:
     org.springframework.jdbc: DEBUG
 
 aws:
-  region: ${AWS_REGION:us-east-2}
+  region: ${AWS_REGION:us-east-1}
+  access-key-id: ${AWS_ACCESS_KEY_ID:test}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:test}
   sqs:
-    endpoint: ${AWS_SQS_ENDPOINT:}
-    purchase-from-notification-queue-url: ${AWS_SQS_PURCHASE_FROM_NOTIFICATION_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/111710312790/purchase-from-notification}
+    endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
+    purchase-from-notification-queue-url: ${AWS_SQS_PURCHASE_FROM_NOTIFICATION_QUEUE_URL:http://localhost:4566/000000000000/purchase-from-notification}
