@@ -23,6 +23,8 @@ class PurchaseInvoice(
     val total: BigDecimal,
     val taxes: BigDecimal,
     val discount: BigDecimal,
-    val createdAt: LocalDateTime?,
-    val updatedAt: LocalDateTime?
+    val items: List<PurchaseItem> = emptyList(),
+    val payments: List<PurchasePayment> = emptyList(),
+    val createdAt: LocalDateTime? = null,
+    val updatedAt: LocalDateTime? = null
 )
