@@ -42,6 +42,16 @@ class ValueObjectsTest {
     }
 
     @Test
+    fun `should create invoice url with pipe in query`() {
+        val invoiceUrl = InvoiceUrl.of("http://www4.fazenda.rj.gov.br/consultaNFCe/QRCode?p=33260253358724000682650010000901721678115882|2|1|1|c77e3a5c4f7a9ad7d25fee080cac222faac1219d")
+
+        assertEquals(
+            "http://www4.fazenda.rj.gov.br/consultaNFCe/QRCode?p=33260253358724000682650010000901721678115882|2|1|1|c77e3a5c4f7a9ad7d25fee080cac222faac1219d",
+            invoiceUrl.asString(),
+        )
+    }
+
+    @Test
     fun `should fail when invoice url is blank`() {
         assertFailsWith<IllegalArgumentException> {
             InvoiceUrl.of("   ")
