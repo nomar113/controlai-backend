@@ -29,3 +29,7 @@ aws:
     account-id: ${AWS_ACCOUNT_ID:000000000000}
     payments-notifications-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/payments-notifications
     purchases-invoices-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/purchases-invoices
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:*}
