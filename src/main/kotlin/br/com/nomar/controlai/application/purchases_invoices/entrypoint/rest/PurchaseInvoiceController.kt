@@ -1,9 +1,12 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest
 
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceRequest
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -14,7 +17,11 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/purchases")
 class PurchaseInvoiceController(
     private val notifyPurchaseInvoiceQueueUseCase: NotifyPurchaseInvoiceQueueUseCase,
+    private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
 ) {
+
+    @GetMapping
+    fun listPurchases(): List<PurchaseInvoiceModel> = purchaseInvoiceRepository.findAllByOrderByDateDesc()
 
     @PostMapping("/invoice")
     @ResponseStatus(HttpStatus.CREATED)

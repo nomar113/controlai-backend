@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository
 interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     fun countByAccessKey(accessKey: String): Long
+
+    fun findAllByOrderByDateDesc(): List<PurchaseInvoiceModel>
 }
