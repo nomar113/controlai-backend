@@ -1,7 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
-import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationTextParser
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
@@ -17,42 +17,21 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/payments")
 class PaymentNotificationController(
     private val notificationQueueUseCase: NotifyPaymentNotificationQueueUseCase,
-    private val paymentNotificationTextParser: PaymentNotificationTextParser,
 ) {
 
     @PostMapping("/notification")
     @ResponseStatus(HttpStatus.CREATED)
     fun enqueuePaymentNotification(@Validated @RequestBody request: PaymentNotificationTextRequest): Map<String, Any> {
-        val paymentNotification = paymentNotificationTextParser.parse(
+        val queueMessage = PaymentNotificationQueueMessage(
             text = request.text,
             origin = request.origin,
             originType = request.originType ?: "HTTP_REQUEST",
         )
-        notificationQueueUseCase.execute(paymentNotification).getOrThrow()
+        notificationQueueUseCase.execute(queueMessage).getOrThrow()
         return mapOf(
-            "cardLastDigits" to paymentNotification.cardLastDigits,
-            "purchasedAt" to paymentNotification.purchasedAt,
-            "amount" to paymentNotification.amount,
-            "merchantName" to paymentNotification.merchantName,
-            "numberOfInstallments" to paymentNotification.numberOfInstallments,
-            "origin" to paymentNotification.origin,
-            "originType" to paymentNotification.originType,
+            "text" to queueMessage.text.orEmpty(),
+            "origin" to queueMessage.origin,
+            "originType" to queueMessage.originType,
         )
-    }
-
-    @PostMapping("/from-notification")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun sendPaymentNotification(@Validated @RequestBody request: PaymentNotificationRequest): PaymentNotification {
-        val paymentNotification = PaymentNotification(
-            cardLastDigits = request.cardLastDigits,
-            purchasedAt = request.purchasedAt,
-            amount = request.amount,
-            merchantName = request.merchantName,
-            origin = "HTTP_REQUEST",
-            originType = "HTTP_REQUEST",
-        )
-
-        notificationQueueUseCase.execute(paymentNotification)
-        return paymentNotification
     }
 }

@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.domain.usecase
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceItemRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoicePaymentRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceRequest
@@ -45,7 +46,7 @@ class UseCasesTest {
         }
         val useCase = NotifyPaymentNotificationQueueUseCase(gateway)
 
-        val result = useCase.execute(sampleNotification())
+        val result = useCase.execute(sampleQueueMessage())
 
         assertTrue(result.isFailure)
         assertEquals("queue unavailable", result.exceptionOrNull()?.message)
@@ -79,6 +80,12 @@ class UseCasesTest {
         amount = BigDecimal("99.90"),
         merchantName = "Loja",
         numberOfInstallments = 1,
+        origin = "app",
+        originType = "HTTP_REQUEST",
+    )
+
+    private fun sampleQueueMessage() = PaymentNotificationQueueMessage(
+        text = "Cartao final 1234",
         origin = "app",
         originType = "HTTP_REQUEST",
     )

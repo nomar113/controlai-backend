@@ -1,6 +1,8 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.queue
 
+import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationTextParser
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
@@ -17,6 +19,7 @@ class PaymentNotificationQueueListener(
     private val paymentsNotificationQueueUrl: String,
     private val sqsClient: SqsClient,
     private val objectMapper: ObjectMapper,
+    private val paymentNotificationTextParser: PaymentNotificationTextParser,
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -33,7 +36,8 @@ class PaymentNotificationQueueListener(
 
         messages.forEach { message ->
             runCatching {
-                val paymentNotification = objectMapper.readValue(message.body(), PaymentNotification::class.java)
+                val queueMessage = objectMapper.readValue(message.body(), PaymentNotificationQueueMessage::class.java)
+                val paymentNotification = queueMessage.toPaymentNotification()
                 savePaymentNotificationUseCase.execute(paymentNotification).getOrThrow()
                 sqsClient.deleteMessage(
                     DeleteMessageRequest.builder()
@@ -55,5 +59,26 @@ class PaymentNotificationQueueListener(
                 }
             }
         }
+    }
+
+    private fun PaymentNotificationQueueMessage.toPaymentNotification(): PaymentNotification {
+        val rawText = text?.takeIf { it.isNotBlank() }
+        if (rawText != null) {
+            return paymentNotificationTextParser.parse(
+                text = rawText,
+                origin = origin,
+                originType = originType,
+            )
+        }
+
+        return PaymentNotification(
+            cardLastDigits = requireNotNull(cardLastDigits) { "cardLastDigits is required when text is not provided" },
+            purchasedAt = requireNotNull(purchasedAt) { "purchasedAt is required when text is not provided" },
+            amount = requireNotNull(amount) { "amount is required when text is not provided" },
+            merchantName = requireNotNull(merchantName) { "merchantName is required when text is not provided" },
+            numberOfInstallments = numberOfInstallments ?: 1,
+            origin = origin,
+            originType = originType,
+        )
     }
 }

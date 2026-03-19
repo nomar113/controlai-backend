@@ -1,6 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
-import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
 import br.com.nomar.controlai.domain.payments_notifications.gateway.NotifyPaymentNotificationQueueGateway
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
@@ -16,7 +16,7 @@ class NotifyPaymentNotificationQueueProvider(
     private val objectMapper: ObjectMapper,
 ): NotifyPaymentNotificationQueueGateway {
 
-    override fun execute(paymentNotification: PaymentNotification): Result<Unit> {
+    override fun execute(paymentNotification: PaymentNotificationQueueMessage): Result<Unit> {
         return runCatching {
             sqsClient.sendMessage(
                 SendMessageRequest.builder()
