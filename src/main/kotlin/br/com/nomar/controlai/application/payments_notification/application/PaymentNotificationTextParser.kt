@@ -11,13 +11,13 @@ class PaymentNotificationTextParser {
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
     private val installmentsPattern = Regex("""\bEM\s+(\d+)\s*X\b""", RegexOption.IGNORE_CASE)
     private val notificationPattern = Regex(
-        """FINAL\s+(\d{4})\s+EM\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})\s+NO\s+VALOR\s+DE\s+R\$\s*([\d\.]+,\d{2})(?:\s+EM\s+\d+\s*X)?\s+(.+)""",
+        """FINAL\s+(\d{4})\s+EM\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})(?:\.\s+|\s+)(?:NO\s+)?VALOR\s+DE\s+R\${'$'}\s*([\d\.]+,\d{2})(?:\s+EM\s+\d+\s*X)?\s+(.+?)\.?${'$'}""",
         RegexOption.IGNORE_CASE
     )
 
     fun parse(text: String, origin: String, originType: String): PaymentNotification {
         val match = notificationPattern.find(text)
-            ?: throw IllegalArgumentException("Unable to parse payment notification text")
+            ?: throw PaymentNotificationTextParseException()
 
         val cardLastDigits = match.groupValues[1]
         val purchasedAt = LocalDateTime.parse("${match.groupValues[2]} ${match.groupValues[3]}", dateTimeFormatter)

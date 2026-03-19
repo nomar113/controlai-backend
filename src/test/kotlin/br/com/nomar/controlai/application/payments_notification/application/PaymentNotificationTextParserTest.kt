@@ -38,8 +38,34 @@ class PaymentNotificationTextParserTest {
     fun `should throw when notification text format is invalid`() {
         val invalidText = "texto sem o formato esperado"
 
-        assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<PaymentNotificationTextParseException> {
             parser.parse(invalidText, "app", "http_request")
         }
+    }
+
+    @Test
+    fun `should parse bradesco cash payment format`() {
+        val text = "BRADESCO CARTOES: COMPRA APROVADA NO CARTAO FINAL 9687 EM 17/03/2026 02:15. VALOR DE R$ 251,90 AMAZON  MARKETPLACE      SAO PAULO."
+
+        val result = parser.parse(text, "bradesco", "sms")
+
+        assertEquals("9687", result.cardLastDigits)
+        assertEquals("2026-03-17T02:15", result.purchasedAt.toString())
+        assertEquals(0, result.amount.compareTo("251.90".toBigDecimal()))
+        assertEquals("AMAZON MARKETPLACE SAO PAULO", result.merchantName)
+        assertEquals(1, result.numberOfInstallments)
+    }
+
+    @Test
+    fun `should parse bradesco installment payment format with spaced x`() {
+        val text = "BRADESCO CARTOES: COMPRA APROVADA NO CARTAO FINAL 9687 EM 14/03/2026 14:56 NO VALOR DE R$ 303,44 EM 2 X COBASI                   RIO DE JANEI."
+
+        val result = parser.parse(text, "bradesco", "sms")
+
+        assertEquals("9687", result.cardLastDigits)
+        assertEquals("2026-03-14T14:56", result.purchasedAt.toString())
+        assertEquals(0, result.amount.compareTo("303.44".toBigDecimal()))
+        assertEquals("COBASI RIO DE JANEI", result.merchantName)
+        assertEquals(2, result.numberOfInstallments)
     }
 }
