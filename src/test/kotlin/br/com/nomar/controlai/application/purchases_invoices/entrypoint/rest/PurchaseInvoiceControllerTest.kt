@@ -1,63 +1,45 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest
 
-import br.com.nomar.controlai.domain.purchases_invoices.entity.PurchaseInvoice
-import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.AccessKey
-import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.Cnpj
-import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.InvoiceUrl
-import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.TotalItems
-import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchaseInvoicesGateway
+import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchasesGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.NotifyPurchaseInvoiceQueueGateway
-import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchaseInvoicesUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import java.math.BigDecimal
-import java.time.OffsetDateTime
+import java.time.LocalDateTime
 
 class PurchaseInvoiceControllerTest {
 
     @Test
     fun `should list purchases`() {
         val purchases = listOf(
-            PurchaseInvoice(
+            Purchase(
                 id = 1L,
-                date = OffsetDateTime.parse("2026-03-01T10:30:00-03:00"),
+                date = LocalDateTime.of(2026, 3, 1, 10, 30, 0),
                 merchantName = "Mercado A",
-                merchantAddress = "Rua A",
-                cnpj = Cnpj.of("12.345.678/0001-90"),
-                totalItems = TotalItems.of(2),
-                invoiceUrl = InvoiceUrl.of("https://example.com/invoice-a"),
-                accessKey = AccessKey.of("12345678901234567890123456789012345678901234"),
-                subtotal = BigDecimal("100.00"),
+                totalItems = 2,
                 total = BigDecimal("100.00"),
-                taxes = BigDecimal("10.00"),
-                discount = BigDecimal("0.00"),
             ),
-            PurchaseInvoice(
+            Purchase(
                 id = 2L,
-                date = OffsetDateTime.parse("2026-02-28T09:30:00-03:00"),
+                date = LocalDateTime.of(2026, 2, 28, 9, 30, 0),
                 merchantName = "Mercado B",
-                merchantAddress = "Rua B",
-                cnpj = Cnpj.of("98.765.432/0001-10"),
-                totalItems = TotalItems.of(1),
-                invoiceUrl = InvoiceUrl.of("https://example.com/invoice-b"),
-                accessKey = AccessKey.of("09876543210987654321098765432109876543210987"),
-                subtotal = BigDecimal("50.00"),
+                totalItems = null,
                 total = BigDecimal("50.00"),
-                taxes = BigDecimal("5.00"),
-                discount = BigDecimal("0.00"),
             ),
         )
 
-        val listPurchaseInvoicesUseCase = ListPurchaseInvoicesUseCase(
-            ListPurchaseInvoicesGateway { Result.success(purchases) }
+        val listPurchasesUseCase = ListPurchasesUseCase(
+            ListPurchasesGateway { Result.success(purchases) }
         )
         val notifyPurchaseInvoiceQueueUseCase = NotifyPurchaseInvoiceQueueUseCase(
             NotifyPurchaseInvoiceQueueGateway { Result.success(Unit) }
         )
         val controller = PurchaseInvoiceController(
             notifyPurchaseInvoiceQueueUseCase = notifyPurchaseInvoiceQueueUseCase,
-            listPurchaseInvoicesUseCase = listPurchaseInvoicesUseCase,
+            listPurchasesUseCase = listPurchasesUseCase,
         )
 
         val result = controller.listPurchases()
@@ -65,5 +47,7 @@ class PurchaseInvoiceControllerTest {
         assertEquals(2, result.size)
         assertEquals("Mercado A", result[0].merchantName)
         assertEquals("Mercado B", result[1].merchantName)
+        assertEquals(2, result[0].totalItems)
+        assertEquals(null, result[1].totalItems)
     }
 }
