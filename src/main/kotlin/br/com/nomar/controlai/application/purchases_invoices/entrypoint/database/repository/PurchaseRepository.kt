@@ -21,4 +21,14 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         nativeQuery = true
     )
     fun findAllPurchases(): List<PurchaseProjection>
+
+    @Query(
+        """
+        SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems
+        FROM purchase_invoices
+        ORDER BY date DESC
+        """,
+        nativeQuery = true
+    )
+    fun findAllInvoices(): List<PurchaseProjection>
 }
