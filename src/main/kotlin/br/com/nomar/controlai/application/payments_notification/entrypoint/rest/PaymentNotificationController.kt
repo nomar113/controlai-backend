@@ -3,10 +3,12 @@ package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.ManualPaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
+import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/payments")
 class PaymentNotificationController(
     private val notificationQueueUseCase: NotifyPaymentNotificationQueueUseCase,
+    private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
 ) {
 
@@ -43,5 +46,24 @@ class PaymentNotificationController(
             "origin" to queueMessage.origin,
             "originType" to queueMessage.originType,
         )
+    }
+
+    @PostMapping("/notifications/manual")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createManualNotification(@Validated @RequestBody request: ManualPaymentNotificationRequest): PaymentNotificationResponse {
+        val paymentNotification = PaymentNotification(
+            cardLastDigits = request.cardLastDigits,
+            purchasedAt = request.purchasedAt,
+            amount = request.amount,
+            merchantName = request.merchantName,
+            numberOfInstallments = request.numberOfInstallments,
+            origin = "MANUAL",
+            originType = "MANUAL",
+            category = request.category,
+            paymentMethodId = request.paymentMethodId,
+            subCardId = request.subCardId,
+        )
+        val saved = savePaymentNotificationUseCase.execute(paymentNotification).getOrThrow()
+        return PaymentNotificationResponse.from(saved)
     }
 }

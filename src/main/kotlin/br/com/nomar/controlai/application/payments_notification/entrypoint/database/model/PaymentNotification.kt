@@ -36,6 +36,15 @@ data class PaymentNotification(
     @Column(name = "origin_type", nullable = false)
     val originType: String = "HTTP_REQUEST",
 
+    @Column(name = "category", length = 50)
+    val category: String? = null,
+
+    @Column(name = "payment_method_id")
+    val paymentMethodId: Long? = null,
+
+    @Column(name = "sub_card_id")
+    val subCardId: Long? = null,
+
     @Column(name = "created_at", insertable = false, updatable = false)
     val createdAt: LocalDateTime? = null,
 
