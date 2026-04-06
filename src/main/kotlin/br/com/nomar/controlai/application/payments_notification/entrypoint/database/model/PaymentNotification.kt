@@ -45,6 +45,9 @@ data class PaymentNotification(
     @Column(name = "sub_card_id")
     val subCardId: Long? = null,
 
+    @Column(name = "description")
+    val description: String? = null,
+
     @Column(name = "created_at", insertable = false, updatable = false)
     val createdAt: LocalDateTime? = null,
 

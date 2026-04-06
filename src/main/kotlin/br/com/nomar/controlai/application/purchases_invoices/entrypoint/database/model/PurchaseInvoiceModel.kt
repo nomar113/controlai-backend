@@ -52,6 +52,9 @@ data class PurchaseInvoiceModel (
     @Column(name = "discount", precision = 10, scale = 2)
     val discount: BigDecimal?,
 
+    @Column(name = "description")
+    val description: String? = null,
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime? = LocalDateTime.now(),
