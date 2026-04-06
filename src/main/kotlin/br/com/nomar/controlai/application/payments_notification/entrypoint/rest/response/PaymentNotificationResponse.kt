@@ -14,6 +14,9 @@ data class PaymentNotificationResponse(
     val category: String? = null,
     val paymentMethodId: Long? = null,
     val subCardId: Long? = null,
+    val description: String? = null,
+    val origin: String? = null,
+    val originType: String? = null,
 ) {
     companion object {
         fun from(entity: PaymentNotification) = PaymentNotificationResponse(
@@ -26,6 +29,9 @@ data class PaymentNotificationResponse(
             category = entity.category,
             paymentMethodId = entity.paymentMethodId,
             subCardId = entity.subCardId,
+            description = entity.description,
+            origin = entity.origin,
+            originType = entity.originType,
         )
     }
 }

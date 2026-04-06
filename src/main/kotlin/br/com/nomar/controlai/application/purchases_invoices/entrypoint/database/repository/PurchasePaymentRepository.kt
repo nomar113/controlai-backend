@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface PurchasePaymentRepository : JpaRepository<PurchasePaymentModel, Long>
+interface PurchasePaymentRepository : JpaRepository<PurchasePaymentModel, Long> {
+    fun findByPurchaseInvoiceId(purchaseInvoiceId: Long): List<PurchasePaymentModel>
+}
