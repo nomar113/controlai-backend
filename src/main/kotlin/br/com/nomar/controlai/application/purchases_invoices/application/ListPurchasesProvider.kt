@@ -19,6 +19,7 @@ class ListPurchasesProvider(
                     total = projection.getTotal(),
                     merchantName = projection.getMerchantName(),
                     totalItems = projection.getTotalItems(),
+                    description = projection.getDescription(),
                 )
             }
         }

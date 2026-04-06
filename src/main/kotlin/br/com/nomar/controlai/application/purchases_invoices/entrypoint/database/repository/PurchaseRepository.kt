@@ -11,10 +11,10 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT id, purchased_at AS date, amount AS total, merchant_name AS merchantName, NULL AS totalItems
+        SELECT id, purchased_at AS date, amount AS total, merchant_name AS merchantName, NULL AS totalItems, description
         FROM payment_notifications
         UNION
-        SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems
+        SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems, description
         FROM purchase_invoices
         ORDER BY date DESC
         """,
@@ -24,7 +24,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems
+        SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems, description
         FROM purchase_invoices
         ORDER BY date DESC
         """,

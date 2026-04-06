@@ -9,4 +9,5 @@ interface PurchaseProjection {
     fun getTotal(): BigDecimal?
     fun getMerchantName(): String?
     fun getTotalItems(): Int?
+    fun getDescription(): String?
 }

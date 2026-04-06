@@ -9,4 +9,5 @@ class Purchase(
     val total: BigDecimal?,
     val merchantName: String?,
     val totalItems: Int?,
+    val description: String? = null,
 )
