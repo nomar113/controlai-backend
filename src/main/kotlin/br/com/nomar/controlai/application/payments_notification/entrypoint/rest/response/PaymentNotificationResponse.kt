@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 data class PaymentNotificationResponse(
     val id: Long,
-    val cardLastDigits: String,
+    val cardLastDigits: String? = null,
     val purchasedAt: LocalDateTime,
     val amount: BigDecimal,
     val merchantName: String,

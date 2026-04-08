@@ -12,15 +12,28 @@ class SavePaymentNotificationProvider(
 
     override fun execute(paymentNotification: PaymentNotification): Result<PaymentNotification> {
         return runCatching {
-            val existingCount = paymentNotificationRepository
-                .countByCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
-                    cardLastDigits = paymentNotification.cardLastDigits,
-                    purchasedAt = paymentNotification.purchasedAt,
-                    amount = paymentNotification.amount,
-                    merchantName = paymentNotification.merchantName,
-                    numberOfInstallments = paymentNotification.numberOfInstallments,
-                    origin = paymentNotification.origin,
-                )
+            val digits = paymentNotification.cardLastDigits
+            val existingCount = if (digits != null) {
+                paymentNotificationRepository
+                    .countByCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                        cardLastDigits = digits,
+                        purchasedAt = paymentNotification.purchasedAt,
+                        amount = paymentNotification.amount,
+                        merchantName = paymentNotification.merchantName,
+                        numberOfInstallments = paymentNotification.numberOfInstallments,
+                        origin = paymentNotification.origin,
+                    )
+            } else {
+                paymentNotificationRepository
+                    .countByPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                        paymentMethodId = paymentNotification.paymentMethodId,
+                        purchasedAt = paymentNotification.purchasedAt,
+                        amount = paymentNotification.amount,
+                        merchantName = paymentNotification.merchantName,
+                        numberOfInstallments = paymentNotification.numberOfInstallments,
+                        origin = paymentNotification.origin,
+                    )
+            }
 
             require(existingCount < 3) {
                 "Payment notification limit reached for identical payload"

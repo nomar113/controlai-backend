@@ -15,8 +15,8 @@ data class PaymentNotification(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @Column(name = "card_last_digits", length = 4, nullable = false)
-    val cardLastDigits: String,
+    @Column(name = "card_last_digits", length = 4, nullable = true)
+    val cardLastDigits: String? = null,
 
     @Column(name = "purchased_at", nullable = false)
     val purchasedAt: LocalDateTime,

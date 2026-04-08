@@ -16,4 +16,13 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         numberOfInstallments: Int,
         origin: String,
     ): Long
+
+    fun countByPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+        paymentMethodId: Long?,
+        purchasedAt: LocalDateTime,
+        amount: BigDecimal,
+        merchantName: String,
+        numberOfInstallments: Int,
+        origin: String,
+    ): Long
 }

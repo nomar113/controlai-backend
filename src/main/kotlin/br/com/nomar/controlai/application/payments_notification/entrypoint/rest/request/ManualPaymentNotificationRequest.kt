@@ -22,12 +22,10 @@ data class ManualPaymentNotificationRequest(
     @field:NotNull
     val paymentMethodId: Long,
 
-    @field:NotNull
-    val subCardId: Long,
+    val subCardId: Long? = null,
 
-    @field:NotBlank
     @field:Size(min = 4, max = 4)
-    val cardLastDigits: String,
+    val cardLastDigits: String? = null,
 
     @field:NotBlank
     val category: String,
