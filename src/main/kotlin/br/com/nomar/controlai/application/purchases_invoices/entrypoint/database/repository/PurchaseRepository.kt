@@ -13,9 +13,11 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         """
         SELECT id, purchased_at AS date, amount AS total, merchant_name AS merchantName, NULL AS totalItems, description
         FROM payment_notifications
+        WHERE deleted_at IS NULL
         UNION
         SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems, description
         FROM purchase_invoices
+        WHERE deleted_at IS NULL
         ORDER BY date DESC
         """,
         nativeQuery = true
@@ -26,6 +28,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         """
         SELECT id, date, total, merchant_name AS merchantName, total_items AS totalItems, description
         FROM purchase_invoices
+        WHERE deleted_at IS NULL
         ORDER BY date DESC
         """,
         nativeQuery = true

@@ -8,11 +8,13 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
+import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException
 @RequestMapping("/payments")
 class PaymentNotificationController(
     private val notificationQueueUseCase: NotifyPaymentNotificationQueueUseCase,
+    private val deactivatePaymentNotificationUseCase: DeactivatePaymentNotificationUseCase,
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
 ) {
@@ -52,6 +55,13 @@ class PaymentNotificationController(
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
         val updated = paymentNotificationRepository.save(notification.copy(description = request.description))
         return PaymentNotificationResponse.from(updated)
+    }
+
+    @DeleteMapping("/notifications/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteNotification(@PathVariable id: Long) {
+        deactivatePaymentNotificationUseCase.execute(id)
+            .getOrElse { throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message) }
     }
 
     @PostMapping("/notification")

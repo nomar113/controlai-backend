@@ -9,10 +9,12 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.req
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException
 @RequestMapping("/purchases")
 class PurchaseInvoiceController(
     private val notifyPurchaseInvoiceQueueUseCase: NotifyPurchaseInvoiceQueueUseCase,
+    private val deactivatePurchaseInvoiceUseCase: DeactivatePurchaseInvoiceUseCase,
     private val listPurchasesUseCase: ListPurchasesUseCase,
     private val purchaseRepository: PurchaseRepository,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
@@ -73,6 +76,13 @@ class PurchaseInvoiceController(
         val items = purchaseItemRepository.findByPurchaseInvoiceId(updated.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(updated.id!!)
         return PurchaseInvoiceDetailResponse.from(updated, items, payments)
+    }
+
+    @DeleteMapping("/invoices/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteInvoice(@PathVariable id: Long) {
+        deactivatePurchaseInvoiceUseCase.execute(id)
+            .getOrElse { throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message) }
     }
 
     @PostMapping("/invoice")

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.SQLRestriction
 import org.hibernate.annotations.UpdateTimestamp
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -14,6 +15,7 @@ import java.time.OffsetDateTime
 
 @Entity
 @Table(name = "purchase_invoices")
+@SQLRestriction("deleted_at IS NULL")
 data class PurchaseInvoiceModel (
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,6 +56,9 @@ data class PurchaseInvoiceModel (
 
     @Column(name = "description")
     val description: String? = null,
+
+    @Column(name = "deleted_at")
+    val deletedAt: LocalDateTime? = null,
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

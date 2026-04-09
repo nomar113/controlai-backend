@@ -6,11 +6,13 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.SQLRestriction
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity
 @Table(name = "payment_notifications")
+@SQLRestriction("deleted_at IS NULL")
 data class PaymentNotification(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
@@ -47,6 +49,9 @@ data class PaymentNotification(
 
     @Column(name = "description")
     val description: String? = null,
+
+    @Column(name = "deleted_at")
+    val deletedAt: LocalDateTime? = null,
 
     @Column(name = "created_at", insertable = false, updatable = false)
     val createdAt: LocalDateTime? = null,
