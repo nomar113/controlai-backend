@@ -1,0 +1,2 @@
+ALTER TABLE purchase_invoices ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE payment_notifications ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL;
