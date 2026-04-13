@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response
 
+import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -18,6 +19,7 @@ data class PaymentNotificationResponse(
     val description: String? = null,
     val origin: String? = null,
     val originType: String? = null,
+    val installments: List<InstallmentResponse> = emptyList(),
 ) {
     companion object {
         fun from(entity: PaymentNotification) = PaymentNotificationResponse(

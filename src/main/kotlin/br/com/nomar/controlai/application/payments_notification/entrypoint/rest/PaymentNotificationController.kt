@@ -1,5 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
+import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
+import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
@@ -13,6 +15,7 @@ import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymen
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -32,6 +35,7 @@ class PaymentNotificationController(
     private val deactivatePaymentNotificationUseCase: DeactivatePaymentNotificationUseCase,
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
+    private val createInstallmentsProvider: CreateInstallmentsProvider,
 ) {
 
     @GetMapping("/notifications")
@@ -82,6 +86,7 @@ class PaymentNotificationController(
 
     @PostMapping("/notifications/manual")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     fun createManualNotification(@Validated @RequestBody request: ManualPaymentNotificationRequest): PaymentNotificationResponse {
         val paymentNotification = PaymentNotification(
             cardLastDigits = request.cardLastDigits,
@@ -96,6 +101,18 @@ class PaymentNotificationController(
             subCardId = request.subCardId,
         )
         val saved = savePaymentNotificationUseCase.execute(paymentNotification).getOrThrow()
-        return PaymentNotificationResponse.from(saved)
+        val response = PaymentNotificationResponse.from(saved)
+
+        if (request.numberOfInstallments > 1) {
+            val installments = createInstallmentsProvider.execute(
+                parentId = saved.id,
+                totalInstallments = request.numberOfInstallments,
+                amount = request.amount,
+                startDate = request.purchasedAt.toLocalDate(),
+            )
+            return response.copy(installments = installments.map(InstallmentResponse::from))
+        }
+
+        return response
     }
 }
