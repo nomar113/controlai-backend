@@ -91,7 +91,7 @@ class PaymentNotificationController(
             numberOfInstallments = request.numberOfInstallments,
             origin = "MANUAL",
             originType = "MANUAL",
-            category = request.category,
+            categoryId = request.categoryId,
             paymentMethodId = request.paymentMethodId,
             subCardId = request.subCardId,
         )

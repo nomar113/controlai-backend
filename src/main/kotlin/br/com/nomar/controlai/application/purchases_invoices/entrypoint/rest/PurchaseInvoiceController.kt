@@ -52,6 +52,7 @@ class PurchaseInvoiceController(
                     merchantName = projection.getMerchantName(),
                     totalItems = projection.getTotalItems(),
                     description = projection.getDescription(),
+                    categoryName = projection.getCategoryName(),
                 )
             )
         }

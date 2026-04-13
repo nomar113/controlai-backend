@@ -41,6 +41,9 @@ data class PaymentNotification(
     @Column(name = "category", length = 50)
     val category: String? = null,
 
+    @Column(name = "category_id")
+    val categoryId: Long? = null,
+
     @Column(name = "payment_method_id")
     val paymentMethodId: Long? = null,
 

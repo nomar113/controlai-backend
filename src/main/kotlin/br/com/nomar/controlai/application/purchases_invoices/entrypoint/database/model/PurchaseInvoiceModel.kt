@@ -54,6 +54,9 @@ data class PurchaseInvoiceModel (
     @Column(name = "discount", precision = 10, scale = 2)
     val discount: BigDecimal?,
 
+    @Column(name = "category_id")
+    val categoryId: Long? = null,
+
     @Column(name = "description")
     val description: String? = null,
 

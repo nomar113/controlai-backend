@@ -10,4 +10,5 @@ interface PurchaseProjection {
     fun getMerchantName(): String?
     fun getTotalItems(): Int?
     fun getDescription(): String?
+    fun getCategoryName(): String?
 }

@@ -27,8 +27,8 @@ data class ManualPaymentNotificationRequest(
     @field:Size(min = 4, max = 4)
     val cardLastDigits: String? = null,
 
-    @field:NotBlank
-    val category: String,
+    @field:NotNull
+    val categoryId: Long? = null,
 
     @field:Min(1)
     val numberOfInstallments: Int = 1,

@@ -22,6 +22,8 @@ class CategoryControllerIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
+        jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
         jdbcTemplate.update("DELETE FROM categories")
     }
 
