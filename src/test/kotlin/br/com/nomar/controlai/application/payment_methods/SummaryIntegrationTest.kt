@@ -23,6 +23,7 @@ class SummaryIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM payment_methods")

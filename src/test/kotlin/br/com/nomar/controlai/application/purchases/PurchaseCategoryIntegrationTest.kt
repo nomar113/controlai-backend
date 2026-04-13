@@ -27,6 +27,7 @@ class PurchaseCategoryIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM payment_notifications")
         jdbcTemplate.update("DELETE FROM categories")
