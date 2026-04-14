@@ -8,6 +8,11 @@ import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
+data class InstallmentOverride(
+    val installmentNumber: Int,
+    val amount: BigDecimal,
+)
+
 data class ManualPaymentNotificationRequest(
     @field:NotBlank
     val merchantName: String,
@@ -32,4 +37,6 @@ data class ManualPaymentNotificationRequest(
 
     @field:Min(1)
     val numberOfInstallments: Int = 1,
+
+    val installments: List<InstallmentOverride>? = null,
 )

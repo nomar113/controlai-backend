@@ -104,12 +104,29 @@ class PaymentNotificationController(
         val response = PaymentNotificationResponse.from(saved)
 
         if (request.numberOfInstallments > 1) {
-            val installments = createInstallmentsProvider.execute(
-                parentId = saved.id,
-                totalInstallments = request.numberOfInstallments,
-                amount = request.amount,
-                startDate = request.purchasedAt.toLocalDate(),
-            )
+            val installments = if (request.installments != null) {
+                require(request.installments.size == request.numberOfInstallments) {
+                    "Installments size must match numberOfInstallments"
+                }
+                val sum = request.installments.sumOf { it.amount }
+                require(sum.compareTo(request.amount) == 0) {
+                    "Sum of installment amounts ($sum) must equal total amount (${request.amount})"
+                }
+                val amountsMap = request.installments.associate { it.installmentNumber to it.amount }
+                createInstallmentsProvider.executeWithAmounts(
+                    parentId = saved.id,
+                    totalInstallments = request.numberOfInstallments,
+                    amounts = amountsMap,
+                    startDate = request.purchasedAt.toLocalDate(),
+                )
+            } else {
+                createInstallmentsProvider.execute(
+                    parentId = saved.id,
+                    totalInstallments = request.numberOfInstallments,
+                    totalAmount = request.amount,
+                    startDate = request.purchasedAt.toLocalDate(),
+                )
+            }
             return response.copy(installments = installments.map(InstallmentResponse::from))
         }
 
