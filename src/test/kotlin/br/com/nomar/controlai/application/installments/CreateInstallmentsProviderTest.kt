@@ -42,7 +42,7 @@ class CreateInstallmentsProviderTest {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 3,
-            amount = BigDecimal("100.00"),
+            totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 5, 15),
         )
 
@@ -52,9 +52,12 @@ class CreateInstallmentsProviderTest {
         assertEquals(3, result[2].installmentNumber)
         result.forEach {
             assertEquals(3, it.totalInstallments)
-            assertEquals(BigDecimal("100.00"), it.amount)
             assertEquals(parentId, it.parentId)
         }
+        // 100.00 / 3 = 33.33 remainder 0.01 -> first gets 33.34
+        assertEquals(BigDecimal("33.34"), result[0].amount)
+        assertEquals(BigDecimal("33.33"), result[1].amount)
+        assertEquals(BigDecimal("33.33"), result[2].amount)
     }
 
     @Test
@@ -62,7 +65,7 @@ class CreateInstallmentsProviderTest {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 3,
-            amount = BigDecimal("100.00"),
+            totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 1, 15),
         )
 
@@ -76,7 +79,7 @@ class CreateInstallmentsProviderTest {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 3,
-            amount = BigDecimal("100.00"),
+            totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 1, 31),
         )
 
@@ -91,7 +94,7 @@ class CreateInstallmentsProviderTest {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 2,
-            amount = BigDecimal("50.00"),
+            totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2028, 1, 29),
         )
 
@@ -104,7 +107,7 @@ class CreateInstallmentsProviderTest {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 1,
-            amount = BigDecimal("900.00"),
+            totalAmount = BigDecimal("900.00"),
             startDate = LocalDate.of(2026, 5, 10),
         )
 
@@ -112,6 +115,50 @@ class CreateInstallmentsProviderTest {
         assertEquals(1, result[0].installmentNumber)
         assertEquals(1, result[0].totalInstallments)
         assertEquals(LocalDate.of(2026, 5, 10), result[0].dueDate)
+    }
+
+    @Test
+    fun `should split total evenly when divisible`() {
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 4,
+            totalAmount = BigDecimal("100.00"),
+            startDate = LocalDate.of(2026, 5, 15),
+        )
+
+        assertEquals(4, result.size)
+        result.forEach { assertEquals(BigDecimal("25.00"), it.amount) }
+    }
+
+    @Test
+    fun `should put remainder cents in first installment`() {
+        // 589.90 / 10 = 58.99 each, no remainder
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 10,
+            totalAmount = BigDecimal("589.90"),
+            startDate = LocalDate.of(2026, 5, 15),
+        )
+
+        assertEquals(10, result.size)
+        result.forEach { assertEquals(BigDecimal("58.99"), it.amount) }
+    }
+
+    @Test
+    fun `should handle remainder of multiple cents`() {
+        // 100.00 / 7 = 14.28 base, remainder = 100.00 - 14.28*7 = 100.00 - 99.96 = 0.04
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 7,
+            totalAmount = BigDecimal("100.00"),
+            startDate = LocalDate.of(2026, 5, 15),
+        )
+
+        assertEquals(7, result.size)
+        assertEquals(BigDecimal("14.32"), result[0].amount)
+        for (i in 1..6) {
+            assertEquals(BigDecimal("14.28"), result[i].amount)
+        }
     }
 
     @Test

@@ -1,14 +1,19 @@
 package br.com.nomar.controlai.application.installments.entrypoint.rest
 
+import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
+import br.com.nomar.controlai.application.installments.entrypoint.rest.request.InstallmentPreviewRequest
+import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.MonthlyProjectionResponse
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -27,7 +32,18 @@ data class UpdateInstallmentRequest(
 @RequestMapping("/installments")
 class InstallmentController(
     private val installmentRepository: InstallmentRepository,
+    private val createInstallmentsProvider: CreateInstallmentsProvider,
 ) {
+
+    @PostMapping("/preview")
+    fun previewInstallments(
+        @Validated @RequestBody request: InstallmentPreviewRequest,
+    ): List<InstallmentPreviewItemResponse> =
+        createInstallmentsProvider.calculate(
+            totalInstallments = request.numberOfInstallments,
+            totalAmount = request.totalAmount,
+            startDate = request.startDate,
+        )
 
     @GetMapping
     fun listByParent(@RequestParam parentId: Long): List<InstallmentResponse> =
