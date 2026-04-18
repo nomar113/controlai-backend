@@ -22,6 +22,9 @@ data class CategoryModel(
     @Column(name = "name", length = 50, nullable = false, unique = true)
     val name: String = "",
 
+    @Column(name = "icon", length = 10, nullable = true)
+    val icon: String? = null,
+
     @Column(name = "deleted_at")
     var deletedAt: LocalDateTime? = null,
 

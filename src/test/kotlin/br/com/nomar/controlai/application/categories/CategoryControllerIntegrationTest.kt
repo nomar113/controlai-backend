@@ -117,6 +117,25 @@ class CategoryControllerIntegrationTest {
     }
 
     @Test
+    fun `GET categories should include icon field in response`() {
+        val id = createCategory("Mercado")
+        jdbcTemplate.update("UPDATE categories SET icon = '🛒' WHERE id = ?", id)
+
+        mockMvc.perform(get("/categories/$id"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.icon").value("🛒"))
+    }
+
+    @Test
+    fun `GET categories should return null icon when not set`() {
+        val id = createCategory("Sem Icone")
+
+        mockMvc.perform(get("/categories/$id"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.icon").doesNotExist())
+    }
+
+    @Test
     fun `POST categories with blank name should return 400`() {
         mockMvc.perform(
             post("/categories")

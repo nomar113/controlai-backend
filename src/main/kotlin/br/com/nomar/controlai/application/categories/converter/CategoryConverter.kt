@@ -10,10 +10,12 @@ class CategoryConverter {
     fun toEntity(model: CategoryModel) = Category(
         id = model.id,
         name = model.name,
+        icon = model.icon,
     )
 
     fun toModel(entity: Category) = CategoryModel(
         id = entity.id,
         name = entity.name,
+        icon = entity.icon,
     )
 }
