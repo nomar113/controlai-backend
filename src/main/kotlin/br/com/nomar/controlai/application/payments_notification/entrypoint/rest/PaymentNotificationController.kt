@@ -8,8 +8,10 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.queue
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.ManualPaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCategoryRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
+import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
 import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
@@ -36,6 +38,7 @@ class PaymentNotificationController(
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
+    private val categoryRepository: CategoryRepository,
 ) {
 
     @GetMapping("/notifications")
@@ -58,6 +61,28 @@ class PaymentNotificationController(
         val notification = paymentNotificationRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
         val updated = paymentNotificationRepository.save(notification.copy(description = request.description))
+        return PaymentNotificationResponse.from(updated)
+    }
+
+    @PatchMapping("/notifications/{id}/category")
+    fun updateCategory(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateCategoryRequest,
+    ): PaymentNotificationResponse {
+        val notification = paymentNotificationRepository.findById(id)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+
+        val (categoryId, categoryName) = if (request.categoryId != null) {
+            val category = categoryRepository.findById(request.categoryId)
+                .orElseThrow { ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found") }
+            category.id to category.name
+        } else {
+            null to null
+        }
+
+        val updated = paymentNotificationRepository.save(
+            notification.copy(categoryId = categoryId, category = categoryName)
+        )
         return PaymentNotificationResponse.from(updated)
     }
 
