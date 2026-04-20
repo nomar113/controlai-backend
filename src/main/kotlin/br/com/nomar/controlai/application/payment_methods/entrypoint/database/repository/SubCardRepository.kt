@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface SubCardRepository : JpaRepository<SubCardModel, Long> {
     fun findAllByPaymentMethodId(paymentMethodId: Long): List<SubCardModel>
+    fun findByLastFourDigits(lastFourDigits: String): SubCardModel?
 }
