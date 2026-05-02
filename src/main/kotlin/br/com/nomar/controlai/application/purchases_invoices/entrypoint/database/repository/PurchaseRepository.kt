@@ -37,4 +37,38 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         nativeQuery = true
     )
     fun findAllInvoices(): List<PurchaseProjection>
+
+    @Query(
+        """
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName
+        FROM purchase_invoices pi
+        LEFT JOIN categories c ON pi.category_id = c.id
+        WHERE pi.deleted_at IS NULL
+          AND pi.date >= :startDate
+          AND pi.date < :endDate
+        ORDER BY pi.date DESC
+        LIMIT :limit OFFSET :offset
+        """,
+        nativeQuery = true
+    )
+    fun findInvoicesByDateRange(
+        startDate: String,
+        endDate: String,
+        limit: Int,
+        offset: Int,
+    ): List<PurchaseProjection>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM purchase_invoices pi
+        WHERE pi.deleted_at IS NULL
+          AND pi.date >= :startDate
+          AND pi.date < :endDate
+        """,
+        nativeQuery = true
+    )
+    fun countInvoicesByDateRange(
+        startDate: String,
+        endDate: String,
+    ): Long
 }

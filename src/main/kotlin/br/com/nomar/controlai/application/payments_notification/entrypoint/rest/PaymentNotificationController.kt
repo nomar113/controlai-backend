@@ -15,7 +15,6 @@ import br.com.nomar.controlai.application.categories.entrypoint.database.reposit
 import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
-import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
@@ -26,9 +25,11 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.time.YearMonth
 
 @RestController
 @RequestMapping("/payments")
@@ -42,9 +43,36 @@ class PaymentNotificationController(
 ) {
 
     @GetMapping("/notifications")
-    fun listNotifications(): List<PaymentNotificationResponse> =
-        paymentNotificationRepository.findAll(Sort.by(Sort.Direction.DESC, "purchasedAt"))
+    fun listNotifications(
+        @RequestParam month: String? = null,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+    ): Map<String, Any> {
+        val yearMonth = if (month != null) {
+            try {
+                YearMonth.parse(month)
+            } catch (e: Exception) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid month format. Expected YYYY-MM")
+            }
+        } else {
+            YearMonth.now()
+        }
+        val startDate = yearMonth.atDay(1).atStartOfDay()
+        val endDate = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
+        val offset = page * size
+        val items = paymentNotificationRepository.findByMonthRange(startDate, endDate, size, offset)
             .map(PaymentNotificationResponse::from)
+        val totalElements = paymentNotificationRepository.countByMonthRange(startDate, endDate)
+        val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
+        return mapOf(
+            "content" to items,
+            "totalElements" to totalElements,
+            "totalPages" to totalPages,
+            "number" to page,
+            "size" to size,
+            "last" to (page >= totalPages - 1),
+        )
+    }
 
     @GetMapping("/notifications/{id}")
     fun getNotification(@PathVariable id: Long): PaymentNotificationResponse {
