@@ -12,6 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -30,6 +31,7 @@ services:
       - "4566:4566"
     volumes:
       - ./docker/localstack-init:/etc/localstack/init/ready.d
+      - localstack_data:/var/lib/localstack
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 10s
@@ -37,3 +39,4 @@ services:
       retries: 10
 volumes:
   mysql_data:
+  localstack_data:
