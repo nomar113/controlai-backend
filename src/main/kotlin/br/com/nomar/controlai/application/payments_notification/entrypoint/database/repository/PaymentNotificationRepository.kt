@@ -30,17 +30,25 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     @Query(
         """
         SELECT pn.* FROM payment_notifications pn
+        LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
         WHERE pn.deleted_at IS NULL
-          AND pn.purchased_at >= :startDate
-          AND pn.purchased_at < :endDate
+          AND pn.purchased_at >= :broadStart
+          AND pn.purchased_at < :broadEnd
+          AND CASE
+            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+              AND DAY(pn.purchased_at) > pm.closing_day
+            THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+            ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+          END = :yearMonth
         ORDER BY pn.purchased_at DESC
         LIMIT :limit OFFSET :offset
         """,
         nativeQuery = true
     )
     fun findByMonthRange(
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
+        broadStart: LocalDateTime,
+        broadEnd: LocalDateTime,
+        yearMonth: String,
         limit: Int,
         offset: Int,
     ): List<PaymentNotification>
@@ -48,14 +56,22 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     @Query(
         """
         SELECT COUNT(*) FROM payment_notifications pn
+        LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
         WHERE pn.deleted_at IS NULL
-          AND pn.purchased_at >= :startDate
-          AND pn.purchased_at < :endDate
+          AND pn.purchased_at >= :broadStart
+          AND pn.purchased_at < :broadEnd
+          AND CASE
+            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+              AND DAY(pn.purchased_at) > pm.closing_day
+            THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+            ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+          END = :yearMonth
         """,
         nativeQuery = true
     )
     fun countByMonthRange(
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
+        broadStart: LocalDateTime,
+        broadEnd: LocalDateTime,
+        yearMonth: String,
     ): Long
 }

@@ -20,11 +20,12 @@ class GetBudgetSummaryProvider(
             val budgetModel = budgetRepository.findByYearMonth(yearMonth.toString())
                 .orElseThrow { NoSuchElementException("Budget not found: $yearMonth") }
 
-            val startDate = yearMonth.atDay(1).atStartOfDay()
-            val endDate = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
+            val yearMonthStr = yearMonth.toString()
+            val broadStart = yearMonth.minusMonths(1).atDay(1).atStartOfDay()
+            val broadEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
 
-            val actualByCategory = queryActualByCategory(startDate, endDate)
-            val paymentMethodTotals = queryPaymentMethodTotals(startDate, endDate)
+            val actualByCategory = queryActualByCategory(yearMonthStr, broadStart, broadEnd)
+            val paymentMethodTotals = queryPaymentMethodTotals(yearMonthStr, broadStart, broadEnd)
             val categoryIds = budgetModel.items.map { it.categoryId }.distinct()
             val categoryInfo = if (categoryIds.isNotEmpty()) queryCategoryInfo(categoryIds) else emptyMap()
 
@@ -79,25 +80,33 @@ class GetBudgetSummaryProvider(
         }
     }
 
-    private fun queryActualByCategory(startDate: java.time.LocalDateTime, endDate: java.time.LocalDateTime): Map<Long, BigDecimal> {
+    private fun queryActualByCategory(yearMonth: String, broadStart: java.time.LocalDateTime, broadEnd: java.time.LocalDateTime): Map<Long, BigDecimal> {
         val rows = jdbcTemplate.queryForList(
             """
             SELECT pn.category_id, COALESCE(SUM(pn.amount), 0) AS total
             FROM payment_notifications pn
+            LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
             WHERE pn.category_id IS NOT NULL
               AND pn.deleted_at IS NULL
               AND pn.purchased_at >= ? AND pn.purchased_at < ?
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = ?
             GROUP BY pn.category_id
             """.trimIndent(),
-            startDate,
-            endDate,
+            broadStart,
+            broadEnd,
+            yearMonth,
         )
         return rows.associate {
             (it["category_id"] as Number).toLong() to (it["total"] as BigDecimal)
         }
     }
 
-    private fun queryPaymentMethodTotals(startDate: java.time.LocalDateTime, endDate: java.time.LocalDateTime): List<PaymentMethodTotal> {
+    private fun queryPaymentMethodTotals(yearMonth: String, broadStart: java.time.LocalDateTime, broadEnd: java.time.LocalDateTime): List<PaymentMethodTotal> {
         val rows = jdbcTemplate.queryForList(
             """
             SELECT pm.id, pm.name, COALESCE(SUM(pn.amount), 0) AS total
@@ -105,11 +114,18 @@ class GetBudgetSummaryProvider(
             JOIN payment_methods pm ON pn.payment_method_id = pm.id
             WHERE pn.deleted_at IS NULL
               AND pn.purchased_at >= ? AND pn.purchased_at < ?
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = ?
             GROUP BY pm.id, pm.name
             ORDER BY pm.name
             """.trimIndent(),
-            startDate,
-            endDate,
+            broadStart,
+            broadEnd,
+            yearMonth,
         )
         return rows.map {
             PaymentMethodTotal(

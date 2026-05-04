@@ -57,12 +57,13 @@ class PaymentNotificationController(
         } else {
             YearMonth.now()
         }
-        val startDate = yearMonth.atDay(1).atStartOfDay()
-        val endDate = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
+        val yearMonthStr = yearMonth.toString()
+        val broadStart = yearMonth.minusMonths(1).atDay(1).atStartOfDay()
+        val broadEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
         val offset = page * size
-        val items = paymentNotificationRepository.findByMonthRange(startDate, endDate, size, offset)
+        val items = paymentNotificationRepository.findByMonthRange(broadStart, broadEnd, yearMonthStr, size, offset)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByMonthRange(startDate, endDate)
+        val totalElements = paymentNotificationRepository.countByMonthRange(broadStart, broadEnd, yearMonthStr)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

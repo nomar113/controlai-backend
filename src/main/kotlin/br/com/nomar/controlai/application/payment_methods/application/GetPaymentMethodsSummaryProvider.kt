@@ -15,8 +15,9 @@ class GetPaymentMethodsSummaryProvider(
 
     override fun execute(month: YearMonth): Result<List<PaymentMethodSummary>> {
         return runCatching {
-            val startDate = month.atDay(1).atStartOfDay()
-            val endDate = month.plusMonths(1).atDay(1).atStartOfDay()
+            val yearMonthStr = month.toString()
+            val broadStart = month.minusMonths(1).atDay(1).atStartOfDay()
+            val broadEnd = month.plusMonths(1).atDay(1).atStartOfDay()
 
             val rows = jdbcTemplate.queryForList(
                 """
@@ -35,12 +36,19 @@ class GetPaymentMethodsSummaryProvider(
                     AND (pn.sub_card_id = sc.id OR (pn.sub_card_id IS NULL AND sc.id IS NULL))
                     AND pn.purchased_at >= ?
                     AND pn.purchased_at < ?
+                    AND CASE
+                      WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                        AND DAY(pn.purchased_at) > pm.closing_day
+                      THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                      ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+                    END = ?
                 WHERE pm.deleted_at IS NULL
                 GROUP BY pm.id, pm.name, h.name, sc.id, sc.last_four_digits
                 ORDER BY pm.name, sc.last_four_digits
                 """.trimIndent(),
-                startDate,
-                endDate,
+                broadStart,
+                broadEnd,
+                yearMonthStr,
             )
 
             rows.groupBy { it["payment_method_id"] as Long }
