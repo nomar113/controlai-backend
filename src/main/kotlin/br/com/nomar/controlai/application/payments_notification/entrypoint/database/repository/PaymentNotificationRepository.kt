@@ -31,18 +31,41 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         """
         SELECT pn.* FROM payment_notifications pn
         LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
+        LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
-          AND pn.purchased_at >= :broadStart
-          AND pn.purchased_at < :broadEnd
-          AND CASE
-            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-              AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-            THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-              AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
-            THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-            ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-          END = :yearMonth
+          AND (
+            (pn.number_of_installments <= 1
+              AND pn.purchased_at >= :broadStart
+              AND pn.purchased_at < :broadEnd
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = :yearMonth)
+            OR
+            (pn.number_of_installments > 1
+              AND i.id IS NOT NULL
+              AND DATE_FORMAT(i.due_date, '%Y-%m') = :yearMonth)
+            OR
+            (pn.number_of_installments > 1
+              AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
+              AND pn.purchased_at >= :broadStart
+              AND pn.purchased_at < :broadEnd
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = :yearMonth)
+          )
+        GROUP BY pn.id
         ORDER BY pn.purchased_at DESC
         LIMIT :limit OFFSET :offset
         """,
@@ -58,20 +81,42 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
 
     @Query(
         """
-        SELECT COUNT(*) FROM payment_notifications pn
+        SELECT COUNT(DISTINCT pn.id) FROM payment_notifications pn
         LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
+        LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
-          AND pn.purchased_at >= :broadStart
-          AND pn.purchased_at < :broadEnd
-          AND CASE
-            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-              AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-            THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-            WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-              AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
-            THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-            ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-          END = :yearMonth
+          AND (
+            (pn.number_of_installments <= 1
+              AND pn.purchased_at >= :broadStart
+              AND pn.purchased_at < :broadEnd
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = :yearMonth)
+            OR
+            (pn.number_of_installments > 1
+              AND i.id IS NOT NULL
+              AND DATE_FORMAT(i.due_date, '%Y-%m') = :yearMonth)
+            OR
+            (pn.number_of_installments > 1
+              AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
+              AND pn.purchased_at >= :broadStart
+              AND pn.purchased_at < :broadEnd
+              AND CASE
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
+                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
+              END = :yearMonth)
+          )
         """,
         nativeQuery = true
     )
