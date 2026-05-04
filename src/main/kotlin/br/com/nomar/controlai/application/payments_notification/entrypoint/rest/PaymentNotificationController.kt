@@ -59,7 +59,7 @@ class PaymentNotificationController(
         }
         val yearMonthStr = yearMonth.toString()
         val broadStart = yearMonth.minusMonths(1).atDay(1).atStartOfDay()
-        val broadEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
+        val broadEnd = yearMonth.plusMonths(1).atDay(2).atStartOfDay()
         val offset = page * size
         val items = paymentNotificationRepository.findByMonthRange(broadStart, broadEnd, yearMonthStr, size, offset)
             .map(PaymentNotificationResponse::from)

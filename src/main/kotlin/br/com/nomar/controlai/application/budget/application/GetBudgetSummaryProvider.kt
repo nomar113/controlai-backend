@@ -22,7 +22,7 @@ class GetBudgetSummaryProvider(
 
             val yearMonthStr = yearMonth.toString()
             val broadStart = yearMonth.minusMonths(1).atDay(1).atStartOfDay()
-            val broadEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay()
+            val broadEnd = yearMonth.plusMonths(1).atDay(2).atStartOfDay()
 
             val actualByCategory = queryActualByCategory(yearMonthStr, broadStart, broadEnd)
             val paymentMethodTotals = queryPaymentMethodTotals(yearMonthStr, broadStart, broadEnd)
@@ -91,7 +91,10 @@ class GetBudgetSummaryProvider(
               AND pn.purchased_at >= ? AND pn.purchased_at < ?
               AND CASE
                 WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND DAY(pn.purchased_at) > pm.closing_day
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
                 THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
                 ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
               END = ?
@@ -116,7 +119,10 @@ class GetBudgetSummaryProvider(
               AND pn.purchased_at >= ? AND pn.purchased_at < ?
               AND CASE
                 WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND DAY(pn.purchased_at) > pm.closing_day
+                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
+                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
+                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
+                  AND pm.closing_day >= 2 AND DAY(pn.purchased_at) > pm.closing_day
                 THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
                 ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
               END = ?
