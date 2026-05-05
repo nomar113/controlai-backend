@@ -123,11 +123,15 @@ class PaymentNotificationController(
     ): PaymentNotificationResponse {
         val notification = paymentNotificationRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
-        if (request.currentInstallmentNumber != null && request.currentInstallmentNumber > notification.numberOfInstallments) {
+        val totalInstallments = request.numberOfInstallments ?: notification.numberOfInstallments
+        if (request.currentInstallmentNumber != null && request.currentInstallmentNumber > totalInstallments) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "currentInstallmentNumber cannot exceed numberOfInstallments")
         }
         val updated = paymentNotificationRepository.save(
-            notification.copy(currentInstallmentNumber = request.currentInstallmentNumber)
+            notification.copy(
+                numberOfInstallments = totalInstallments,
+                currentInstallmentNumber = request.currentInstallmentNumber,
+            )
         )
         return PaymentNotificationResponse.from(updated)
     }
