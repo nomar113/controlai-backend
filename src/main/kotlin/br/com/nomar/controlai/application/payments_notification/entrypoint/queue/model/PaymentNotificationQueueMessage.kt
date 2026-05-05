@@ -12,4 +12,5 @@ data class PaymentNotificationQueueMessage(
     val amount: BigDecimal? = null,
     val merchantName: String? = null,
     val numberOfInstallments: Int? = null,
+    val currentInstallmentNumber: Int? = null,
 )

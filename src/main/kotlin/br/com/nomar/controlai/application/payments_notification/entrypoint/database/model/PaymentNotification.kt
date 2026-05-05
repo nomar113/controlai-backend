@@ -32,6 +32,9 @@ data class PaymentNotification(
     @Column(name = "number_of_installments", nullable = false)
     val numberOfInstallments: Int = 1,
 
+    @Column(name = "current_installment_number")
+    val currentInstallmentNumber: Int? = null,
+
     @Column(name = "origin", nullable = false)
     val origin: String = "HTTP_REQUEST",
 

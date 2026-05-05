@@ -148,6 +148,7 @@ class PaymentNotificationController(
             amount = request.amount,
             merchantName = request.merchantName,
             numberOfInstallments = request.numberOfInstallments,
+            currentInstallmentNumber = request.currentInstallmentNumber,
             origin = "MANUAL",
             originType = "MANUAL",
             categoryId = request.categoryId,

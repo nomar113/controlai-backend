@@ -38,5 +38,8 @@ data class ManualPaymentNotificationRequest(
     @field:Min(1)
     val numberOfInstallments: Int = 1,
 
+    @field:Min(1)
+    val currentInstallmentNumber: Int? = null,
+
     val installments: List<InstallmentOverride>? = null,
 )

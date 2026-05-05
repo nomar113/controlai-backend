@@ -77,6 +77,7 @@ class PaymentNotificationQueueListener(
             amount = requireNotNull(amount) { "amount is required when text is not provided" },
             merchantName = requireNotNull(merchantName) { "merchantName is required when text is not provided" },
             numberOfInstallments = numberOfInstallments ?: 1,
+            currentInstallmentNumber = currentInstallmentNumber,
             origin = origin,
             originType = originType,
         )
