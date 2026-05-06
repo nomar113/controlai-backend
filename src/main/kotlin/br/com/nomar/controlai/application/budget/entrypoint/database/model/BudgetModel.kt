@@ -21,6 +21,9 @@ data class BudgetModel(
     @OneToMany(mappedBy = "budget", cascade = [CascadeType.ALL], orphanRemoval = true)
     val incomes: MutableList<BudgetIncomeModel> = mutableListOf(),
 
+    @OneToMany(mappedBy = "budget", cascade = [CascadeType.ALL], orphanRemoval = true)
+    val paymentPeriods: MutableList<BudgetPaymentPeriodModel> = mutableListOf(),
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime? = null,

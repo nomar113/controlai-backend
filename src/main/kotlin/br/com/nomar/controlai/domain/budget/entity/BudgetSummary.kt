@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.domain.budget.entity
 
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.YearMonth
 
 class BudgetSummary(
@@ -15,6 +16,15 @@ class BudgetSummary(
     val items: List<BudgetItemSummary>,
     val incomes: List<BudgetIncome>,
     val paymentMethodTotals: List<PaymentMethodTotal>,
+    val periods: List<BudgetPaymentPeriodSummary> = emptyList(),
+)
+
+class BudgetPaymentPeriodSummary(
+    val paymentMethodId: Long,
+    val paymentMethodName: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val closingDay: Int?,
 )
 
 class BudgetItemSummary(

@@ -24,6 +24,7 @@ class BudgetController(
     private val updateBudgetIncomeUseCase: UpdateBudgetIncomeUseCase,
     private val deleteBudgetIncomeUseCase: DeleteBudgetIncomeUseCase,
     private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase,
+    private val updateBudgetPeriodsUseCase: UpdateBudgetPeriodsUseCase,
 ) {
 
     @PostMapping
@@ -71,6 +72,33 @@ class BudgetController(
                 when (it) {
                     is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message)
                     else -> throw ResponseStatusException(HttpStatus.CONFLICT, "Budget for the target month already exists.")
+                }
+            }
+    }
+
+    // --- Budget Periods ---
+
+    @PutMapping("/{id}/periods")
+    fun updatePeriods(
+        @PathVariable id: Long,
+        @Validated @RequestBody request: UpdateBudgetPeriodsRequest,
+    ) {
+        val periods = request.periods.map { entry ->
+            if (entry.endDate.isBefore(entry.startDate)) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "endDate must be >= startDate for paymentMethodId ${entry.paymentMethodId}")
+            }
+            BudgetPaymentPeriod(
+                budgetId = id,
+                paymentMethodId = entry.paymentMethodId,
+                startDate = entry.startDate,
+                endDate = entry.endDate,
+            )
+        }
+        updateBudgetPeriodsUseCase.execute(id, periods)
+            .getOrElse {
+                when (it) {
+                    is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message)
+                    else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, it.message)
                 }
             }
     }

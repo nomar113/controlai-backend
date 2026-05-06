@@ -1,9 +1,11 @@
 package br.com.nomar.controlai.application.budget.entrypoint.rest.response
 
 import br.com.nomar.controlai.domain.budget.entity.BudgetItemSummary
+import br.com.nomar.controlai.domain.budget.entity.BudgetPaymentPeriodSummary
 import br.com.nomar.controlai.domain.budget.entity.BudgetSummary
 import br.com.nomar.controlai.domain.budget.entity.PaymentMethodTotal
 import java.math.BigDecimal
+import java.time.LocalDate
 
 data class BudgetSummaryResponse(
     val budgetId: Long,
@@ -17,6 +19,7 @@ data class BudgetSummaryResponse(
     val items: List<BudgetItemSummaryResponse>,
     val incomes: List<BudgetIncomeResponse>,
     val paymentMethodTotals: List<PaymentMethodTotalResponse>,
+    val periods: List<BudgetPaymentPeriodResponse>,
 ) {
     companion object {
         fun from(summary: BudgetSummary) = BudgetSummaryResponse(
@@ -31,6 +34,25 @@ data class BudgetSummaryResponse(
             items = summary.items.map(BudgetItemSummaryResponse::from),
             incomes = summary.incomes.map(BudgetIncomeResponse::from),
             paymentMethodTotals = summary.paymentMethodTotals.map(PaymentMethodTotalResponse::from),
+            periods = summary.periods.map(BudgetPaymentPeriodResponse::from),
+        )
+    }
+}
+
+data class BudgetPaymentPeriodResponse(
+    val paymentMethodId: Long,
+    val paymentMethodName: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val closingDay: Int?,
+) {
+    companion object {
+        fun from(period: BudgetPaymentPeriodSummary) = BudgetPaymentPeriodResponse(
+            paymentMethodId = period.paymentMethodId,
+            paymentMethodName = period.paymentMethodName,
+            startDate = period.startDate,
+            endDate = period.endDate,
+            closingDay = period.closingDay,
         )
     }
 }
