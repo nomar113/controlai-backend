@@ -17,11 +17,19 @@ class PaymentNotificationFilterIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    private var paymentMethodId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("DELETE FROM payment_notifications")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budgets")
+        jdbcTemplate.update("DELETE FROM payment_methods")
+        jdbcTemplate.update("DELETE FROM holders")
+
+        val holderId = createHolder()
+        paymentMethodId = createPaymentMethod(holderId)
     }
 
     @Test
@@ -113,6 +121,18 @@ class PaymentNotificationFilterIntegrationTest {
     }
 
     @Test
+    fun `GET notifications ignores notifications without payment method`() {
+        insertNotification("2026-05-10 14:00:00", "With Payment Method", 100.00)
+        insertNotificationWithoutPaymentMethod("2026-05-15 14:00:00", "Without Payment Method", 200.00)
+
+        mockMvc.perform(get("/payments/notifications").param("month", "2026-05"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].merchantName").value("With Payment Method"))
+            .andExpect(jsonPath("$.totalElements").value(1))
+    }
+
+    @Test
     fun `GET notifications are ordered by purchasedAt DESC`() {
         insertNotification("2026-05-01 08:00:00", "First", 10.00)
         insertNotification("2026-05-15 12:00:00", "Middle", 20.00)
@@ -127,20 +147,44 @@ class PaymentNotificationFilterIntegrationTest {
 
     // --- Helpers ---
 
+    private fun createHolder(): Long {
+        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Test Holder")
+        return jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = ?", Long::class.java, "Test Holder")!!
+    }
+
+    private fun createPaymentMethod(holderId: Long): Long {
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "Test Card",
+            "CREDIT_CARD",
+            holderId,
+        )
+        return jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = ?", Long::class.java, "Test Card")!!
+    }
+
     private fun insertNotification(purchasedAt: String, merchantName: String, amount: Double) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL"
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", paymentMethodId
         )
     }
 
     private fun insertDeletedNotification(purchasedAt: String, merchantName: String, amount: Double) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, deleted_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, deleted_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+            "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", paymentMethodId
+        )
+    }
+
+    private fun insertNotificationWithoutPaymentMethod(purchasedAt: String, merchantName: String, amount: Double) {
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL"
         )
     }

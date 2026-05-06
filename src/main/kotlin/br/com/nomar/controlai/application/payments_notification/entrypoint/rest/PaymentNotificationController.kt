@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
@@ -41,6 +42,7 @@ class PaymentNotificationController(
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val categoryRepository: CategoryRepository,
+    private val budgetPeriodResolver: BudgetPeriodResolver,
 ) {
 
     @GetMapping("/notifications")
@@ -59,12 +61,11 @@ class PaymentNotificationController(
             YearMonth.now()
         }
         val yearMonthStr = yearMonth.toString()
-        val broadStart = yearMonth.minusMonths(1).atDay(1).atStartOfDay()
-        val broadEnd = yearMonth.plusMonths(1).atDay(2).atStartOfDay()
+        val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
         val offset = page * size
-        val items = paymentNotificationRepository.findByMonthRange(broadStart, broadEnd, yearMonthStr, size, offset)
+        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByMonthRange(broadStart, broadEnd, yearMonthStr)
+        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

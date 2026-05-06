@@ -1,10 +1,8 @@
 package br.com.nomar.controlai.application.budget.application
 
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
-import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.domain.budget.entity.*
 import br.com.nomar.controlai.domain.budget.gateway.GetBudgetSummaryGateway
-import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -15,26 +13,14 @@ import java.time.YearMonth
 class GetBudgetSummaryProvider(
     private val budgetRepository: BudgetRepository,
     private val jdbcTemplate: JdbcTemplate,
-    private val paymentMethodRepository: PaymentMethodRepository,
-    private val periodCalculator: BudgetPeriodCalculator,
+    private val budgetPeriodResolver: BudgetPeriodResolver,
 ) : GetBudgetSummaryGateway {
-
-    private val logger = LoggerFactory.getLogger(GetBudgetSummaryProvider::class.java)
 
     override fun execute(yearMonth: YearMonth): Result<BudgetSummary> {
         return runCatching {
+            val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
             val budgetModel = budgetRepository.findByYearMonth(yearMonth.toString())
                 .orElseThrow { NoSuchElementException("Budget not found: $yearMonth") }
-
-            if (budgetModel.paymentPeriods.isEmpty()) {
-                val paymentMethods = paymentMethodRepository.findAllByOrderByNameAsc()
-                val periods = periodCalculator.generatePeriods(budgetModel, paymentMethods, yearMonth)
-                budgetModel.paymentPeriods.addAll(periods)
-                budgetRepository.save(budgetModel)
-                logger.info("Lazy-created ${periods.size} payment periods for budget $yearMonth")
-            }
-
-            val budgetId = budgetModel.id!!
 
             val actualByCategory = queryActualByCategory(budgetId)
             val paymentMethodTotals = queryPaymentMethodTotals(budgetId)

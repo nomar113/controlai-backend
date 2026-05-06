@@ -30,22 +30,15 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     @Query(
         """
         SELECT pn.* FROM payment_notifications pn
-        LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
+        INNER JOIN budget_payment_periods bpp
+            ON pn.payment_method_id = bpp.payment_method_id
+            AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
           AND (
             (pn.number_of_installments <= 1
-              AND pn.purchased_at >= :broadStart
-              AND pn.purchased_at < :broadEnd
-              AND CASE
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-              END = :yearMonth)
+              AND pn.purchased_at >= bpp.start_date
+              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
             OR
             (pn.number_of_installments > 1
               AND i.id IS NOT NULL
@@ -54,33 +47,8 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             (pn.number_of_installments > 1
               AND pn.current_installment_number IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-              AND DATE_FORMAT(DATE_ADD(
-                CASE
-                  WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                    AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                  THEN DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH)
-                  WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                    AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                  THEN DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH)
-                  ELSE pn.purchased_at
-                END,
-                INTERVAL (pn.current_installment_number - 1) MONTH
-              ), '%Y-%m') = :yearMonth)
-            OR
-            (pn.number_of_installments > 1
-              AND pn.current_installment_number IS NULL
-              AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-              AND pn.purchased_at >= :broadStart
-              AND pn.purchased_at < :broadEnd
-              AND CASE
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-              END = :yearMonth)
+              AND pn.purchased_at >= bpp.start_date
+              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
           )
         GROUP BY pn.id
         ORDER BY pn.purchased_at DESC
@@ -88,9 +56,8 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         """,
         nativeQuery = true
     )
-    fun findByMonthRange(
-        broadStart: LocalDateTime,
-        broadEnd: LocalDateTime,
+    fun findByBudgetPeriods(
+        budgetId: Long,
         yearMonth: String,
         limit: Int,
         offset: Int,
@@ -99,22 +66,15 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     @Query(
         """
         SELECT COUNT(DISTINCT pn.id) FROM payment_notifications pn
-        LEFT JOIN payment_methods pm ON pn.payment_method_id = pm.id
+        INNER JOIN budget_payment_periods bpp
+            ON pn.payment_method_id = bpp.payment_method_id
+            AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
           AND (
             (pn.number_of_installments <= 1
-              AND pn.purchased_at >= :broadStart
-              AND pn.purchased_at < :broadEnd
-              AND CASE
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-              END = :yearMonth)
+              AND pn.purchased_at >= bpp.start_date
+              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
             OR
             (pn.number_of_installments > 1
               AND i.id IS NOT NULL
@@ -123,40 +83,14 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             (pn.number_of_installments > 1
               AND pn.current_installment_number IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-              AND DATE_FORMAT(DATE_ADD(
-                CASE
-                  WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                    AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                  THEN DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH)
-                  WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                    AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                  THEN DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH)
-                  ELSE pn.purchased_at
-                END,
-                INTERVAL (pn.current_installment_number - 1) MONTH
-              ), '%Y-%m') = :yearMonth)
-            OR
-            (pn.number_of_installments > 1
-              AND pn.current_installment_number IS NULL
-              AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-              AND pn.purchased_at >= :broadStart
-              AND pn.purchased_at < :broadEnd
-              AND CASE
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                  AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-              END = :yearMonth)
+              AND pn.purchased_at >= bpp.start_date
+              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
           )
         """,
         nativeQuery = true
     )
-    fun countByMonthRange(
-        broadStart: LocalDateTime,
-        broadEnd: LocalDateTime,
+    fun countByBudgetPeriods(
+        budgetId: Long,
         yearMonth: String,
     ): Long
 }

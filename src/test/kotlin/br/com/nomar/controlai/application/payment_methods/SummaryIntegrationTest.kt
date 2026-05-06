@@ -25,6 +25,8 @@ class SummaryIntegrationTest {
     fun cleanUp() {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budgets")
         jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")

@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payment_methods.application
 
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
 import br.com.nomar.controlai.domain.payment_methods.entity.PaymentMethodSummary
 import br.com.nomar.controlai.domain.payment_methods.entity.SubCardTotal
 import br.com.nomar.controlai.domain.payment_methods.gateway.GetPaymentMethodsSummaryGateway
@@ -11,13 +12,12 @@ import java.time.YearMonth
 @Component
 class GetPaymentMethodsSummaryProvider(
     private val jdbcTemplate: JdbcTemplate,
+    private val budgetPeriodResolver: BudgetPeriodResolver,
 ) : GetPaymentMethodsSummaryGateway {
 
     override fun execute(month: YearMonth): Result<List<PaymentMethodSummary>> {
         return runCatching {
-            val yearMonthStr = month.toString()
-            val broadStart = month.minusMonths(1).atDay(1).atStartOfDay()
-            val broadEnd = month.plusMonths(1).atDay(2).atStartOfDay()
+            val budgetId = budgetPeriodResolver.resolveBudgetId(month)
 
             val rows = jdbcTemplate.queryForList(
                 """
@@ -31,30 +31,23 @@ class GetPaymentMethodsSummaryProvider(
                 FROM payment_methods pm
                 JOIN holders h ON pm.holder_id = h.id
                 LEFT JOIN sub_cards sc ON sc.payment_method_id = pm.id AND sc.deleted_at IS NULL
+                LEFT JOIN budget_payment_periods bpp
+                    ON bpp.payment_method_id = pm.id
+                    AND bpp.budget_id = ?
                 LEFT JOIN payment_notifications pn
                     ON pn.payment_method_id = pm.id
                     AND (pn.sub_card_id = sc.id OR (pn.sub_card_id IS NULL AND sc.id IS NULL))
-                    AND pn.purchased_at >= ?
-                    AND pn.purchased_at < ?
-                    AND CASE
-                      WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                        AND pm.closing_day = 1 AND DAY(pn.purchased_at) = 1
-                      THEN DATE_FORMAT(DATE_SUB(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                      WHEN pm.closing_day IS NOT NULL AND pm.type = 'CREDIT_CARD'
-                        AND pm.closing_day >= 1 AND DAY(pn.purchased_at) > pm.closing_day
-                      THEN DATE_FORMAT(DATE_ADD(pn.purchased_at, INTERVAL 1 MONTH), '%Y-%m')
-                      ELSE DATE_FORMAT(pn.purchased_at, '%Y-%m')
-                    END = ?
+                    AND pn.deleted_at IS NULL
+                    AND pn.purchased_at >= bpp.start_date
+                    AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
                 WHERE pm.deleted_at IS NULL
                 GROUP BY pm.id, pm.name, h.name, sc.id, sc.last_four_digits
                 ORDER BY pm.name, sc.last_four_digits
                 """.trimIndent(),
-                broadStart,
-                broadEnd,
-                yearMonthStr,
+                budgetId,
             )
 
-            rows.groupBy { it["payment_method_id"] as Long }
+            rows.groupBy { (it["payment_method_id"] as Number).toLong() }
                 .map { (pmId, group) ->
                     val first = group.first()
                     val subCardTotals = group
