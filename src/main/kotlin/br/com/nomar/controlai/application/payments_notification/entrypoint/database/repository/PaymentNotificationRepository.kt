@@ -35,6 +35,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
+          AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -61,6 +62,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         yearMonth: String,
         limit: Int,
         offset: Int,
+        categoryId: Long? = null,
     ): List<PaymentNotification>
 
     @Query(
@@ -71,6 +73,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
+          AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -92,5 +95,6 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     fun countByBudgetPeriods(
         budgetId: Long,
         yearMonth: String,
+        categoryId: Long? = null,
     ): Long
 }
