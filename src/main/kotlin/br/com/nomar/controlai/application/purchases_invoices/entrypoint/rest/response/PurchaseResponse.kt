@@ -12,6 +12,7 @@ data class PurchaseResponse(
     val total: BigDecimal?,
     val description: String? = null,
     val categoryName: String? = null,
+    val categoryId: Long? = null,
 ) {
     companion object {
         fun from(purchase: Purchase) = PurchaseResponse(
@@ -22,6 +23,7 @@ data class PurchaseResponse(
             total = purchase.total,
             description = purchase.description,
             categoryName = purchase.categoryName,
+            categoryId = purchase.categoryId,
         )
     }
 }

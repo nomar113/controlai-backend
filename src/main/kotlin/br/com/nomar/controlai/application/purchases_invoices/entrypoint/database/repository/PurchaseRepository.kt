@@ -11,12 +11,12 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pn.id, pn.purchased_at AS date, pn.amount AS total, pn.merchant_name AS merchantName, NULL AS totalItems, pn.description, c.name AS categoryName
+        SELECT pn.id, pn.purchased_at AS date, pn.amount AS total, pn.merchant_name AS merchantName, NULL AS totalItems, pn.description, c.name AS categoryName, pn.category_id AS categoryId
         FROM payment_notifications pn
         LEFT JOIN categories c ON pn.category_id = c.id
         WHERE pn.deleted_at IS NULL
         UNION
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
@@ -28,7 +28,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
@@ -40,12 +40,13 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
           AND pi.date >= :startDate
           AND pi.date < :endDate
+          AND (CAST(:categoryId AS SIGNED) IS NULL OR pi.category_id = :categoryId)
         ORDER BY pi.date DESC
         LIMIT :limit OFFSET :offset
         """,
@@ -56,6 +57,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         endDate: String,
         limit: Int,
         offset: Int,
+        categoryId: Long? = null,
     ): List<PurchaseProjection>
 
     @Query(
@@ -64,11 +66,13 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         WHERE pi.deleted_at IS NULL
           AND pi.date >= :startDate
           AND pi.date < :endDate
+          AND (CAST(:categoryId AS SIGNED) IS NULL OR pi.category_id = :categoryId)
         """,
         nativeQuery = true
     )
     fun countInvoicesByDateRange(
         startDate: String,
         endDate: String,
+        categoryId: Long? = null,
     ): Long
 }

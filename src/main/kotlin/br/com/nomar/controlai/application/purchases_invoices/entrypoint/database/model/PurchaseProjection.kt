@@ -11,4 +11,5 @@ interface PurchaseProjection {
     fun getTotalItems(): Int?
     fun getDescription(): String?
     fun getCategoryName(): String?
+    fun getCategoryId(): Long?
 }

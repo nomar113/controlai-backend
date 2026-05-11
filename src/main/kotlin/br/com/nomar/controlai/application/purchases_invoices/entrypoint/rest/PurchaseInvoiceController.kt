@@ -51,10 +51,11 @@ class PurchaseInvoiceController(
         @RequestParam endDate: String? = null,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam categoryId: Long? = null,
     ): Map<String, Any> {
         val (resolvedStart, resolvedEnd) = resolveDateRange(month, startDate, endDate)
         val offset = page * size
-        val items = purchaseRepository.findInvoicesByDateRange(resolvedStart, resolvedEnd, size, offset)
+        val items = purchaseRepository.findInvoicesByDateRange(resolvedStart, resolvedEnd, size, offset, categoryId)
             .map { projection ->
                 PurchaseResponse.from(
                     Purchase(
@@ -65,10 +66,11 @@ class PurchaseInvoiceController(
                         totalItems = projection.getTotalItems(),
                         description = projection.getDescription(),
                         categoryName = projection.getCategoryName(),
+                        categoryId = projection.getCategoryId(),
                     )
                 )
             }
-        val totalElements = purchaseRepository.countInvoicesByDateRange(resolvedStart, resolvedEnd)
+        val totalElements = purchaseRepository.countInvoicesByDateRange(resolvedStart, resolvedEnd, categoryId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

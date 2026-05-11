@@ -11,4 +11,5 @@ class Purchase(
     val totalItems: Int?,
     val description: String? = null,
     val categoryName: String? = null,
+    val categoryId: Long? = null,
 )
