@@ -51,6 +51,7 @@ class PaymentNotificationController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "100") size: Int,
         @RequestParam categoryId: Long? = null,
+        @RequestParam cardLastDigits: String? = null,
     ): Map<String, Any> {
         val yearMonth = if (month != null) {
             try {
@@ -64,9 +65,9 @@ class PaymentNotificationController(
         val yearMonthStr = yearMonth.toString()
         val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
         val offset = page * size
-        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset, categoryId)
+        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset, categoryId, cardLastDigits)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, categoryId)
+        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, categoryId, cardLastDigits)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

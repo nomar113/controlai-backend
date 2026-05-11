@@ -36,6 +36,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
+          AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -63,6 +64,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         limit: Int,
         offset: Int,
         categoryId: Long? = null,
+        cardLastDigits: String? = null,
     ): List<PaymentNotification>
 
     @Query(
@@ -74,6 +76,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
+          AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -96,5 +99,6 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         budgetId: Long,
         yearMonth: String,
         categoryId: Long? = null,
+        cardLastDigits: String? = null,
     ): Long
 }
