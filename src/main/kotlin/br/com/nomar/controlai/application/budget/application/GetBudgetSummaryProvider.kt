@@ -62,7 +62,17 @@ class GetBudgetSummaryProvider(
                 BigDecimal.ZERO
             }
 
-            val periods = queryPeriods(budgetId)
+            val totalsMap = paymentMethodTotals.associateBy({ it.paymentMethodId }, { it.total })
+            val periods = queryPeriods(budgetId).map { period ->
+                BudgetPaymentPeriodSummary(
+                    paymentMethodId = period.paymentMethodId,
+                    paymentMethodName = period.paymentMethodName,
+                    startDate = period.startDate,
+                    endDate = period.endDate,
+                    closingDay = period.closingDay,
+                    totalAmount = totalsMap[period.paymentMethodId] ?: BigDecimal.ZERO,
+                )
+            }
 
             BudgetSummary(
                 budgetId = budgetId,

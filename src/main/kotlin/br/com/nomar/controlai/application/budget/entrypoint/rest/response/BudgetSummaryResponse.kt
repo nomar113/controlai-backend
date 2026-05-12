@@ -45,6 +45,7 @@ data class BudgetPaymentPeriodResponse(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val closingDay: Int?,
+    val totalAmount: BigDecimal,
 ) {
     companion object {
         fun from(period: BudgetPaymentPeriodSummary) = BudgetPaymentPeriodResponse(
@@ -53,6 +54,7 @@ data class BudgetPaymentPeriodResponse(
             startDate = period.startDate,
             endDate = period.endDate,
             closingDay = period.closingDay,
+            totalAmount = period.totalAmount,
         )
     }
 }
