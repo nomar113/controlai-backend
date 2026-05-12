@@ -16,7 +16,7 @@ class BudgetPeriodCalculator {
         yearMonth: YearMonth,
     ): List<BudgetPaymentPeriodModel> {
         return paymentMethods
-            .filter { it.type == "CREDIT_CARD" || it.type == "PIX" }
+            .filter { it.type == "CREDIT_CARD" || it.type == "PIX" || it.type == "CASH" }
             .map { pm ->
                 val (startDate, endDate) = calculateDates(pm.closingDay, pm.type, yearMonth)
                 BudgetPaymentPeriodModel(

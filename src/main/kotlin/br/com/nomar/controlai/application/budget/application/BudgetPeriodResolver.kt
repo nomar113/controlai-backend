@@ -24,12 +24,15 @@ class BudgetPeriodResolver(
                 budgetRepository.save(BudgetModel(yearMonth = yearMonth.toString()))
             }
 
-        if (budget.paymentPeriods.isEmpty()) {
-            val paymentMethods = paymentMethodRepository.findAllByOrderByNameAsc()
-            val periods = periodCalculator.generatePeriods(budget, paymentMethods, yearMonth)
+        val paymentMethods = paymentMethodRepository.findAllByOrderByNameAsc()
+        val existingMethodIds = budget.paymentPeriods.map { it.paymentMethodId }.toSet()
+        val missingMethods = paymentMethods.filter { it.id!! !in existingMethodIds }
+
+        if (missingMethods.isNotEmpty()) {
+            val periods = periodCalculator.generatePeriods(budget, missingMethods, yearMonth)
             budget.paymentPeriods.addAll(periods)
             budgetRepository.save(budget)
-            logger.info("Lazy-created ${periods.size} payment periods for budget $yearMonth")
+            logger.info("Created ${periods.size} payment periods for budget $yearMonth")
         }
 
         return budget.id!!
