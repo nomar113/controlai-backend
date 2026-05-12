@@ -55,12 +55,6 @@ class GetBudgetSummaryProvider(
             val investmentItems = items.filter { it.type == BudgetItemType.INVESTMENT }
 
             val totalExpected = expenseItems.sumOf { it.expected }
-            val totalActual = expenseItems.sumOf { it.actual }
-            val percentUsed = if (totalExpected > BigDecimal.ZERO) {
-                totalActual.multiply(BigDecimal("100")).divide(totalExpected, 2, RoundingMode.HALF_UP)
-            } else {
-                BigDecimal.ZERO
-            }
 
             val totalsMap = paymentMethodTotals.associateBy({ it.paymentMethodId }, { it.total })
             val periods = queryPeriods(budgetId).map { period ->
@@ -72,6 +66,13 @@ class GetBudgetSummaryProvider(
                     closingDay = period.closingDay,
                     totalAmount = totalsMap[period.paymentMethodId] ?: BigDecimal.ZERO,
                 )
+            }
+
+            val totalActual = periods.sumOf { it.totalAmount }
+            val percentUsed = if (totalExpected > BigDecimal.ZERO) {
+                totalActual.multiply(BigDecimal("100")).divide(totalExpected, 2, RoundingMode.HALF_UP)
+            } else {
+                BigDecimal.ZERO
             }
 
             BudgetSummary(
