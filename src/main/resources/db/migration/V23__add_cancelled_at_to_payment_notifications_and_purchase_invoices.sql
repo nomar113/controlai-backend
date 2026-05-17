@@ -1,0 +1,2 @@
+ALTER TABLE payment_notifications ADD COLUMN cancelled_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE purchase_invoices ADD COLUMN cancelled_at TIMESTAMP NULL DEFAULT NULL;
