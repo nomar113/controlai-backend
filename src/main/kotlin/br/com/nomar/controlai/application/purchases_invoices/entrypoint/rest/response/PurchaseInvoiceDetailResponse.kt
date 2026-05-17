@@ -20,6 +20,7 @@ data class PurchaseInvoiceDetailResponse(
     val taxes: BigDecimal?,
     val discount: BigDecimal?,
     val description: String?,
+    val cancelledAt: String?,
     val items: List<PurchaseItemResponse>,
     val payments: List<PurchasePaymentResponse>,
 ) {
@@ -42,6 +43,7 @@ data class PurchaseInvoiceDetailResponse(
             taxes = invoice.taxes,
             discount = invoice.discount,
             description = invoice.description,
+            cancelledAt = invoice.cancelledAt?.toString(),
             items = items.map(PurchaseItemResponse::from),
             payments = payments.map(PurchasePaymentResponse::from),
         )

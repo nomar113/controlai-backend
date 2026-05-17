@@ -21,6 +21,7 @@ class ListPurchasesProvider(
                     totalItems = projection.getTotalItems(),
                     description = projection.getDescription(),
                     categoryName = projection.getCategoryName(),
+                    cancelledAt = projection.getCancelledAt(),
                 )
             }
         }

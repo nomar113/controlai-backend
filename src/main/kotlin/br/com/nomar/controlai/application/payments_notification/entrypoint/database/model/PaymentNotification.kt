@@ -56,6 +56,9 @@ data class PaymentNotification(
     @Column(name = "description")
     val description: String? = null,
 
+    @Column(name = "cancelled_at")
+    val cancelledAt: LocalDateTime? = null,
+
     @Column(name = "deleted_at")
     val deletedAt: LocalDateTime? = null,
 

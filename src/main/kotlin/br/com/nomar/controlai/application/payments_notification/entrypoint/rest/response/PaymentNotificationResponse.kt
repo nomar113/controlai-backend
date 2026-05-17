@@ -20,6 +20,7 @@ data class PaymentNotificationResponse(
     val description: String? = null,
     val origin: String? = null,
     val originType: String? = null,
+    val cancelledAt: String? = null,
     val installments: List<InstallmentResponse> = emptyList(),
 ) {
     companion object {
@@ -38,6 +39,7 @@ data class PaymentNotificationResponse(
             description = entity.description,
             origin = entity.origin,
             originType = entity.originType,
+            cancelledAt = entity.cancelledAt?.toString(),
         )
     }
 }

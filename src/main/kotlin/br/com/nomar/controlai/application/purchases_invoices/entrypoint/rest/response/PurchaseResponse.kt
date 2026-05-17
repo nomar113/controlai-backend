@@ -13,6 +13,7 @@ data class PurchaseResponse(
     val description: String? = null,
     val categoryName: String? = null,
     val categoryId: Long? = null,
+    val cancelledAt: String? = null,
 ) {
     companion object {
         fun from(purchase: Purchase) = PurchaseResponse(
@@ -24,6 +25,7 @@ data class PurchaseResponse(
             description = purchase.description,
             categoryName = purchase.categoryName,
             categoryId = purchase.categoryId,
+            cancelledAt = purchase.cancelledAt?.toString(),
         )
     }
 }
