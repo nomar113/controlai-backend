@@ -11,12 +11,12 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pn.id, pn.purchased_at AS date, pn.amount AS total, pn.merchant_name AS merchantName, NULL AS totalItems, pn.description, c.name AS categoryName, pn.category_id AS categoryId
+        SELECT pn.id, pn.purchased_at AS date, pn.amount AS total, pn.merchant_name AS merchantName, NULL AS totalItems, pn.description, c.name AS categoryName, pn.category_id AS categoryId, pn.cancelled_at AS cancelledAt
         FROM payment_notifications pn
         LEFT JOIN categories c ON pn.category_id = c.id
         WHERE pn.deleted_at IS NULL
         UNION
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
@@ -28,7 +28,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
@@ -40,7 +40,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
