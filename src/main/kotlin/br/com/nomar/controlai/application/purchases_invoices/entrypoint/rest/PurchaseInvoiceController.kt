@@ -9,6 +9,7 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.req
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
@@ -32,6 +33,7 @@ import java.time.YearMonth
 @RequestMapping("/purchases")
 class PurchaseInvoiceController(
     private val notifyPurchaseInvoiceQueueUseCase: NotifyPurchaseInvoiceQueueUseCase,
+    private val cancelPurchaseInvoiceUseCase: CancelPurchaseInvoiceUseCase,
     private val deactivatePurchaseInvoiceUseCase: DeactivatePurchaseInvoiceUseCase,
     private val listPurchasesUseCase: ListPurchasesUseCase,
     private val purchaseRepository: PurchaseRepository,
@@ -67,6 +69,7 @@ class PurchaseInvoiceController(
                         description = projection.getDescription(),
                         categoryName = projection.getCategoryName(),
                         categoryId = projection.getCategoryId(),
+                        cancelledAt = projection.getCancelledAt(),
                     )
                 )
             }
@@ -125,6 +128,18 @@ class PurchaseInvoiceController(
         val items = purchaseItemRepository.findByPurchaseInvoiceId(updated.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(updated.id!!)
         return PurchaseInvoiceDetailResponse.from(updated, items, payments)
+    }
+
+    @PatchMapping("/invoices/{id}/cancel")
+    @ResponseStatus(HttpStatus.OK)
+    fun cancelInvoice(@PathVariable id: Long) {
+        cancelPurchaseInvoiceUseCase.execute(id).getOrElse { ex ->
+            when (ex) {
+                is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                is IllegalStateException -> throw ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+                else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+            }
+        }
     }
 
     @DeleteMapping("/invoices/{id}")

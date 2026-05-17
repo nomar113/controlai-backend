@@ -14,6 +14,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
 import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
+import br.com.nomar.controlai.domain.payments_notifications.usecase.CancelPaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.SavePaymentNotificationUseCase
@@ -38,6 +39,7 @@ import java.time.YearMonth
 class PaymentNotificationController(
     private val notificationQueueUseCase: NotifyPaymentNotificationQueueUseCase,
     private val deactivatePaymentNotificationUseCase: DeactivatePaymentNotificationUseCase,
+    private val cancelPaymentNotificationUseCase: CancelPaymentNotificationUseCase,
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
@@ -137,6 +139,18 @@ class PaymentNotificationController(
             )
         )
         return PaymentNotificationResponse.from(updated)
+    }
+
+    @PatchMapping("/notifications/{id}/cancel")
+    @ResponseStatus(HttpStatus.OK)
+    fun cancelNotification(@PathVariable id: Long) {
+        cancelPaymentNotificationUseCase.execute(id).getOrElse { ex ->
+            when (ex) {
+                is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                is IllegalStateException -> throw ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+                else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+            }
+        }
     }
 
     @DeleteMapping("/notifications/{id}")
