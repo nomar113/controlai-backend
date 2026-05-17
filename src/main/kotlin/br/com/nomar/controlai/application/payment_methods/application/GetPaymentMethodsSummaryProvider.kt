@@ -38,6 +38,7 @@ class GetPaymentMethodsSummaryProvider(
                     ON pn.payment_method_id = pm.id
                     AND (pn.sub_card_id = sc.id OR (pn.sub_card_id IS NULL AND sc.id IS NULL))
                     AND pn.deleted_at IS NULL
+                    AND pn.cancelled_at IS NULL
                     AND pn.purchased_at >= bpp.start_date
                     AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
                 WHERE pm.deleted_at IS NULL

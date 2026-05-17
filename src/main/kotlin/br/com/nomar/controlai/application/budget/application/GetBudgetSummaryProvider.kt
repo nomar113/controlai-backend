@@ -102,6 +102,7 @@ class GetBudgetSummaryProvider(
                 AND bpp.budget_id = ?
             WHERE pn.category_id IS NOT NULL
               AND pn.deleted_at IS NULL
+              AND pn.cancelled_at IS NULL
               AND pn.purchased_at >= bpp.start_date
               AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
             GROUP BY pn.category_id
@@ -123,6 +124,7 @@ class GetBudgetSummaryProvider(
                 AND bpp.budget_id = ?
             JOIN payment_methods pm ON pn.payment_method_id = pm.id
             WHERE pn.deleted_at IS NULL
+              AND pn.cancelled_at IS NULL
               AND pm.deleted_at IS NULL
               AND pn.purchased_at >= bpp.start_date
               AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
