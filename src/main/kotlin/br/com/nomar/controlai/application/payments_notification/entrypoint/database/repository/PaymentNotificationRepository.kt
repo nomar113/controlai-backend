@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.payments_notification.entrypoint.data
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -101,4 +102,22 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         categoryId: Long? = null,
         cardLastDigits: String? = null,
     ): Long
+
+    @Query(
+        value = """
+            SELECT * FROM payment_notifications
+            WHERE deleted_at IS NULL
+              AND cancelled_at IS NULL
+              AND amount = :amount
+              AND purchased_at BETWEEN :startDate AND :endDate
+            ORDER BY ABS(TIMESTAMPDIFF(SECOND, purchased_at, :invoiceDate)) ASC
+        """,
+        nativeQuery = true
+    )
+    fun findSuggestionsByAmountAndDateRange(
+        @Param("amount") amount: BigDecimal,
+        @Param("startDate") startDate: LocalDateTime,
+        @Param("endDate") endDate: LocalDateTime,
+        @Param("invoiceDate") invoiceDate: LocalDateTime,
+    ): List<PaymentNotification>
 }
