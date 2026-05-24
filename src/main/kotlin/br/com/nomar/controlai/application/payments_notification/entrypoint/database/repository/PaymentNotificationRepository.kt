@@ -116,4 +116,6 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     fun findSuggestionsByAmount(
         @Param("amount") amount: BigDecimal,
     ): List<PaymentNotification>
+
+    fun findByPurchaseInvoiceId(purchaseInvoiceId: Long): PaymentNotification?
 }

@@ -56,6 +56,9 @@ data class PaymentNotification(
     @Column(name = "description")
     val description: String? = null,
 
+    @Column(name = "purchase_invoice_id", nullable = true)
+    var purchaseInvoiceId: Long? = null,
+
     @Column(name = "cancelled_at")
     val cancelledAt: LocalDateTime? = null,
 
