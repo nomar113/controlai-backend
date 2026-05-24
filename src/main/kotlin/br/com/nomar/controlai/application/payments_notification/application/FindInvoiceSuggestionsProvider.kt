@@ -5,26 +5,15 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.domain.payments_notifications.gateway.FindInvoiceSuggestionsGateway
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
-import java.time.LocalDateTime
 
 @Component
 class FindInvoiceSuggestionsProvider(
     private val paymentNotificationRepository: PaymentNotificationRepository,
 ) : FindInvoiceSuggestionsGateway {
 
-    override fun execute(
-        amount: BigDecimal,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
-        invoiceDate: LocalDateTime,
-    ): Result<List<PaymentNotification>> {
+    override fun execute(amount: BigDecimal): Result<List<PaymentNotification>> {
         return runCatching {
-            paymentNotificationRepository.findSuggestionsByAmountAndDateRange(
-                amount = amount,
-                startDate = startDate,
-                endDate = endDate,
-                invoiceDate = invoiceDate,
-            )
+            paymentNotificationRepository.findSuggestionsByAmount(amount = amount)
         }
     }
 }

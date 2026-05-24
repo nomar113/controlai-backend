@@ -109,15 +109,11 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             WHERE deleted_at IS NULL
               AND cancelled_at IS NULL
               AND amount = :amount
-              AND purchased_at BETWEEN :startDate AND :endDate
-            ORDER BY ABS(TIMESTAMPDIFF(SECOND, purchased_at, :invoiceDate)) ASC
+            ORDER BY purchased_at DESC
         """,
         nativeQuery = true
     )
-    fun findSuggestionsByAmountAndDateRange(
+    fun findSuggestionsByAmount(
         @Param("amount") amount: BigDecimal,
-        @Param("startDate") startDate: LocalDateTime,
-        @Param("endDate") endDate: LocalDateTime,
-        @Param("invoiceDate") invoiceDate: LocalDateTime,
     ): List<PaymentNotification>
 }

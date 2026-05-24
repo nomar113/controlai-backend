@@ -63,32 +63,21 @@ class SuggestionControllerIntegrationTest {
     }
 
     @Test
-    fun `match exato - valor igual dentro da janela temporal retorna sugestao`() {
+    fun `match exato - valor igual retorna sugestao independente da data`() {
         invoiceId = insertInvoice("2026-05-20 14:00:00", 150.00)
-        insertNotification("2026-05-20 14:30:00", 150.00, "Match Store")
+        insertNotification("2026-01-10 09:00:00", 150.00, "Match Antigo")
 
         mockMvc.perform(get("/purchases/invoices/$invoiceId/suggestions"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].amount").value(150.0))
-            .andExpect(jsonPath("$[0].merchantName").value("Match Store"))
-            .andExpect(jsonPath("$[0].timeDeltaMinutes").value(30))
+            .andExpect(jsonPath("$[0].merchantName").value("Match Antigo"))
     }
 
     @Test
     fun `sem match por valor diferente retorna lista vazia`() {
         invoiceId = insertInvoice("2026-05-20 14:00:00", 150.00)
         insertNotification("2026-05-20 14:30:00", 200.00, "Different Amount")
-
-        mockMvc.perform(get("/purchases/invoices/$invoiceId/suggestions"))
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(0))
-    }
-
-    @Test
-    fun `sem match por fora da janela temporal retorna lista vazia`() {
-        invoiceId = insertInvoice("2026-05-20 14:00:00", 150.00)
-        insertNotification("2026-05-20 16:00:01", 150.00, "Outside Window")
 
         mockMvc.perform(get("/purchases/invoices/$invoiceId/suggestions"))
             .andExpect(status().isOk)
@@ -122,21 +111,18 @@ class SuggestionControllerIntegrationTest {
     }
 
     @Test
-    fun `ordenacao por proximidade temporal - menor delta primeiro`() {
+    fun `ordenacao por purchased_at DESC - mais recente primeiro`() {
         invoiceId = insertInvoice("2026-05-20 14:00:00", 100.00)
-        insertNotification("2026-05-20 14:50:00", 100.00, "Far 50min")
-        insertNotification("2026-05-20 14:05:00", 100.00, "Close 5min")
-        insertNotification("2026-05-20 14:20:00", 100.00, "Mid 20min")
+        insertNotification("2026-05-18 10:00:00", 100.00, "Antigo")
+        insertNotification("2026-05-20 14:50:00", 100.00, "Recente")
+        insertNotification("2026-05-19 12:00:00", 100.00, "Meio")
 
         mockMvc.perform(get("/purchases/invoices/$invoiceId/suggestions"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(3))
-            .andExpect(jsonPath("$[0].merchantName").value("Close 5min"))
-            .andExpect(jsonPath("$[0].timeDeltaMinutes").value(5))
-            .andExpect(jsonPath("$[1].merchantName").value("Mid 20min"))
-            .andExpect(jsonPath("$[1].timeDeltaMinutes").value(20))
-            .andExpect(jsonPath("$[2].merchantName").value("Far 50min"))
-            .andExpect(jsonPath("$[2].timeDeltaMinutes").value(50))
+            .andExpect(jsonPath("$[0].merchantName").value("Recente"))
+            .andExpect(jsonPath("$[1].merchantName").value("Meio"))
+            .andExpect(jsonPath("$[2].merchantName").value("Antigo"))
     }
 
     @Test

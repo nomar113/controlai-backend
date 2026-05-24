@@ -10,7 +10,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
-import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Optional
@@ -62,24 +61,16 @@ class FindInvoiceSuggestionsUseCaseTest {
     }
 
     @Test
-    fun `should return list of suggestions when gateway returns results`() {
+    fun `should query gateway only by invoice amount`() {
         val invoice = createInvoice()
         val notifications = listOf(
             createNotification(10L, minutesDelta = 3),
             createNotification(20L, minutesDelta = 15),
             createNotification(30L, minutesDelta = 45),
         )
-        val invoiceLocalDate = invoiceDate.toLocalDateTime()
 
         `when`(purchaseInvoiceRepository.findById(1L)).thenReturn(Optional.of(invoice))
-        `when`(
-            findSuggestionsGateway.execute(
-                amount = invoiceTotal,
-                startDate = invoiceLocalDate.minusHours(1),
-                endDate = invoiceLocalDate.plusHours(1),
-                invoiceDate = invoiceLocalDate,
-            )
-        ).thenReturn(Result.success(notifications))
+        `when`(findSuggestionsGateway.execute(invoiceTotal)).thenReturn(Result.success(notifications))
 
         val result = useCase.execute(1L)
 
@@ -91,28 +82,15 @@ class FindInvoiceSuggestionsUseCaseTest {
         assertEquals(30L, suggestionsResult.notifications[2].id)
         assertEquals(invoiceDate, suggestionsResult.invoiceDate)
 
-        verify(findSuggestionsGateway).execute(
-            amount = invoiceTotal,
-            startDate = invoiceLocalDate.minusHours(1),
-            endDate = invoiceLocalDate.plusHours(1),
-            invoiceDate = invoiceLocalDate,
-        )
+        verify(findSuggestionsGateway).execute(invoiceTotal)
     }
 
     @Test
     fun `should return empty list when gateway returns no results`() {
         val invoice = createInvoice()
-        val invoiceLocalDate = invoiceDate.toLocalDateTime()
 
         `when`(purchaseInvoiceRepository.findById(1L)).thenReturn(Optional.of(invoice))
-        `when`(
-            findSuggestionsGateway.execute(
-                amount = invoiceTotal,
-                startDate = invoiceLocalDate.minusHours(1),
-                endDate = invoiceLocalDate.plusHours(1),
-                invoiceDate = invoiceLocalDate,
-            )
-        ).thenReturn(Result.success(emptyList()))
+        `when`(findSuggestionsGateway.execute(invoiceTotal)).thenReturn(Result.success(emptyList()))
 
         val result = useCase.execute(1L)
 

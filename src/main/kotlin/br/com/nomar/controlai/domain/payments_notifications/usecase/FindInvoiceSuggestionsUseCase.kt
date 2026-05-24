@@ -21,17 +21,10 @@ class FindInvoiceSuggestionsUseCase(
             val invoice = purchaseInvoiceRepository.findById(invoiceId)
                 .orElseThrow { NoSuchElementException("Invoice not found: $invoiceId") }
 
-            val invoiceDate = invoice.date.toLocalDateTime()
-            val startDate = invoiceDate.minusHours(1)
-            val endDate = invoiceDate.plusHours(1)
+            val amount = invoice.total
+                ?: throw IllegalStateException("Invoice $invoiceId has no total")
 
-            val notifications = findSuggestionsGateway.execute(
-                amount = invoice.total
-                    ?: throw IllegalStateException("Invoice $invoiceId has no total"),
-                startDate = startDate,
-                endDate = endDate,
-                invoiceDate = invoiceDate,
-            ).getOrThrow()
+            val notifications = findSuggestionsGateway.execute(amount).getOrThrow()
 
             InvoiceSuggestionsResult(
                 notifications = notifications,
