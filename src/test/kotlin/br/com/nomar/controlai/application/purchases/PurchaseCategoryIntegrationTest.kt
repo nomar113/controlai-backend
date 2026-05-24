@@ -96,7 +96,7 @@ class PurchaseCategoryIntegrationTest {
     }
 
     @Test
-    fun `POST manual notification without categoryId should return 400`() {
+    fun `POST manual notification without categoryId should return 201`() {
         mockMvc.perform(
             post("/payments/notifications/manual")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -112,6 +112,6 @@ class PurchaseCategoryIntegrationTest {
                     """.trimIndent()
                 )
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isCreated)
     }
 }

@@ -25,6 +25,7 @@ class PaymentNotificationFilterIntegrationTest {
         jdbcTemplate.update("DELETE FROM payment_notifications")
         jdbcTemplate.update("DELETE FROM budget_payment_periods")
         jdbcTemplate.update("DELETE FROM budgets")
+        jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")
 

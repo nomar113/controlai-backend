@@ -20,6 +20,8 @@ class BudgetMigrationIntegrationTest {
         jdbcTemplate.update("DELETE FROM budget_incomes")
         jdbcTemplate.update("DELETE FROM budget_items")
         jdbcTemplate.update("DELETE FROM budgets")
+        jdbcTemplate.update("DELETE FROM categories")
+        jdbcTemplate.update("INSERT INTO categories (name) VALUES ('Test Category')")
     }
 
     @Test

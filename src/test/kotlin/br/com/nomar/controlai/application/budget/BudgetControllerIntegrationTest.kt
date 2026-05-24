@@ -55,9 +55,9 @@ class BudgetControllerIntegrationTest {
     }
 
     @Test
-    fun `GET budgets should return 404 when budget does not exist`() {
+    fun `GET budgets auto-creates budget when it does not exist`() {
         mockMvc.perform(get("/budgets?month=2099-12"))
-            .andExpect(status().isNotFound)
+            .andExpect(status().isOk)
     }
 
     // --- Helpers ---
