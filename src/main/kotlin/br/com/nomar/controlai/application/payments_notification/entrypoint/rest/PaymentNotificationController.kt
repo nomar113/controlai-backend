@@ -12,6 +12,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCategoryRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCurrentInstallmentNumberRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdatePurchasedAtRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
 import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
 import br.com.nomar.controlai.domain.payments_notifications.usecase.CancelPaymentNotificationUseCase
@@ -118,6 +119,17 @@ class PaymentNotificationController(
         val updated = paymentNotificationRepository.save(
             notification.copy(categoryId = categoryId, category = categoryName)
         )
+        return PaymentNotificationResponse.from(updated)
+    }
+
+    @PatchMapping("/notifications/{id}/purchased-at")
+    fun updatePurchasedAt(
+        @PathVariable id: Long,
+        @Validated @RequestBody request: UpdatePurchasedAtRequest,
+    ): PaymentNotificationResponse {
+        val notification = paymentNotificationRepository.findById(id)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val updated = paymentNotificationRepository.save(notification.copy(purchasedAt = request.purchasedAt))
         return PaymentNotificationResponse.from(updated)
     }
 
