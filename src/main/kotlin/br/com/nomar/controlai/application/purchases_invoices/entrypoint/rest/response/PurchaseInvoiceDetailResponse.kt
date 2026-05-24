@@ -1,9 +1,11 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response
 
+import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseItemModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchasePaymentModel
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 
 data class PurchaseInvoiceDetailResponse(
@@ -23,12 +25,14 @@ data class PurchaseInvoiceDetailResponse(
     val cancelledAt: String?,
     val items: List<PurchaseItemResponse>,
     val payments: List<PurchasePaymentResponse>,
+    val associatedPayment: AssociatedPaymentResponse?,
 ) {
     companion object {
         fun from(
             invoice: PurchaseInvoiceModel,
             items: List<PurchaseItemModel>,
             payments: List<PurchasePaymentModel>,
+            associatedPayment: PaymentNotification? = null,
         ) = PurchaseInvoiceDetailResponse(
             id = invoice.id!!,
             date = invoice.date,
@@ -46,6 +50,25 @@ data class PurchaseInvoiceDetailResponse(
             cancelledAt = invoice.cancelledAt?.toString(),
             items = items.map(PurchaseItemResponse::from),
             payments = payments.map(PurchasePaymentResponse::from),
+            associatedPayment = associatedPayment?.let(AssociatedPaymentResponse::from),
+        )
+    }
+}
+
+data class AssociatedPaymentResponse(
+    val id: Long,
+    val merchantName: String,
+    val amount: BigDecimal,
+    val purchasedAt: LocalDateTime,
+    val cardLastDigits: String?,
+) {
+    companion object {
+        fun from(notification: PaymentNotification) = AssociatedPaymentResponse(
+            id = notification.id,
+            merchantName = notification.merchantName,
+            amount = notification.amount,
+            purchasedAt = notification.purchasedAt,
+            cardLastDigits = notification.cardLastDigits,
         )
     }
 }

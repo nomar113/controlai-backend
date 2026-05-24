@@ -1,18 +1,25 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest
 
+import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseItemRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.AssociateInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.CancelPurchaseInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.DeactivatePurchaseInvoiceGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.DisassociateInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchasesGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.NotifyPurchaseInvoiceQueueGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -58,15 +65,28 @@ class PurchaseInvoiceControllerTest {
         val cancelPurchaseInvoiceUseCase = CancelPurchaseInvoiceUseCase(
             CancelPurchaseInvoiceGateway { Result.success(Unit) }
         )
+        val associateInvoiceUseCase = AssociateInvoiceUseCase(
+            AssociateInvoiceGateway { _, _ -> Result.failure(UnsupportedOperationException("stub")) }
+        )
+        val disassociateInvoiceUseCase = DisassociateInvoiceUseCase(
+            DisassociateInvoiceGateway { Result.success(Unit) }
+        )
+        val searchNotificationsUseCase = SearchNotificationsUseCase(
+            SearchNotificationsGateway { _, _, _, _ -> Result.success(emptyList()) }
+        )
         val controller = PurchaseInvoiceController(
             notifyPurchaseInvoiceQueueUseCase = notifyPurchaseInvoiceQueueUseCase,
             cancelPurchaseInvoiceUseCase = cancelPurchaseInvoiceUseCase,
             deactivatePurchaseInvoiceUseCase = deactivatePurchaseInvoiceUseCase,
             listPurchasesUseCase = listPurchasesUseCase,
+            associateInvoiceUseCase = associateInvoiceUseCase,
+            disassociateInvoiceUseCase = disassociateInvoiceUseCase,
+            searchNotificationsUseCase = searchNotificationsUseCase,
             purchaseRepository = stubOf(PurchaseRepository::class.java),
             purchaseInvoiceRepository = stubOf(PurchaseInvoiceRepository::class.java),
             purchaseItemRepository = stubOf(PurchaseItemRepository::class.java),
             purchasePaymentRepository = stubOf(PurchasePaymentRepository::class.java),
+            paymentNotificationRepository = stubOf(PaymentNotificationRepository::class.java),
         )
 
         val result = controller.listPurchases()

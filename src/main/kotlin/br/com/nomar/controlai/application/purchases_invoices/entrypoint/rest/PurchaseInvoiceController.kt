@@ -1,18 +1,25 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest
 
+import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseItemRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.AssociateInvoiceRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceRequest
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.AssociateInvoiceResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
+import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -26,7 +33,9 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.YearMonth
 
 @RestController
@@ -36,10 +45,14 @@ class PurchaseInvoiceController(
     private val cancelPurchaseInvoiceUseCase: CancelPurchaseInvoiceUseCase,
     private val deactivatePurchaseInvoiceUseCase: DeactivatePurchaseInvoiceUseCase,
     private val listPurchasesUseCase: ListPurchasesUseCase,
+    private val associateInvoiceUseCase: AssociateInvoiceUseCase,
+    private val disassociateInvoiceUseCase: DisassociateInvoiceUseCase,
+    private val searchNotificationsUseCase: SearchNotificationsUseCase,
     private val purchaseRepository: PurchaseRepository,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val purchaseItemRepository: PurchaseItemRepository,
     private val purchasePaymentRepository: PurchasePaymentRepository,
+    private val paymentNotificationRepository: PaymentNotificationRepository,
 ) {
 
     @GetMapping
@@ -114,7 +127,8 @@ class PurchaseInvoiceController(
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found") }
         val items = purchaseItemRepository.findByPurchaseInvoiceId(invoice.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(invoice.id!!)
-        return PurchaseInvoiceDetailResponse.from(invoice, items, payments)
+        val associatedPayment = paymentNotificationRepository.findByPurchaseInvoiceId(invoice.id!!)
+        return PurchaseInvoiceDetailResponse.from(invoice, items, payments, associatedPayment)
     }
 
     @PatchMapping("/invoices/{id}/description")
@@ -127,7 +141,8 @@ class PurchaseInvoiceController(
         val updated = purchaseInvoiceRepository.save(invoice.copy(description = request.description))
         val items = purchaseItemRepository.findByPurchaseInvoiceId(updated.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(updated.id!!)
-        return PurchaseInvoiceDetailResponse.from(updated, items, payments)
+        val associatedPayment = paymentNotificationRepository.findByPurchaseInvoiceId(updated.id!!)
+        return PurchaseInvoiceDetailResponse.from(updated, items, payments, associatedPayment)
     }
 
     @PatchMapping("/invoices/{id}/cancel")
@@ -154,5 +169,54 @@ class PurchaseInvoiceController(
     fun enqueuePurchaseInvoice(@Validated @RequestBody request: PurchaseInvoiceRequest): PurchaseInvoiceRequest {
         notifyPurchaseInvoiceQueueUseCase.execute(request).getOrThrow()
         return request
+    }
+
+    @PatchMapping("/invoices/{invoiceId}/associate")
+    fun associateInvoice(
+        @PathVariable invoiceId: Long,
+        @RequestBody request: AssociateInvoiceRequest,
+    ): AssociateInvoiceResponse {
+        return associateInvoiceUseCase.execute(invoiceId, request.paymentNotificationId).getOrElse { ex ->
+            throw mapAssociationError(ex)
+        }
+    }
+
+    @DeleteMapping("/invoices/{invoiceId}/associate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun disassociateInvoice(@PathVariable invoiceId: Long) {
+        disassociateInvoiceUseCase.execute(invoiceId).getOrElse { ex ->
+            throw mapAssociationError(ex)
+        }
+    }
+
+    @GetMapping("/invoices/{invoiceId}/suggestions/search")
+    fun searchSuggestions(
+        @PathVariable invoiceId: Long,
+        @RequestParam(required = false) amount: BigDecimal? = null,
+        @RequestParam(required = false) startDate: String? = null,
+        @RequestParam(required = false) endDate: String? = null,
+    ): List<SuggestionResponse> {
+        val parsedStart = parseDateTimeParam("startDate", startDate)
+        val parsedEnd = parseDateTimeParam("endDate", endDate)
+
+        return searchNotificationsUseCase.execute(invoiceId, amount, parsedStart, parsedEnd).getOrElse { ex ->
+            throw mapAssociationError(ex)
+        }
+    }
+
+    private fun parseDateTimeParam(name: String, value: String?): LocalDateTime? {
+        if (value.isNullOrBlank()) return null
+        return try {
+            LocalDateTime.parse(value)
+        } catch (e: Exception) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid $name format. Expected ISO LocalDateTime (yyyy-MM-ddTHH:mm:ss)")
+        }
+    }
+
+    private fun mapAssociationError(ex: Throwable): ResponseStatusException = when (ex) {
+        is NoSuchElementException -> ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+        is IllegalStateException -> ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+        is IllegalArgumentException -> ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+        else -> ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
     }
 }
