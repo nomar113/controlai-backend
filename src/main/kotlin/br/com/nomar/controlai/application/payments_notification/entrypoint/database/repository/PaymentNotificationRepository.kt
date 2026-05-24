@@ -118,4 +118,25 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     ): List<PaymentNotification>
 
     fun findByPurchaseInvoiceId(purchaseInvoiceId: Long): PaymentNotification?
+
+    @Query(
+        value = """
+            SELECT * FROM payment_notifications
+            WHERE deleted_at IS NULL
+              AND cancelled_at IS NULL
+              AND (purchase_invoice_id IS NULL OR purchase_invoice_id = :invoiceId)
+              AND (:amount IS NULL OR amount = :amount)
+              AND (:startDate IS NULL OR purchased_at >= :startDate)
+              AND (:endDate IS NULL OR purchased_at <= :endDate)
+            ORDER BY purchased_at DESC
+            LIMIT 20
+        """,
+        nativeQuery = true
+    )
+    fun searchNotifications(
+        @Param("invoiceId") invoiceId: Long,
+        @Param("amount") amount: BigDecimal?,
+        @Param("startDate") startDate: LocalDateTime?,
+        @Param("endDate") endDate: LocalDateTime?,
+    ): List<PaymentNotification>
 }
