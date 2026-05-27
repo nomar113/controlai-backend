@@ -1,11 +1,15 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
 import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
+import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
+import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
+import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.AssociateNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.ManualPaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
@@ -13,8 +17,9 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCurrentInstallmentNumberRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdatePurchasedAtRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.InvoiceSuggestionResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
-import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.domain.payments_notifications.usecase.CancelPaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
@@ -46,6 +51,9 @@ class PaymentNotificationController(
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val categoryRepository: CategoryRepository,
     private val budgetPeriodResolver: BudgetPeriodResolver,
+    private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
+    private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
+    private val associateNotificationProvider: AssociateNotificationProvider,
 ) {
 
     @GetMapping("/notifications")
@@ -86,7 +94,33 @@ class PaymentNotificationController(
     fun getNotification(@PathVariable id: Long): PaymentNotificationResponse {
         val notification = paymentNotificationRepository.findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
-        return PaymentNotificationResponse.from(notification)
+        val invoice = notification.purchaseInvoiceId
+            ?.let { purchaseInvoiceRepository.findById(it).orElse(null) }
+        return PaymentNotificationResponse.from(notification, invoice)
+    }
+
+    @GetMapping("/notifications/{id}/invoice-suggestions")
+    fun getInvoiceSuggestions(@PathVariable id: Long): List<InvoiceSuggestionResponse> {
+        return findNotificationInvoiceSuggestionsProvider.execute(id).getOrElse { ex ->
+            when (ex) {
+                is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+            }
+        }
+    }
+
+    @PatchMapping("/notifications/{id}/associate")
+    fun associateInvoice(
+        @PathVariable id: Long,
+        @RequestBody request: AssociateNotificationRequest,
+    ): PaymentNotificationResponse {
+        return associateNotificationProvider.execute(id, request.purchaseInvoiceId).getOrElse { ex ->
+            when (ex) {
+                is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                is IllegalStateException -> throw ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+                else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+            }
+        }
     }
 
     @PatchMapping("/notifications/{id}/description")

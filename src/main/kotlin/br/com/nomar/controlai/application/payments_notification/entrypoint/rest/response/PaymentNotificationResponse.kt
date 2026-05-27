@@ -2,6 +2,7 @@ package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -22,9 +23,11 @@ data class PaymentNotificationResponse(
     val originType: String? = null,
     val cancelledAt: String? = null,
     val installments: List<InstallmentResponse> = emptyList(),
+    val purchaseInvoiceId: Long? = null,
+    val associatedInvoice: AssociatedInvoiceResponse? = null,
 ) {
     companion object {
-        fun from(entity: PaymentNotification) = PaymentNotificationResponse(
+        fun from(entity: PaymentNotification, invoice: PurchaseInvoiceModel? = null) = PaymentNotificationResponse(
             id = entity.id,
             cardLastDigits = entity.cardLastDigits,
             purchasedAt = entity.purchasedAt,
@@ -40,6 +43,8 @@ data class PaymentNotificationResponse(
             origin = entity.origin,
             originType = entity.originType,
             cancelledAt = entity.cancelledAt?.toString(),
+            purchaseInvoiceId = entity.purchaseInvoiceId,
+            associatedInvoice = invoice?.let { AssociatedInvoiceResponse.from(it) },
         )
     }
 }
