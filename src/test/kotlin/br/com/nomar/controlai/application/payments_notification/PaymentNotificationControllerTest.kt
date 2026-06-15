@@ -25,6 +25,42 @@ class PaymentNotificationControllerTest {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("DELETE FROM payment_notifications")
         jdbcTemplate.update("DELETE FROM purchase_invoices")
+        jdbcTemplate.update("DELETE FROM sub_cards")
+        jdbcTemplate.update("DELETE FROM payment_methods")
+        jdbcTemplate.update("DELETE FROM holders")
+    }
+
+    private fun insertHolder(name: String = "Titular Teste"): Long {
+        jdbcTemplate.update("INSERT INTO holders (name) VALUES ('$name')")
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM holders", Long::class.java)!!
+    }
+
+    private fun insertPaymentMethod(holderId: Long, name: String = "Cartao Teste", type: String = "CREDIT"): Long {
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id) VALUES ('$name', '$type', $holderId)"
+        )
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
+    }
+
+    private fun insertSubCard(
+        paymentMethodId: Long,
+        lastFourDigits: String = "5678",
+        type: String = "FISICO",
+    ): Long {
+        jdbcTemplate.update(
+            "INSERT INTO sub_cards (payment_method_id, last_four_digits, type) " +
+                "VALUES ($paymentMethodId, '$lastFourDigits', '$type')"
+        )
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM sub_cards", Long::class.java)!!
+    }
+
+    private fun insertCancelledNotification(amount: Double = 150.00): Long {
+        jdbcTemplate.update(
+            "INSERT INTO payment_notifications " +
+                "(card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, cancelled_at) " +
+                "VALUES ('1234', '2024-06-15 10:00:00', $amount, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', '2024-06-20 10:00:00')"
+        )
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_notifications", Long::class.java)!!
     }
 
     private fun insertInvoice(
@@ -140,6 +176,125 @@ class PaymentNotificationControllerTest {
             patch("/payments/notifications/$notificationId/associate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"purchaseInvoiceId": $anotherInvoiceId}""")
+        )
+            .andExpect(status().isConflict)
+    }
+
+    // --- PATCH payment-method ---
+
+    @Test
+    fun `PATCH payment-method returns 200 when paymentMethodId is valid and subCardId is omitted`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+        val notificationId = insertNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": $paymentMethodId}""")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(notificationId))
+            .andExpect(jsonPath("$.paymentMethodId").value(paymentMethodId))
+            .andExpect(jsonPath("$.subCardId").doesNotExist())
+            .andExpect(jsonPath("$.cardLastDigits").value("1234"))
+    }
+
+    @Test
+    fun `PATCH payment-method returns 200 when paymentMethodId and subCardId are valid`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+        val subCardId = insertSubCard(paymentMethodId, lastFourDigits = "9876")
+        val notificationId = insertNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": $paymentMethodId, "subCardId": $subCardId}""")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(notificationId))
+            .andExpect(jsonPath("$.paymentMethodId").value(paymentMethodId))
+            .andExpect(jsonPath("$.subCardId").value(subCardId))
+            .andExpect(jsonPath("$.cardLastDigits").value("9876"))
+    }
+
+    @Test
+    fun `PATCH payment-method returns 200 when re-confirming the same card (idempotent)`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+        val subCardId = insertSubCard(paymentMethodId, lastFourDigits = "9876")
+        val notificationId = insertNotification()
+        val body = """{"paymentMethodId": $paymentMethodId, "subCardId": $subCardId}"""
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.paymentMethodId").value(paymentMethodId))
+            .andExpect(jsonPath("$.subCardId").value(subCardId))
+            .andExpect(jsonPath("$.cardLastDigits").value("9876"))
+    }
+
+    @Test
+    fun `PATCH payment-method returns 400 when paymentMethodId does not exist`() {
+        val notificationId = insertNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": 999999}""")
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `PATCH payment-method returns 400 when subCardId does not belong to paymentMethod`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+        val otherPaymentMethodId = insertPaymentMethod(holderId, name = "Outro Cartao")
+        val foreignSubCardId = insertSubCard(otherPaymentMethodId, lastFourDigits = "4321")
+        val notificationId = insertNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": $paymentMethodId, "subCardId": $foreignSubCardId}""")
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `PATCH payment-method returns 404 when notification does not exist`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+
+        mockMvc.perform(
+            patch("/payments/notifications/999999/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": $paymentMethodId}""")
+        )
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `PATCH payment-method returns 409 when notification is cancelled`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId)
+        val notificationId = insertCancelledNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/payment-method")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"paymentMethodId": $paymentMethodId}""")
         )
             .andExpect(status().isConflict)
     }

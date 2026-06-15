@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.installments.application.CreateInstall
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
+import br.com.nomar.controlai.application.payments_notification.application.UpdateNotificationPaymentMethodProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
@@ -16,6 +17,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCategoryRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCurrentInstallmentNumberRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdatePaymentMethodRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdatePurchasedAtRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.InvoiceSuggestionResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
@@ -54,6 +56,7 @@ class PaymentNotificationController(
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
     private val associateNotificationProvider: AssociateNotificationProvider,
+    private val updateNotificationPaymentMethodProvider: UpdateNotificationPaymentMethodProvider,
 ) {
 
     @GetMapping("/notifications")
@@ -165,6 +168,24 @@ class PaymentNotificationController(
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
         val updated = paymentNotificationRepository.save(notification.copy(purchasedAt = request.purchasedAt))
         return PaymentNotificationResponse.from(updated)
+    }
+
+    @PatchMapping("/notifications/{id}/payment-method")
+    fun updatePaymentMethod(
+        @PathVariable id: Long,
+        @Validated @RequestBody request: UpdatePaymentMethodRequest,
+    ): PaymentNotificationResponse {
+        val notification = updateNotificationPaymentMethodProvider
+            .execute(id, request.paymentMethodId, request.subCardId)
+            .getOrElse { ex ->
+                when (ex) {
+                    is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                    is IllegalStateException -> throw ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+                    is IllegalArgumentException -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+                    else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+                }
+            }
+        return PaymentNotificationResponse.from(notification)
     }
 
     @PatchMapping("/notifications/{id}/installment-number")
