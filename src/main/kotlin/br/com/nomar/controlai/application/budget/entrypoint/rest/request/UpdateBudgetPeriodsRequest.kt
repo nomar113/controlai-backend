@@ -9,6 +9,8 @@ data class UpdateBudgetPeriodsRequest(
     @field:NotEmpty
     @field:Valid
     val periods: List<PeriodEntry>,
+
+    val replicateToFuture: Boolean = false,
 )
 
 data class PeriodEntry(

@@ -82,7 +82,7 @@ class BudgetController(
     fun updatePeriods(
         @PathVariable id: Long,
         @Validated @RequestBody request: UpdateBudgetPeriodsRequest,
-    ) {
+    ): UpdateBudgetPeriodsResponse {
         val periods = request.periods.map { entry ->
             if (entry.endDate.isBefore(entry.startDate)) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "endDate must be >= startDate for paymentMethodId ${entry.paymentMethodId}")
@@ -94,7 +94,8 @@ class BudgetController(
                 endDate = entry.endDate,
             )
         }
-        updateBudgetPeriodsUseCase.execute(id, periods)
+        return updateBudgetPeriodsUseCase.execute(id, periods, request.replicateToFuture)
+            .map(UpdateBudgetPeriodsResponse::from)
             .getOrElse {
                 when (it) {
                     is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message)
