@@ -59,6 +59,10 @@ class PaymentNotificationController(
     private val updateNotificationPaymentMethodProvider: UpdateNotificationPaymentMethodProvider,
 ) {
 
+    companion object {
+        private val VALID_SORTS = setOf("recent", "amount")
+    }
+
     @GetMapping("/notifications")
     fun listNotifications(
         @RequestParam month: String? = null,
@@ -66,7 +70,12 @@ class PaymentNotificationController(
         @RequestParam(defaultValue = "100") size: Int,
         @RequestParam categoryId: Long? = null,
         @RequestParam cardLastDigits: String? = null,
+        @RequestParam paymentMethodId: Long? = null,
+        @RequestParam(defaultValue = "recent") sort: String,
     ): Map<String, Any> {
+        if (sort !in VALID_SORTS) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sort. Expected one of: ${VALID_SORTS.joinToString()}")
+        }
         val yearMonth = if (month != null) {
             try {
                 YearMonth.parse(month)
@@ -79,9 +88,9 @@ class PaymentNotificationController(
         val yearMonthStr = yearMonth.toString()
         val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
         val offset = page * size
-        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset, categoryId, cardLastDigits)
+        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, categoryId, cardLastDigits)
+        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, categoryId, cardLastDigits, paymentMethodId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

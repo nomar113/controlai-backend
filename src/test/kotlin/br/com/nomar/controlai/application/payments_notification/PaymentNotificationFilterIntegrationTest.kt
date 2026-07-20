@@ -146,6 +146,139 @@ class PaymentNotificationFilterIntegrationTest {
             .andExpect(jsonPath("$.content[2].merchantName").value("First"))
     }
 
+    // --- Filtro por paymentMethodId ---
+
+    @Test
+    fun `GET notifications with paymentMethodId returns only notifications of that payment method`() {
+        val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
+        val otherPaymentMethodId = createPaymentMethod(holderId, "Other Card")
+        insertNotification("2026-05-10 14:00:00", "Main Card Store", 100.00)
+        insertNotification("2026-05-12 10:00:00", "Other Card Store", 200.00, otherPaymentMethodId)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("paymentMethodId", paymentMethodId.toString())
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].merchantName").value("Main Card Store"))
+            .andExpect(jsonPath("$.totalElements").value(1))
+    }
+
+    @Test
+    fun `GET notifications with paymentMethodId includes purchases made with sub-cards of that method`() {
+        val subCardId = createSubCard(paymentMethodId)
+        insertNotification("2026-05-10 14:00:00", "Parent Card Store", 100.00)
+        insertNotification("2026-05-12 10:00:00", "Sub Card Store", 200.00, paymentMethodId, subCardId)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("paymentMethodId", paymentMethodId.toString())
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].merchantName").value("Sub Card Store"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("Parent Card Store"))
+            .andExpect(jsonPath("$.totalElements").value(2))
+    }
+
+    @Test
+    fun `GET notifications with paymentMethodId without matches returns empty page`() {
+        val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
+        val otherPaymentMethodId = createPaymentMethod(holderId, "Other Card")
+        insertNotification("2026-05-10 14:00:00", "Main Card Store", 100.00)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("paymentMethodId", otherPaymentMethodId.toString())
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(0))
+            .andExpect(jsonPath("$.totalElements").value(0))
+    }
+
+    // --- Ordenacao (sort) ---
+
+    @Test
+    fun `GET notifications with sort=amount orders by amount DESC`() {
+        insertNotification("2026-05-28 18:00:00", "Cheapest", 10.00)
+        insertNotification("2026-05-01 08:00:00", "Most Expensive", 300.00)
+        insertNotification("2026-05-15 12:00:00", "Middle Price", 150.00)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("sort", "amount")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].merchantName").value("Most Expensive"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("Middle Price"))
+            .andExpect(jsonPath("$.content[2].merchantName").value("Cheapest"))
+    }
+
+    @Test
+    fun `GET notifications with sort=recent orders by purchasedAt DESC`() {
+        insertNotification("2026-05-01 08:00:00", "First", 300.00)
+        insertNotification("2026-05-28 18:00:00", "Last", 10.00)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("sort", "recent")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].merchantName").value("Last"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("First"))
+    }
+
+    @Test
+    fun `GET notifications with sort=amount paginates correctly`() {
+        for (i in 1..5) {
+            insertNotification("2026-05-${10 + i} 10:00:00", "Store $i", i * 10.0)
+        }
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("sort", "amount")
+                .param("page", "1")
+                .param("size", "2")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].merchantName").value("Store 3"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("Store 2"))
+            .andExpect(jsonPath("$.totalElements").value(5))
+            .andExpect(jsonPath("$.totalPages").value(3))
+    }
+
+    @Test
+    fun `GET notifications with invalid sort returns 400`() {
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("sort", "invalid")
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `GET notifications without new params preserves default behavior ordered by purchasedAt DESC`() {
+        val subCardId = createSubCard(paymentMethodId)
+        insertNotification("2026-05-01 08:00:00", "First", 300.00)
+        insertNotification("2026-05-28 18:00:00", "Last", 10.00, paymentMethodId, subCardId)
+
+        mockMvc.perform(get("/payments/notifications").param("month", "2026-05"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].merchantName").value("Last"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("First"))
+            .andExpect(jsonPath("$.totalElements").value(2))
+    }
+
     // --- Helpers ---
 
     private fun createHolder(): Long {
@@ -153,22 +286,36 @@ class PaymentNotificationFilterIntegrationTest {
         return jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = ?", Long::class.java, "Test Holder")!!
     }
 
-    private fun createPaymentMethod(holderId: Long): Long {
+    private fun createPaymentMethod(holderId: Long, name: String = "Test Card"): Long {
         jdbcTemplate.update(
             "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
-            "Test Card",
+            name,
             "CREDIT_CARD",
             holderId,
         )
-        return jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = ?", Long::class.java, "Test Card")!!
+        return jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = ?", Long::class.java, name)!!
     }
 
-    private fun insertNotification(purchasedAt: String, merchantName: String, amount: Double) {
+    private fun createSubCard(paymentMethodId: Long, lastFourDigits: String = "5678"): Long {
+        jdbcTemplate.update(
+            "INSERT INTO sub_cards (payment_method_id, last_four_digits, type) VALUES (?, ?, ?)",
+            paymentMethodId, lastFourDigits, "FISICO",
+        )
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM sub_cards", Long::class.java)!!
+    }
+
+    private fun insertNotification(
+        purchasedAt: String,
+        merchantName: String,
+        amount: Double,
+        notificationPaymentMethodId: Long = paymentMethodId,
+        subCardId: Long? = null,
+    ) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", paymentMethodId
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", notificationPaymentMethodId, subCardId
         )
     }
 

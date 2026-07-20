@@ -38,6 +38,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         WHERE pn.deleted_at IS NULL
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
+          AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -54,7 +55,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
               AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
           )
         GROUP BY pn.id
-        ORDER BY pn.purchased_at DESC
+        ORDER BY CASE WHEN :sort = 'amount' THEN pn.amount END DESC, pn.purchased_at DESC
         LIMIT :limit OFFSET :offset
         """,
         nativeQuery = true
@@ -66,6 +67,8 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         offset: Int,
         categoryId: Long? = null,
         cardLastDigits: String? = null,
+        paymentMethodId: Long? = null,
+        sort: String = "recent",
     ): List<PaymentNotification>
 
     @Query(
@@ -78,6 +81,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         WHERE pn.deleted_at IS NULL
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
+          AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
           AND (
             (pn.number_of_installments <= 1
               AND pn.purchased_at >= bpp.start_date
@@ -101,6 +105,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         yearMonth: String,
         categoryId: Long? = null,
         cardLastDigits: String? = null,
+        paymentMethodId: Long? = null,
     ): Long
 
     @Query(
