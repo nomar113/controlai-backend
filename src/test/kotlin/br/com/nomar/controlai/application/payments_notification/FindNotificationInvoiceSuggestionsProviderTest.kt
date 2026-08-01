@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -12,7 +13,6 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -20,9 +20,11 @@ class FindNotificationInvoiceSuggestionsProviderTest {
 
     private val paymentNotificationRepository: PaymentNotificationRepository = mock()
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository = mock()
+    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
     private val provider = FindNotificationInvoiceSuggestionsProvider(
         paymentNotificationRepository,
         purchaseInvoiceRepository,
+        requestContext,
     )
 
     private val amount = BigDecimal("150.00")
@@ -55,7 +57,7 @@ class FindNotificationInvoiceSuggestionsProviderTest {
 
     @Test
     fun `should return failure when notification not found`() {
-        `when`(paymentNotificationRepository.findById(99L)).thenReturn(Optional.empty())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(99L, 1L)).thenReturn(null)
 
         val result = provider.execute(99L)
 
@@ -67,8 +69,8 @@ class FindNotificationInvoiceSuggestionsProviderTest {
     @Test
     fun `should return empty list when no invoice candidates exist`() {
         val notification = createNotification()
-        `when`(paymentNotificationRepository.findById(1L)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt)).thenReturn(emptyList())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(1L, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt, 1L)).thenReturn(emptyList())
 
         val result = provider.execute(1L)
 
@@ -83,8 +85,8 @@ class FindNotificationInvoiceSuggestionsProviderTest {
         val invoice2 = createInvoice(id = 20L, dateDeltaMinutes = 30)
         val invoice3 = createInvoice(id = 30L, dateDeltaMinutes = 120)
 
-        `when`(paymentNotificationRepository.findById(1L)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(1L, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt, 1L))
             .thenReturn(listOf(invoice1, invoice2, invoice3))
 
         val result = provider.execute(1L)
@@ -104,8 +106,8 @@ class FindNotificationInvoiceSuggestionsProviderTest {
     @Test
     fun `should return failure when repository throws exception`() {
         val notification = createNotification()
-        `when`(paymentNotificationRepository.findById(1L)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(1L, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByTotalAndNotAssociated(amount, purchasedAt, 1L))
             .thenThrow(RuntimeException("Database error"))
 
         val result = provider.execute(1L)

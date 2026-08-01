@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.purchases_invoices.application
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -12,6 +13,7 @@ import java.time.LocalDateTime
 class SearchNotificationsProvider(
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val paymentNotificationRepository: PaymentNotificationRepository,
+    private val requestContext: RequestContext,
 ) : SearchNotificationsGateway {
 
     override fun execute(
@@ -21,8 +23,9 @@ class SearchNotificationsProvider(
         endDate: LocalDateTime?,
     ): Result<List<SuggestionResponse>> {
         return runCatching {
-            val invoice = purchaseInvoiceRepository.findById(invoiceId)
-                .orElseThrow { NoSuchElementException("PurchaseInvoice not found: $invoiceId") }
+            val groupId = requestContext.groupId
+            val invoice = purchaseInvoiceRepository.findByIdAndGroupId(invoiceId, groupId)
+                ?: throw NoSuchElementException("PurchaseInvoice not found: $invoiceId")
 
             if (invoice.deletedAt != null) {
                 throw NoSuchElementException("PurchaseInvoice is deleted: $invoiceId")
@@ -39,6 +42,7 @@ class SearchNotificationsProvider(
 
             val notifications = paymentNotificationRepository.searchNotifications(
                 invoiceId = invoiceId,
+                groupId = groupId,
                 amount = amount,
                 startDate = effectiveStartDate,
                 endDate = endDate,

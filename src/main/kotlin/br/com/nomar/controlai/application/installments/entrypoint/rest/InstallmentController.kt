@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.installments.entrypoint.rest.request.I
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.MonthlyProjectionResponse
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.validation.annotation.Validated
@@ -33,6 +34,7 @@ data class UpdateInstallmentRequest(
 class InstallmentController(
     private val installmentRepository: InstallmentRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
+    private val requestContext: RequestContext,
 ) {
 
     @PostMapping("/preview")
@@ -54,7 +56,7 @@ class InstallmentController(
     fun getProjection(): List<MonthlyProjectionResponse> {
         val startDate = LocalDate.now().withDayOfMonth(1)
         val endDate = startDate.plusMonths(6)
-        return installmentRepository.getMonthlyProjection(startDate, endDate)
+        return installmentRepository.getMonthlyProjection(requestContext.groupId, startDate, endDate)
             .map { MonthlyProjectionResponse(it.getYear(), it.getMonth(), it.getTotal(), it.getCount()) }
     }
 
@@ -63,8 +65,8 @@ class InstallmentController(
         @PathVariable id: Long,
         @RequestBody request: UpdateInstallmentRequest,
     ): InstallmentResponse {
-        val installment = installmentRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Installment not found") }
+        val installment = installmentRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Installment not found")
 
         if (installment.dueDate.isBefore(LocalDate.now())) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot edit past installments")

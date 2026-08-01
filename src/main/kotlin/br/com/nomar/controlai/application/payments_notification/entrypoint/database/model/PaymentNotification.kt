@@ -17,6 +17,10 @@ data class PaymentNotification(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
+    // Default 1 (legacy group) keeps the SQS path working until Task 3 wires the API key.
+    @Column(name = "group_id", nullable = false)
+    val groupId: Long = 1,
+
     @Column(name = "card_last_digits", length = 4, nullable = true)
     val cardLastDigits: String? = null,
 

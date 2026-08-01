@@ -19,12 +19,15 @@ interface InstallmentRepository : JpaRepository<Installment, Long> {
 
     fun findByParentIdAndCancelledAtIsNull(parentId: Long): List<Installment>
 
+    fun findByIdAndGroupId(id: Long, groupId: Long): Installment?
+
     @Query(
         value = """
             SELECT YEAR(i.due_date) AS year, MONTH(i.due_date) AS month,
                    SUM(i.amount) AS total, COUNT(i.id) AS count
             FROM installments i
             WHERE i.cancelled_at IS NULL
+              AND i.group_id = :groupId
               AND i.due_date >= :startDate
               AND i.due_date < :endDate
             GROUP BY YEAR(i.due_date), MONTH(i.due_date)
@@ -33,6 +36,7 @@ interface InstallmentRepository : JpaRepository<Installment, Long> {
         nativeQuery = true,
     )
     fun getMonthlyProjection(
+        @Param("groupId") groupId: Long,
         @Param("startDate") startDate: LocalDate,
         @Param("endDate") endDate: LocalDate,
     ): List<MonthlyProjection>

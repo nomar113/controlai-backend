@@ -22,6 +22,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.InvoiceSuggestionResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payments_notifications.usecase.CancelPaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.DeactivatePaymentNotificationUseCase
 import br.com.nomar.controlai.domain.payments_notifications.usecase.NotifyPaymentNotificationQueueUseCase
@@ -57,6 +58,7 @@ class PaymentNotificationController(
     private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
     private val associateNotificationProvider: AssociateNotificationProvider,
     private val updateNotificationPaymentMethodProvider: UpdateNotificationPaymentMethodProvider,
+    private val requestContext: RequestContext,
 ) {
 
     companion object {
@@ -86,11 +88,12 @@ class PaymentNotificationController(
             YearMonth.now()
         }
         val yearMonthStr = yearMonth.toString()
+        val groupId = requestContext.groupId
         val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
         val offset = page * size
-        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
+        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, categoryId, cardLastDigits, paymentMethodId)
+        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, groupId, categoryId, cardLastDigits, paymentMethodId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,
@@ -104,10 +107,10 @@ class PaymentNotificationController(
 
     @GetMapping("/notifications/{id}")
     fun getNotification(@PathVariable id: Long): PaymentNotificationResponse {
-        val notification = paymentNotificationRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
         val invoice = notification.purchaseInvoiceId
-            ?.let { purchaseInvoiceRepository.findById(it).orElse(null) }
+            ?.let { purchaseInvoiceRepository.findByIdAndGroupId(it, requestContext.groupId) }
         return PaymentNotificationResponse.from(notification, invoice)
     }
 
@@ -140,8 +143,8 @@ class PaymentNotificationController(
         @PathVariable id: Long,
         @RequestBody request: UpdateDescriptionRequest,
     ): PaymentNotificationResponse {
-        val notification = paymentNotificationRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
         val updated = paymentNotificationRepository.save(notification.copy(description = request.description))
         return PaymentNotificationResponse.from(updated)
     }
@@ -151,12 +154,13 @@ class PaymentNotificationController(
         @PathVariable id: Long,
         @RequestBody request: UpdateCategoryRequest,
     ): PaymentNotificationResponse {
-        val notification = paymentNotificationRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val groupId = requestContext.groupId
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
 
         val (categoryId, categoryName) = if (request.categoryId != null) {
-            val category = categoryRepository.findById(request.categoryId)
-                .orElseThrow { ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found") }
+            val category = categoryRepository.findByIdAndGroupId(request.categoryId, groupId)
+                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found")
             category.id to category.name
         } else {
             null to null
@@ -173,8 +177,8 @@ class PaymentNotificationController(
         @PathVariable id: Long,
         @Validated @RequestBody request: UpdatePurchasedAtRequest,
     ): PaymentNotificationResponse {
-        val notification = paymentNotificationRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
         val updated = paymentNotificationRepository.save(notification.copy(purchasedAt = request.purchasedAt))
         return PaymentNotificationResponse.from(updated)
     }
@@ -202,8 +206,8 @@ class PaymentNotificationController(
         @PathVariable id: Long,
         @RequestBody request: UpdateCurrentInstallmentNumberRequest,
     ): PaymentNotificationResponse {
-        val notification = paymentNotificationRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found") }
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
         val totalInstallments = request.numberOfInstallments ?: notification.numberOfInstallments
         if (request.currentInstallmentNumber != null && request.currentInstallmentNumber > totalInstallments) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "currentInstallmentNumber cannot exceed numberOfInstallments")
@@ -257,6 +261,7 @@ class PaymentNotificationController(
     @Transactional
     fun createManualNotification(@Validated @RequestBody request: ManualPaymentNotificationRequest): PaymentNotificationResponse {
         val paymentNotification = PaymentNotification(
+            groupId = requestContext.groupId,
             cardLastDigits = request.cardLastDigits,
             purchasedAt = request.purchasedAt,
             amount = request.amount,

@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.budget.application
 
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.budget.entity.BudgetPaymentPeriod
 import br.com.nomar.controlai.domain.budget.entity.BudgetPeriodReplicationResult
 import br.com.nomar.controlai.domain.budget.entity.FailedReplication
@@ -12,18 +13,20 @@ import java.time.YearMonth
 class ReplicateBudgetPeriodsToFutureProvider(
     private val budgetRepository: BudgetRepository,
     private val budgetPeriodReplicationWriter: BudgetPeriodReplicationWriter,
+    private val requestContext: RequestContext,
 ) : ReplicateBudgetPeriodsToFutureGateway {
 
     override fun execute(
         currentBudgetId: Long,
         periods: List<BudgetPaymentPeriod>,
     ): Result<BudgetPeriodReplicationResult> = runCatching {
-        val currentBudget = budgetRepository.findById(currentBudgetId)
-            .orElseThrow { NoSuchElementException("Budget not found: $currentBudgetId") }
+        val groupId = requestContext.groupId
+        val currentBudget = budgetRepository.findByIdAndGroupId(currentBudgetId, groupId)
+            ?: throw NoSuchElementException("Budget not found: $currentBudgetId")
         val currentYearMonth = YearMonth.parse(currentBudget.yearMonth)
 
         val futureBudgets = budgetRepository.findAll()
-            .filter { runCatching { YearMonth.parse(it.yearMonth) > currentYearMonth }.getOrDefault(false) }
+            .filter { it.groupId == groupId && runCatching { YearMonth.parse(it.yearMonth) > currentYearMonth }.getOrDefault(false) }
             .sortedBy { it.yearMonth }
 
         val updated = mutableListOf<Long>()

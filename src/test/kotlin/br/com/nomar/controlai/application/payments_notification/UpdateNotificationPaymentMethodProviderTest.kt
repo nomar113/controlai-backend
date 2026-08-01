@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.payment_methods.entrypoint.database.re
 import br.com.nomar.controlai.application.payments_notification.application.UpdateNotificationPaymentMethodProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
@@ -14,7 +15,6 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -23,9 +23,11 @@ class UpdateNotificationPaymentMethodProviderTest {
 
     private val paymentNotificationRepository: PaymentNotificationRepository = mock()
     private val paymentMethodRepository: PaymentMethodRepository = mock()
+    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
     private val provider = UpdateNotificationPaymentMethodProvider(
         paymentNotificationRepository,
         paymentMethodRepository,
+        requestContext,
     )
 
     private val notificationId = 1L
@@ -87,8 +89,8 @@ class UpdateNotificationPaymentMethodProviderTest {
             cardLastDigits = originalCardLastDigits,
         )
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(paymentMethodRepository.findById(newPaymentMethodId)).thenReturn(Optional.of(paymentMethod))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(paymentMethodRepository.findByIdAndGroupId(newPaymentMethodId, 1L)).thenReturn(paymentMethod)
         `when`(paymentNotificationRepository.save(expectedSaved)).thenReturn(expectedSaved)
 
         val result = provider.execute(notificationId, newPaymentMethodId, null)
@@ -112,8 +114,8 @@ class UpdateNotificationPaymentMethodProviderTest {
             cardLastDigits = subCardLastDigits,
         )
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(paymentMethodRepository.findById(newPaymentMethodId)).thenReturn(Optional.of(paymentMethod))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(paymentMethodRepository.findByIdAndGroupId(newPaymentMethodId, 1L)).thenReturn(paymentMethod)
         `when`(paymentNotificationRepository.save(expectedSaved)).thenReturn(expectedSaved)
 
         val result = provider.execute(notificationId, newPaymentMethodId, subCardId)
@@ -141,8 +143,8 @@ class UpdateNotificationPaymentMethodProviderTest {
             cardLastDigits = subCardLastDigits,
         )
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(paymentMethodRepository.findById(newPaymentMethodId)).thenReturn(Optional.of(paymentMethod))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(paymentMethodRepository.findByIdAndGroupId(newPaymentMethodId, 1L)).thenReturn(paymentMethod)
         `when`(paymentNotificationRepository.save(expectedSaved)).thenReturn(expectedSaved)
 
         val firstResult = provider.execute(notificationId, newPaymentMethodId, subCardId)
@@ -156,7 +158,7 @@ class UpdateNotificationPaymentMethodProviderTest {
 
     @Test
     fun `should return failure when notification not found`() {
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.empty())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(null)
 
         val result = provider.execute(notificationId, newPaymentMethodId, null)
 
@@ -168,7 +170,7 @@ class UpdateNotificationPaymentMethodProviderTest {
     @Test
     fun `should return failure when notification is cancelled`() {
         val cancelled = createNotification(cancelledAt = LocalDateTime.now())
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(cancelled))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(cancelled)
 
         val result = provider.execute(notificationId, newPaymentMethodId, null)
 
@@ -180,8 +182,8 @@ class UpdateNotificationPaymentMethodProviderTest {
     @Test
     fun `should return failure when payment method not found`() {
         val notification = createNotification()
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(paymentMethodRepository.findById(newPaymentMethodId)).thenReturn(Optional.empty())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(paymentMethodRepository.findByIdAndGroupId(newPaymentMethodId, 1L)).thenReturn(null)
 
         val result = provider.execute(notificationId, newPaymentMethodId, null)
 
@@ -196,8 +198,8 @@ class UpdateNotificationPaymentMethodProviderTest {
         val otherSubCard = createSubCard(id = 999L, paymentMethodId = 999L)
         val paymentMethod = createPaymentMethod(subCards = listOf(otherSubCard))
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(paymentMethodRepository.findById(newPaymentMethodId)).thenReturn(Optional.of(paymentMethod))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(paymentMethodRepository.findByIdAndGroupId(newPaymentMethodId, 1L)).thenReturn(paymentMethod)
 
         val result = provider.execute(notificationId, newPaymentMethodId, subCardId)
 

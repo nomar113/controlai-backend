@@ -14,17 +14,29 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         SELECT pn.id, pn.purchased_at AS date, pn.amount AS total, pn.merchant_name AS merchantName, NULL AS totalItems, pn.description, c.name AS categoryName, pn.category_id AS categoryId, pn.cancelled_at AS cancelledAt
         FROM payment_notifications pn
         LEFT JOIN categories c ON pn.category_id = c.id
-        WHERE pn.deleted_at IS NULL
+        WHERE pn.deleted_at IS NULL AND pn.group_id = :groupId
         UNION
         SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
-        WHERE pi.deleted_at IS NULL
+        WHERE pi.deleted_at IS NULL AND pi.group_id = :groupId
         ORDER BY date DESC
         """,
         nativeQuery = true
     )
-    fun findAllPurchases(): List<PurchaseProjection>
+    fun findAllPurchases(groupId: Long): List<PurchaseProjection>
+
+    @Query(
+        """
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
+        FROM purchase_invoices pi
+        LEFT JOIN categories c ON pi.category_id = c.id
+        WHERE pi.deleted_at IS NULL AND pi.group_id = :groupId
+        ORDER BY date DESC
+        """,
+        nativeQuery = true
+    )
+    fun findAllInvoices(groupId: Long): List<PurchaseProjection>
 
     @Query(
         """
@@ -32,18 +44,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
         WHERE pi.deleted_at IS NULL
-        ORDER BY date DESC
-        """,
-        nativeQuery = true
-    )
-    fun findAllInvoices(): List<PurchaseProjection>
-
-    @Query(
-        """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt
-        FROM purchase_invoices pi
-        LEFT JOIN categories c ON pi.category_id = c.id
-        WHERE pi.deleted_at IS NULL
+          AND pi.group_id = :groupId
           AND pi.date >= :startDate
           AND pi.date < :endDate
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pi.category_id = :categoryId)
@@ -53,6 +54,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         nativeQuery = true
     )
     fun findInvoicesByDateRange(
+        groupId: Long,
         startDate: String,
         endDate: String,
         limit: Int,
@@ -64,6 +66,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         """
         SELECT COUNT(*) FROM purchase_invoices pi
         WHERE pi.deleted_at IS NULL
+          AND pi.group_id = :groupId
           AND pi.date >= :startDate
           AND pi.date < :endDate
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pi.category_id = :categoryId)
@@ -71,6 +74,7 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
         nativeQuery = true
     )
     fun countInvoicesByDateRange(
+        groupId: Long,
         startDate: String,
         endDate: String,
         categoryId: Long? = null,

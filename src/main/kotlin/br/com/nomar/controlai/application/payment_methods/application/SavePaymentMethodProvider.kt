@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.payment_methods.converter.PaymentMetho
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.HolderRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.SubCardRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payment_methods.entity.PaymentMethod
 import br.com.nomar.controlai.domain.payment_methods.gateway.SavePaymentMethodGateway
 import org.springframework.stereotype.Component
@@ -15,15 +16,16 @@ class SavePaymentMethodProvider(
     private val subCardRepository: SubCardRepository,
     private val holderRepository: HolderRepository,
     private val converter: PaymentMethodConverter,
+    private val requestContext: RequestContext,
 ) : SavePaymentMethodGateway {
 
     @Transactional
     override fun execute(paymentMethod: PaymentMethod): Result<PaymentMethod> {
         return runCatching {
-            val holder = holderRepository.findById(paymentMethod.holderId)
-                .orElseThrow { NoSuchElementException("Holder not found: ${paymentMethod.holderId}") }
+            val holder = holderRepository.findByIdAndGroupId(paymentMethod.holderId, requestContext.groupId)
+                ?: throw NoSuchElementException("Holder not found: ${paymentMethod.holderId}")
 
-            val model = converter.toPaymentMethodModel(paymentMethod, holder)
+            val model = converter.toPaymentMethodModel(paymentMethod, holder).copy(groupId = requestContext.groupId)
             val savedModel = paymentMethodRepository.save(model)
 
             val savedSubCards = paymentMethod.subCards.map { subCard ->

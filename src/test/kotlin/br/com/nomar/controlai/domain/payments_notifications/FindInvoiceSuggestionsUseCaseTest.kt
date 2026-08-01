@@ -3,6 +3,7 @@ package br.com.nomar.controlai.domain.payments_notifications
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payments_notifications.gateway.FindInvoiceSuggestionsGateway
 import br.com.nomar.controlai.domain.payments_notifications.usecase.FindInvoiceSuggestionsUseCase
 import org.junit.jupiter.api.Test
@@ -12,7 +13,6 @@ import org.mockito.Mockito.`when`
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -20,7 +20,8 @@ class FindInvoiceSuggestionsUseCaseTest {
 
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository = mock()
     private val findSuggestionsGateway: FindInvoiceSuggestionsGateway = mock()
-    private val useCase = FindInvoiceSuggestionsUseCase(purchaseInvoiceRepository, findSuggestionsGateway)
+    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
+    private val useCase = FindInvoiceSuggestionsUseCase(purchaseInvoiceRepository, findSuggestionsGateway, requestContext)
 
     private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC)
     private val invoiceTotal = BigDecimal("150.00")
@@ -51,7 +52,7 @@ class FindInvoiceSuggestionsUseCaseTest {
 
     @Test
     fun `should return failure with NoSuchElementException when invoice not found`() {
-        `when`(purchaseInvoiceRepository.findById(99L)).thenReturn(Optional.empty())
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(99L, 1L)).thenReturn(null)
 
         val result = useCase.execute(99L)
 
@@ -69,7 +70,7 @@ class FindInvoiceSuggestionsUseCaseTest {
             createNotification(30L, minutesDelta = 45),
         )
 
-        `when`(purchaseInvoiceRepository.findById(1L)).thenReturn(Optional.of(invoice))
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(1L, 1L)).thenReturn(invoice)
         `when`(findSuggestionsGateway.execute(invoiceTotal)).thenReturn(Result.success(notifications))
 
         val result = useCase.execute(1L)
@@ -89,7 +90,7 @@ class FindInvoiceSuggestionsUseCaseTest {
     fun `should return empty list when gateway returns no results`() {
         val invoice = createInvoice()
 
-        `when`(purchaseInvoiceRepository.findById(1L)).thenReturn(Optional.of(invoice))
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(1L, 1L)).thenReturn(invoice)
         `when`(findSuggestionsGateway.execute(invoiceTotal)).thenReturn(Result.success(emptyList()))
 
         val result = useCase.execute(1L)

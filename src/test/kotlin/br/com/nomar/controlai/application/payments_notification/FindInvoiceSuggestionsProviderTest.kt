@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.payments_notification
 import br.com.nomar.controlai.application.payments_notification.application.FindInvoiceSuggestionsProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -14,7 +15,8 @@ import kotlin.test.assertTrue
 class FindInvoiceSuggestionsProviderTest {
 
     private val paymentNotificationRepository: PaymentNotificationRepository = mock()
-    private val provider = FindInvoiceSuggestionsProvider(paymentNotificationRepository)
+    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
+    private val provider = FindInvoiceSuggestionsProvider(paymentNotificationRepository, requestContext)
 
     private val amount = BigDecimal("150.00")
     private val baseDate = LocalDateTime.of(2024, 6, 15, 14, 0, 0)
@@ -36,7 +38,7 @@ class FindInvoiceSuggestionsProviderTest {
         val notification1 = createNotification(1L, baseDate.plusMinutes(10))
         val notification2 = createNotification(2L, baseDate.plusMinutes(50))
 
-        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount))
+        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount, groupId = 1L))
             .thenReturn(listOf(notification1, notification2))
 
         val result = provider.execute(amount)
@@ -50,7 +52,7 @@ class FindInvoiceSuggestionsProviderTest {
 
     @Test
     fun `should return empty list when no matches`() {
-        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount))
+        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount, groupId = 1L))
             .thenReturn(emptyList())
 
         val result = provider.execute(amount)
@@ -61,7 +63,7 @@ class FindInvoiceSuggestionsProviderTest {
 
     @Test
     fun `should return failure when repository throws exception`() {
-        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount))
+        `when`(paymentNotificationRepository.findSuggestionsByAmount(amount = amount, groupId = 1L))
             .thenThrow(RuntimeException("Database error"))
 
         val result = provider.execute(amount)

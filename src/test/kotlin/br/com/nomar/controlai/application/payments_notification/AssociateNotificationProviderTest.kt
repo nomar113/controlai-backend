@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -13,7 +14,6 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -23,9 +23,11 @@ class AssociateNotificationProviderTest {
 
     private val paymentNotificationRepository: PaymentNotificationRepository = mock()
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository = mock()
+    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
     private val provider = AssociateNotificationProvider(
         paymentNotificationRepository,
         purchaseInvoiceRepository,
+        requestContext,
     )
 
     private val notificationId = 1L
@@ -72,8 +74,8 @@ class AssociateNotificationProviderTest {
         val invoice = createInvoice()
         val savedNotification = createNotification(purchaseInvoiceId = purchaseInvoiceId)
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findById(purchaseInvoiceId)).thenReturn(Optional.of(invoice))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, 1L)).thenReturn(invoice)
         `when`(paymentNotificationRepository.saveAndFlush(notification)).thenReturn(savedNotification)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
@@ -94,7 +96,7 @@ class AssociateNotificationProviderTest {
 
     @Test
     fun `should return failure when notification not found`() {
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.empty())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(null)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
 
@@ -106,7 +108,7 @@ class AssociateNotificationProviderTest {
     @Test
     fun `should return failure when notification is cancelled`() {
         val cancelledNotification = createNotification(cancelledAt = LocalDateTime.now())
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(cancelledNotification))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(cancelledNotification)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
 
@@ -118,8 +120,8 @@ class AssociateNotificationProviderTest {
     @Test
     fun `should return failure when invoice not found`() {
         val notification = createNotification()
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findById(purchaseInvoiceId)).thenReturn(Optional.empty())
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, 1L)).thenReturn(null)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
 
@@ -132,8 +134,8 @@ class AssociateNotificationProviderTest {
     fun `should return failure when invoice is cancelled`() {
         val notification = createNotification()
         val cancelledInvoice = createInvoice(cancelledAt = LocalDateTime.now())
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findById(purchaseInvoiceId)).thenReturn(Optional.of(cancelledInvoice))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, 1L)).thenReturn(cancelledInvoice)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
 
@@ -145,8 +147,8 @@ class AssociateNotificationProviderTest {
     @Test
     fun `should return 409 when notification already has an associated invoice`() {
         val alreadyAssociatedNotification = createNotification(purchaseInvoiceId = 99L)
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(alreadyAssociatedNotification))
-        `when`(purchaseInvoiceRepository.findById(purchaseInvoiceId)).thenReturn(Optional.of(createInvoice()))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(alreadyAssociatedNotification)
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, 1L)).thenReturn(createInvoice())
 
         val result = provider.execute(notificationId, purchaseInvoiceId)
 
@@ -164,8 +166,8 @@ class AssociateNotificationProviderTest {
         val invoice = createInvoice()
         val savedNotification = createNotification(purchaseInvoiceId = purchaseInvoiceId)
 
-        `when`(paymentNotificationRepository.findById(notificationId)).thenReturn(Optional.of(notification))
-        `when`(purchaseInvoiceRepository.findById(purchaseInvoiceId)).thenReturn(Optional.of(invoice))
+        `when`(paymentNotificationRepository.findByIdAndGroupId(notificationId, 1L)).thenReturn(notification)
+        `when`(purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, 1L)).thenReturn(invoice)
         `when`(paymentNotificationRepository.saveAndFlush(notification)).thenReturn(savedNotification)
 
         val result = provider.execute(notificationId, purchaseInvoiceId)

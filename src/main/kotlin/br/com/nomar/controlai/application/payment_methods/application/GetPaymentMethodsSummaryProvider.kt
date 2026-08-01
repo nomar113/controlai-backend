@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payment_methods.application
 
 import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payment_methods.entity.PaymentMethodSummary
 import br.com.nomar.controlai.domain.payment_methods.entity.SubCardTotal
 import br.com.nomar.controlai.domain.payment_methods.gateway.GetPaymentMethodsSummaryGateway
@@ -13,11 +14,13 @@ import java.time.YearMonth
 class GetPaymentMethodsSummaryProvider(
     private val jdbcTemplate: JdbcTemplate,
     private val budgetPeriodResolver: BudgetPeriodResolver,
+    private val requestContext: RequestContext,
 ) : GetPaymentMethodsSummaryGateway {
 
     override fun execute(month: YearMonth): Result<List<PaymentMethodSummary>> {
         return runCatching {
             val budgetId = budgetPeriodResolver.resolveBudgetId(month)
+            val groupId = requestContext.groupId
 
             val rows = jdbcTemplate.queryForList(
                 """
@@ -42,10 +45,12 @@ class GetPaymentMethodsSummaryProvider(
                     AND pn.purchased_at >= bpp.start_date
                     AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
                 WHERE pm.deleted_at IS NULL
+                  AND pm.group_id = ?
                 GROUP BY pm.id, pm.name, h.name, sc.id, sc.last_four_digits
                 ORDER BY pm.name, sc.last_four_digits
                 """.trimIndent(),
                 budgetId,
+                groupId,
             )
 
             rows.groupBy { (it["payment_method_id"] as Number).toLong() }

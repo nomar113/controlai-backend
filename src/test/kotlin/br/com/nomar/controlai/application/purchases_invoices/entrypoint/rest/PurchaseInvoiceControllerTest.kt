@@ -13,6 +13,7 @@ import br.com.nomar.controlai.domain.purchases_invoices.gateway.DisassociateInvo
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchasesGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.NotifyPurchaseInvoiceQueueGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
@@ -87,6 +88,7 @@ class PurchaseInvoiceControllerTest {
             purchaseItemRepository = stubOf(PurchaseItemRepository::class.java),
             purchasePaymentRepository = stubOf(PurchasePaymentRepository::class.java),
             paymentNotificationRepository = stubOf(PaymentNotificationRepository::class.java),
+            requestContext = object : RequestContext { override val userId = 1L; override val groupId = 1L },
         )
 
         val result = controller.listPurchases()

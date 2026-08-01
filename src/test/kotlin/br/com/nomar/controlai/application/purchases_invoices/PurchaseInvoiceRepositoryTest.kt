@@ -32,6 +32,7 @@ class PurchaseInvoiceRepositoryTest {
     ): PurchaseInvoiceModel {
         return invoiceRepository.save(
             PurchaseInvoiceModel(
+                groupId = 1L,
                 date = date,
                 merchantName = "Loja Teste Repository",
                 merchantAddress = null,
@@ -51,6 +52,7 @@ class PurchaseInvoiceRepositoryTest {
     private fun associateInvoiceToNotification(invoiceId: Long) {
         notificationRepository.save(
             PaymentNotification(
+                groupId = 1L,
                 purchasedAt = LocalDateTime.now(),
                 amount = BigDecimal("100.00"),
                 merchantName = "Loja Teste",
@@ -68,6 +70,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("100.00"),
             purchasedAt = LocalDateTime.now(),
+            groupId = 1L,
         )
 
         assertTrue(result.none { it.merchantName == "Loja Teste Repository" })
@@ -80,6 +83,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("150.00"),
             purchasedAt = LocalDateTime.now(),
+            groupId = 1L,
         )
 
         assertTrue(result.any { it.id == invoice.id })
@@ -105,6 +109,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("99.90"),
             purchasedAt = notificationTime,
+            groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
         assertEquals(3, result.size)
@@ -123,6 +128,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("75.00"),
             purchasedAt = LocalDateTime.now(),
+            groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
         assertEquals(1, result.size)
@@ -136,6 +142,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("50.00"),
             purchasedAt = LocalDateTime.now(),
+            groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
         assertTrue(result.isEmpty())
@@ -152,6 +159,7 @@ class PurchaseInvoiceRepositoryTest {
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("300.00"),
             purchasedAt = LocalDateTime.now(),
+            groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
         assertTrue(result.isEmpty())

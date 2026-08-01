@@ -28,6 +28,8 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         origin: String,
     ): Long
 
+    fun findByIdAndGroupId(id: Long, groupId: Long): PaymentNotification?
+
     @Query(
         """
         SELECT pn.* FROM payment_notifications pn
@@ -36,6 +38,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
+          AND pn.group_id = :groupId
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
           AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
@@ -63,6 +66,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     fun findByBudgetPeriods(
         budgetId: Long,
         yearMonth: String,
+        groupId: Long,
         limit: Int,
         offset: Int,
         categoryId: Long? = null,
@@ -79,6 +83,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             AND bpp.budget_id = :budgetId
         LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
         WHERE pn.deleted_at IS NULL
+          AND pn.group_id = :groupId
           AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
           AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
           AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
@@ -103,6 +108,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     fun countByBudgetPeriods(
         budgetId: Long,
         yearMonth: String,
+        groupId: Long,
         categoryId: Long? = null,
         cardLastDigits: String? = null,
         paymentMethodId: Long? = null,
@@ -113,6 +119,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             SELECT * FROM payment_notifications
             WHERE deleted_at IS NULL
               AND cancelled_at IS NULL
+              AND group_id = :groupId
               AND amount = :amount
             ORDER BY purchased_at DESC
         """,
@@ -120,6 +127,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     )
     fun findSuggestionsByAmount(
         @Param("amount") amount: BigDecimal,
+        @Param("groupId") groupId: Long,
     ): List<PaymentNotification>
 
     fun findByPurchaseInvoiceId(purchaseInvoiceId: Long): PaymentNotification?
@@ -129,6 +137,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
             SELECT * FROM payment_notifications
             WHERE deleted_at IS NULL
               AND cancelled_at IS NULL
+              AND group_id = :groupId
               AND (purchase_invoice_id IS NULL OR purchase_invoice_id = :invoiceId)
               AND (:amount IS NULL OR amount = :amount)
               AND (:startDate IS NULL OR purchased_at >= :startDate)
@@ -140,6 +149,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
     )
     fun searchNotifications(
         @Param("invoiceId") invoiceId: Long,
+        @Param("groupId") groupId: Long,
         @Param("amount") amount: BigDecimal?,
         @Param("startDate") startDate: LocalDateTime?,
         @Param("endDate") endDate: LocalDateTime?,

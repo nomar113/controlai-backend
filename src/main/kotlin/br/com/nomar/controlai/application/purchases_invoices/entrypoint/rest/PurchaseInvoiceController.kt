@@ -19,6 +19,7 @@ import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurcha
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
@@ -53,6 +54,7 @@ class PurchaseInvoiceController(
     private val purchaseItemRepository: PurchaseItemRepository,
     private val purchasePaymentRepository: PurchasePaymentRepository,
     private val paymentNotificationRepository: PaymentNotificationRepository,
+    private val requestContext: RequestContext,
 ) {
 
     @GetMapping
@@ -69,8 +71,9 @@ class PurchaseInvoiceController(
         @RequestParam categoryId: Long? = null,
     ): Map<String, Any> {
         val (resolvedStart, resolvedEnd) = resolveDateRange(month, startDate, endDate)
+        val groupId = requestContext.groupId
         val offset = page * size
-        val items = purchaseRepository.findInvoicesByDateRange(resolvedStart, resolvedEnd, size, offset, categoryId)
+        val items = purchaseRepository.findInvoicesByDateRange(groupId, resolvedStart, resolvedEnd, size, offset, categoryId)
             .map { projection ->
                 PurchaseResponse.from(
                     Purchase(
@@ -86,7 +89,7 @@ class PurchaseInvoiceController(
                     )
                 )
             }
-        val totalElements = purchaseRepository.countInvoicesByDateRange(resolvedStart, resolvedEnd, categoryId)
+        val totalElements = purchaseRepository.countInvoicesByDateRange(groupId, resolvedStart, resolvedEnd, categoryId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,
@@ -123,8 +126,8 @@ class PurchaseInvoiceController(
 
     @GetMapping("/invoices/{id}")
     fun getInvoice(@PathVariable id: Long): PurchaseInvoiceDetailResponse {
-        val invoice = purchaseInvoiceRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found") }
+        val invoice = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found")
         val items = purchaseItemRepository.findByPurchaseInvoiceId(invoice.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(invoice.id!!)
         val associatedPayment = paymentNotificationRepository.findByPurchaseInvoiceId(invoice.id!!)
@@ -136,8 +139,8 @@ class PurchaseInvoiceController(
         @PathVariable id: Long,
         @RequestBody request: UpdateDescriptionRequest,
     ): PurchaseInvoiceDetailResponse {
-        val invoice = purchaseInvoiceRepository.findById(id)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found") }
+        val invoice = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found")
         val updated = purchaseInvoiceRepository.save(invoice.copy(description = request.description))
         val items = purchaseItemRepository.findByPurchaseInvoiceId(updated.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(updated.id!!)

@@ -17,7 +17,10 @@ data class HolderModel(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @Column(name = "name", length = 100, nullable = false, unique = true)
+    @Column(name = "group_id", nullable = false)
+    val groupId: Long = 0,
+
+    @Column(name = "name", length = 100, nullable = false)
     val name: String,
 
     @CreationTimestamp

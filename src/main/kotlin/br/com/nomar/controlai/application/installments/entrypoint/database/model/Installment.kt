@@ -16,6 +16,9 @@ data class Installment(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
+    @Column(name = "group_id", nullable = false)
+    val groupId: Long = 0,
+
     @Column(name = "parent_id", nullable = false)
     val parentId: Long,
 

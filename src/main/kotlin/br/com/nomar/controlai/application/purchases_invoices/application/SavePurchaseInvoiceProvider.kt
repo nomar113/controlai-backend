@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.purchases_invoices.converter.PurchaseI
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseItemRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.entity.PurchaseInvoice
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SavePurchaseInvoiceGateway
 import org.springframework.stereotype.Component
@@ -14,7 +15,8 @@ class SavePurchaseInvoiceProvider(
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val purchaseItemRepository: PurchaseItemRepository,
     private val purchasePaymentRepository: PurchasePaymentRepository,
-    private val converter: PurchaseInvoiceConverter
+    private val converter: PurchaseInvoiceConverter,
+    private val requestContext: RequestContext,
 ) : SavePurchaseInvoiceGateway {
 
     @Transactional
@@ -28,7 +30,7 @@ class SavePurchaseInvoiceProvider(
                 throw IllegalStateException("Já existe uma nota com essa accessKey")
             }
 
-            val model = converter.toModel(purchaseInvoice)
+            val model = converter.toModel(purchaseInvoice).copy(groupId = requestContext.groupId)
 
             val savedModel = purchaseInvoiceRepository.save(model)
 

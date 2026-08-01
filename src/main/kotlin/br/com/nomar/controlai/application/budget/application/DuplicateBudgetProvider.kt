@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.budget.entrypoint.database.model.Budge
 import br.com.nomar.controlai.application.budget.entrypoint.database.model.BudgetModel
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.budget.entity.Budget
 import br.com.nomar.controlai.domain.budget.gateway.DuplicateBudgetGateway
 import org.slf4j.LoggerFactory
@@ -18,20 +19,22 @@ class DuplicateBudgetProvider(
     private val converter: BudgetConverter,
     private val paymentMethodRepository: PaymentMethodRepository,
     private val periodCalculator: BudgetPeriodCalculator,
+    private val requestContext: RequestContext,
 ) : DuplicateBudgetGateway {
 
     private val logger = LoggerFactory.getLogger(DuplicateBudgetProvider::class.java)
 
     override fun execute(sourceBudgetId: Long, targetYearMonth: YearMonth): Result<Budget> {
         return runCatching {
-            val source = budgetRepository.findById(sourceBudgetId)
-                .orElseThrow { NoSuchElementException("Source budget not found: $sourceBudgetId") }
+            val groupId = requestContext.groupId
+            val source = budgetRepository.findByIdAndGroupId(sourceBudgetId, groupId)
+                ?: throw NoSuchElementException("Source budget not found: $sourceBudgetId")
 
-            if (budgetRepository.findByYearMonth(targetYearMonth.toString()).isPresent) {
+            if (budgetRepository.findByYearMonthAndGroupId(targetYearMonth.toString(), groupId).isPresent) {
                 throw IllegalStateException("Budget for $targetYearMonth already exists.")
             }
 
-            val newBudget = BudgetModel(yearMonth = targetYearMonth.toString())
+            val newBudget = BudgetModel(yearMonth = targetYearMonth.toString(), groupId = groupId)
 
             newBudget.items.addAll(source.items.map { item ->
                 BudgetItemModel(
@@ -50,7 +53,7 @@ class DuplicateBudgetProvider(
                 )
             })
 
-            val paymentMethods = paymentMethodRepository.findAllByOrderByNameAsc()
+            val paymentMethods = paymentMethodRepository.findAllByGroupIdOrderByNameAsc(groupId)
             val periods = periodCalculator.generatePeriods(newBudget, paymentMethods, targetYearMonth)
             newBudget.paymentPeriods.addAll(periods)
             logger.info("Generated ${periods.size} payment periods for duplicated budget $targetYearMonth")

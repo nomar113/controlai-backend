@@ -19,7 +19,10 @@ data class CategoryModel(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @Column(name = "name", length = 50, nullable = false, unique = true)
+    @Column(name = "group_id", nullable = false)
+    val groupId: Long = 0,
+
+    @Column(name = "name", length = 50, nullable = false)
     val name: String = "",
 
     @Column(name = "icon", length = 10, nullable = true)

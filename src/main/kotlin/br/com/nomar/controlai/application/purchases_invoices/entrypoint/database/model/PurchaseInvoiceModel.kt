@@ -21,6 +21,9 @@ data class PurchaseInvoiceModel (
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
+    @Column(name = "group_id", nullable = false)
+    val groupId: Long = 0,
+
     @Column(name = "date")
     val date: OffsetDateTime,
 

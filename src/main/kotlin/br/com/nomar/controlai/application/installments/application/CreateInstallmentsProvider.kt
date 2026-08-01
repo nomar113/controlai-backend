@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.installments.application
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
+import br.com.nomar.controlai.domain.auth.RequestContext
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -11,6 +12,7 @@ import java.time.LocalDate
 @Service
 class CreateInstallmentsProvider(
     private val installmentRepository: InstallmentRepository,
+    private val requestContext: RequestContext,
 ) {
     fun calculate(
         totalInstallments: Int,
@@ -36,9 +38,11 @@ class CreateInstallmentsProvider(
         totalAmount: BigDecimal,
         startDate: LocalDate,
     ): List<Installment> {
+        val groupId = requestContext.groupId
         val previews = calculate(totalInstallments, totalAmount, startDate)
         val installments = previews.map { preview ->
             Installment(
+                groupId = groupId,
                 parentId = parentId,
                 installmentNumber = preview.installmentNumber,
                 totalInstallments = preview.totalInstallments,
@@ -55,8 +59,10 @@ class CreateInstallmentsProvider(
         amounts: Map<Int, BigDecimal>,
         startDate: LocalDate,
     ): List<Installment> {
+        val groupId = requestContext.groupId
         val installments = (1..totalInstallments).map { number ->
             Installment(
+                groupId = groupId,
                 parentId = parentId,
                 installmentNumber = number,
                 totalInstallments = totalInstallments,

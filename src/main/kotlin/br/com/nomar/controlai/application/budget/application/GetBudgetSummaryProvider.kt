@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.budget.application
 
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
+import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.budget.entity.*
 import br.com.nomar.controlai.domain.budget.gateway.GetBudgetSummaryGateway
 import org.springframework.jdbc.core.JdbcTemplate
@@ -14,12 +15,13 @@ class GetBudgetSummaryProvider(
     private val budgetRepository: BudgetRepository,
     private val jdbcTemplate: JdbcTemplate,
     private val budgetPeriodResolver: BudgetPeriodResolver,
+    private val requestContext: RequestContext,
 ) : GetBudgetSummaryGateway {
 
     override fun execute(yearMonth: YearMonth): Result<BudgetSummary> {
         return runCatching {
             val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
-            val budgetModel = budgetRepository.findByYearMonth(yearMonth.toString())
+            val budgetModel = budgetRepository.findByYearMonthAndGroupId(yearMonth.toString(), requestContext.groupId)
                 .orElseThrow { NoSuchElementException("Budget not found: $yearMonth") }
 
             val actualByCategory = queryActualByCategory(budgetId)

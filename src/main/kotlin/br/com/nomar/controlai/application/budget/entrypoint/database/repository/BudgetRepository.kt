@@ -6,4 +6,6 @@ import java.util.Optional
 
 interface BudgetRepository : JpaRepository<BudgetModel, Long> {
     fun findByYearMonth(yearMonth: String): Optional<BudgetModel>
+    fun findByYearMonthAndGroupId(yearMonth: String, groupId: Long): Optional<BudgetModel>
+    fun findByIdAndGroupId(id: Long, groupId: Long): BudgetModel?
 }
