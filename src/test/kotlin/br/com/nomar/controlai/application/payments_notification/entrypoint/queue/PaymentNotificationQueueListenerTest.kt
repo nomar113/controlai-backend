@@ -114,4 +114,81 @@ class PaymentNotificationQueueListenerTest {
         assertEquals("Loja Teste", savedNotification?.merchantName)
         assertEquals("HTTP_REQUEST", savedNotification?.originType)
     }
+
+    @Test
+    fun `should use groupId from message when present`() {
+        val sqsClient = mock(SqsClient::class.java)
+        var savedNotification: PaymentNotification? = null
+        val saveUseCase = SavePaymentNotificationUseCase(
+            SavePaymentNotificationGateway {
+                savedNotification = it
+                Result.success(it.copy(id = 1))
+            }
+        )
+        val listener = PaymentNotificationQueueListener(
+            paymentsNotificationQueueUrl = "queue-url",
+            sqsClient = sqsClient,
+            objectMapper = objectMapper,
+            paymentNotificationTextParser = PaymentNotificationTextParser(),
+            savePaymentNotificationUseCase = saveUseCase,
+        )
+        val payload = PaymentNotificationQueueMessage(
+            cardLastDigits = "9999",
+            purchasedAt = java.time.LocalDateTime.of(2026, 1, 1, 12, 0),
+            amount = java.math.BigDecimal("50.00"),
+            merchantName = "Supermercado",
+            origin = "iPhone",
+            originType = "HTTP_REQUEST",
+            groupId = 42L,
+        )
+        val message = Message.builder()
+            .messageId("message-3")
+            .receiptHandle("receipt-3")
+            .body(objectMapper.writeValueAsString(payload))
+            .build()
+
+        `when`(sqsClient.receiveMessage(any(ReceiveMessageRequest::class.java))).thenReturn(
+            ReceiveMessageResponse.builder().messages(message).build()
+        )
+        `when`(sqsClient.deleteMessage(any(DeleteMessageRequest::class.java))).thenReturn(DeleteMessageResponse.builder().build())
+
+        listener.listen()
+
+        assertEquals(42L, savedNotification?.groupId)
+    }
+
+    @Test
+    fun `should fall back to legacy group id 1 when message has no groupId`() {
+        val sqsClient = mock(SqsClient::class.java)
+        var savedNotification: PaymentNotification? = null
+        val saveUseCase = SavePaymentNotificationUseCase(
+            SavePaymentNotificationGateway {
+                savedNotification = it
+                Result.success(it.copy(id = 1))
+            }
+        )
+        val listener = PaymentNotificationQueueListener(
+            paymentsNotificationQueueUrl = "queue-url",
+            sqsClient = sqsClient,
+            objectMapper = objectMapper,
+            paymentNotificationTextParser = PaymentNotificationTextParser(),
+            savePaymentNotificationUseCase = saveUseCase,
+        )
+        // Legacy message without groupId field — Jackson will leave it null
+        val legacyJson = """{"origin":"old-app","originType":"HTTP_REQUEST","cardLastDigits":"1111","purchasedAt":"2026-01-01T10:00:00","amount":20.00,"merchantName":"Padaria"}"""
+        val message = Message.builder()
+            .messageId("message-legacy")
+            .receiptHandle("receipt-legacy")
+            .body(legacyJson)
+            .build()
+
+        `when`(sqsClient.receiveMessage(any(ReceiveMessageRequest::class.java))).thenReturn(
+            ReceiveMessageResponse.builder().messages(message).build()
+        )
+        `when`(sqsClient.deleteMessage(any(DeleteMessageRequest::class.java))).thenReturn(DeleteMessageResponse.builder().build())
+
+        listener.listen()
+
+        assertEquals(1L, savedNotification?.groupId)
+    }
 }

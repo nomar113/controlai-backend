@@ -62,16 +62,19 @@ class PaymentNotificationQueueListener(
     }
 
     private fun PaymentNotificationQueueMessage.toPaymentNotification(): PaymentNotification {
+        // Messages produced before Task 3 have no groupId; fall back to the legacy group.
+        val resolvedGroupId = groupId ?: LEGACY_GROUP_ID
         val rawText = text?.takeIf { it.isNotBlank() }
         if (rawText != null) {
             return paymentNotificationTextParser.parse(
                 text = rawText,
                 origin = origin,
                 originType = originType,
-            )
+            ).copy(groupId = resolvedGroupId)
         }
 
         return PaymentNotification(
+            groupId = resolvedGroupId,
             cardLastDigits = requireNotNull(cardLastDigits) { "cardLastDigits is required when text is not provided" },
             purchasedAt = requireNotNull(purchasedAt) { "purchasedAt is required when text is not provided" },
             amount = requireNotNull(amount) { "amount is required when text is not provided" },
@@ -81,5 +84,9 @@ class PaymentNotificationQueueListener(
             origin = origin,
             originType = originType,
         )
+    }
+
+    companion object {
+        private const val LEGACY_GROUP_ID = 1L
     }
 }

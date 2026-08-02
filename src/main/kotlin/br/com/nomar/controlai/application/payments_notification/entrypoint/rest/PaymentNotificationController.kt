@@ -247,6 +247,7 @@ class PaymentNotificationController(
             text = request.text,
             origin = request.origin,
             originType = request.originType ?: "HTTP_REQUEST",
+            groupId = requestContext.groupId,
         )
         notificationQueueUseCase.execute(queueMessage).getOrThrow()
         return mapOf(

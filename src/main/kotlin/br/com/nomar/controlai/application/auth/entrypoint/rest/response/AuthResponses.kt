@@ -1,8 +1,10 @@
 package br.com.nomar.controlai.application.auth.entrypoint.rest.response
 
+import br.com.nomar.controlai.domain.auth.entity.ApiKey
 import br.com.nomar.controlai.domain.auth.entity.AuthSession
 import br.com.nomar.controlai.domain.auth.entity.Profile
 import br.com.nomar.controlai.domain.auth.entity.User
+import java.time.LocalDateTime
 
 data class UserResponse(
     val id: Long,
@@ -45,6 +47,31 @@ data class ProfileResponse(
         fun from(profile: Profile) = ProfileResponse(
             user = UserResponse.from(profile.user),
             group = GroupSummaryResponse(id = profile.group.id!!, name = profile.group.name),
+        )
+    }
+}
+
+// Returned only on POST /me/api-key — includes the raw key value (shown once)
+data class ApiKeyCreatedResponse(
+    val id: Long,
+    val label: String,
+    val key: String,
+    val createdAt: LocalDateTime?,
+)
+
+// Returned by GET /me/api-key — raw key is never returned after creation
+data class ApiKeyResponse(
+    val id: Long,
+    val label: String,
+    val createdAt: LocalDateTime?,
+    val revoked: Boolean,
+) {
+    companion object {
+        fun from(apiKey: ApiKey) = ApiKeyResponse(
+            id = apiKey.id!!,
+            label = apiKey.label,
+            createdAt = apiKey.createdAt,
+            revoked = apiKey.isRevoked(),
         )
     }
 }

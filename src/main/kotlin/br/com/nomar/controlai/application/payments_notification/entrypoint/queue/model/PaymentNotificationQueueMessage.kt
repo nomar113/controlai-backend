@@ -13,4 +13,6 @@ data class PaymentNotificationQueueMessage(
     val merchantName: String? = null,
     val numberOfInstallments: Int? = null,
     val currentInstallmentNumber: Int? = null,
+    // Null in messages enqueued before Task 3; listener falls back to legacy group (id 1)
+    val groupId: Long? = null,
 )

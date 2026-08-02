@@ -15,8 +15,12 @@ class JwtRequestContext : RequestContext {
         get() = jwt().subject.toLong()
 
     override val groupId: Long
-        get() = (jwt().claims["groupId"] as? Number)?.toLong()
-            ?: throw IllegalStateException("JWT has no groupId claim")
+        get() = when (val auth = SecurityContextHolder.getContext().authentication) {
+            is ApiKeyAuthentication -> auth.groupId
+            is JwtAuthenticationToken -> (auth.token.claims["groupId"] as? Number)?.toLong()
+                ?: throw IllegalStateException("JWT has no groupId claim")
+            else -> throw IllegalStateException("No authenticated principal in the current request")
+        }
 
     private fun jwt(): Jwt =
         (SecurityContextHolder.getContext().authentication as? JwtAuthenticationToken)?.token
