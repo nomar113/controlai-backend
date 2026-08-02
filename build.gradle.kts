@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+	implementation("com.google.api-client:google-api-client:2.7.2")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4")
 	implementation("software.amazon.awssdk:sqs:$awsSdkVersion")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

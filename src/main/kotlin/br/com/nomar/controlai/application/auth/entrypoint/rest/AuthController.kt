@@ -1,15 +1,22 @@
 package br.com.nomar.controlai.application.auth.entrypoint.rest
 
+import br.com.nomar.controlai.application.auth.entrypoint.rest.request.ForgotPasswordRequest
+import br.com.nomar.controlai.application.auth.entrypoint.rest.request.GoogleLoginRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LoginRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LogoutRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.RefreshRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.RegisterRequest
+import br.com.nomar.controlai.application.auth.entrypoint.rest.request.ResetPasswordRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.response.AuthResponse
 import br.com.nomar.controlai.domain.auth.exception.EmailAlreadyUsedException
+import br.com.nomar.controlai.domain.auth.exception.InvalidResetTokenException
+import br.com.nomar.controlai.domain.auth.usecase.ForgotPasswordUseCase
+import br.com.nomar.controlai.domain.auth.usecase.GoogleLoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.LoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.LogoutUseCase
 import br.com.nomar.controlai.domain.auth.usecase.RefreshSessionUseCase
 import br.com.nomar.controlai.domain.auth.usecase.RegisterUserUseCase
+import br.com.nomar.controlai.domain.auth.usecase.ResetPasswordUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.PostMapping
@@ -24,8 +31,11 @@ import org.springframework.web.server.ResponseStatusException
 class AuthController(
     private val registerUserUseCase: RegisterUserUseCase,
     private val loginUseCase: LoginUseCase,
+    private val googleLoginUseCase: GoogleLoginUseCase,
     private val refreshSessionUseCase: RefreshSessionUseCase,
     private val logoutUseCase: LogoutUseCase,
+    private val forgotPasswordUseCase: ForgotPasswordUseCase,
+    private val resetPasswordUseCase: ResetPasswordUseCase,
 ) {
 
     @PostMapping("/register")
@@ -40,6 +50,12 @@ class AuthController(
                     else -> throw it
                 }
             }
+
+    @PostMapping("/google")
+    fun googleLogin(@Validated @RequestBody request: GoogleLoginRequest): AuthResponse =
+        googleLoginUseCase.execute(request.idToken)
+            .map(AuthResponse::from)
+            .getOrElse { throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido ou expirado") }
 
     // Generic 401 on any failure so the response never reveals whether the email exists
     @PostMapping("/login")
@@ -58,5 +74,25 @@ class AuthController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun logout(@Validated @RequestBody request: LogoutRequest) {
         logoutUseCase.execute(request.refreshToken).getOrThrow()
+    }
+
+    // Always responds 204 regardless of whether the email exists (RF-2.3)
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun forgotPassword(@Validated @RequestBody request: ForgotPasswordRequest) {
+        forgotPasswordUseCase.execute(request.email).getOrThrow()
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun resetPassword(@Validated @RequestBody request: ResetPasswordRequest) {
+        resetPasswordUseCase.execute(request.token, request.newPassword)
+            .getOrElse { ex ->
+                when (ex) {
+                    is InvalidResetTokenException -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+                    is IllegalArgumentException -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+                    else -> throw ex
+                }
+            }
     }
 }
