@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.domain.auth.gateway
 
-fun interface EmailGateway {
+interface EmailGateway {
     fun sendPasswordReset(toEmail: String, toName: String, resetLink: String): Result<Unit>
+    fun sendGroupInvite(toEmail: String, inviteLink: String): Result<Unit>
 }

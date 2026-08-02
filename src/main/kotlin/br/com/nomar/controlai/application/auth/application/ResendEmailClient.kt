@@ -17,6 +17,28 @@ class ResendEmailClient(
 
     private val restClient = restClientBuilder.build()
 
+    override fun sendGroupInvite(toEmail: String, inviteLink: String): Result<Unit> {
+        return runCatching {
+            val html = buildGroupInviteHtml(inviteLink)
+            val body = mapOf(
+                "from" to fromEmail,
+                "to" to listOf(toEmail),
+                "subject" to "Você foi convidado para compartilhar dados no ControlAI",
+                "html" to html,
+            )
+
+            restClient.post()
+                .uri(RESEND_API_URL)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $apiKey")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity()
+
+            logger.info("Group invite email sent to {}", toEmail.take(3) + "***")
+        }
+    }
+
     override fun sendPasswordReset(toEmail: String, toName: String, resetLink: String): Result<Unit> {
         return runCatching {
             val html = buildPasswordResetHtml(toName, resetLink)
@@ -37,6 +59,34 @@ class ResendEmailClient(
 
             logger.info("Password reset email sent to user {}", toEmail.take(3) + "***")
         }
+    }
+
+    private fun buildGroupInviteHtml(link: String): String {
+        return """
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head><meta charset="UTF-8"><title>Convite para compartilhar dados</title></head>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+              <h2 style="color: #1a1a2e;">Convite para compartilhar dados — ControlAI</h2>
+              <p>Você foi convidado para compartilhar dados financeiros no ControlAI.</p>
+              <p>Ao aceitar, você e quem te convidou passarão a ver e gerenciar o mesmo conjunto de dados (cartões, compras, orçamentos).</p>
+              <p>Clique no botão abaixo para aceitar ou recusar o convite. O convite é válido por <strong>7 dias</strong>.</p>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="$link"
+                   style="background-color: #1a1a2e; color: #ffffff; padding: 14px 28px;
+                          text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                  Ver convite
+                </a>
+              </div>
+              <p>Se você não esperava este convite, pode ignorar este e-mail com segurança.</p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+              <p style="font-size: 12px; color: #6b7280;">
+                Se o botão não funcionar, copie e cole este link no seu navegador:<br>
+                <a href="$link" style="color: #1a1a2e;">$link</a>
+              </p>
+            </body>
+            </html>
+        """.trimIndent()
     }
 
     private fun buildPasswordResetHtml(name: String, link: String): String {

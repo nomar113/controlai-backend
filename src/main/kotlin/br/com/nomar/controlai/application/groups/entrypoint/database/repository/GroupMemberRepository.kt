@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface GroupMemberRepository : JpaRepository<GroupMemberModel, Long> {
     fun findByUserId(userId: Long): GroupMemberModel?
+    fun countByGroupId(groupId: Long): Int
+    fun findAllByGroupId(groupId: Long): List<GroupMemberModel>
 }

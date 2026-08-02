@@ -51,9 +51,12 @@ class PasswordUseCasesTest {
         emailResult: Result<Unit> = Result.success(Unit),
         capturedLinks: MutableList<String> = mutableListOf(),
     ): ForgotPasswordUseCase {
-        val emailGateway = EmailGateway { _, _, link ->
-            capturedLinks.add(link)
-            emailResult
+        val emailGateway = object : EmailGateway {
+            override fun sendPasswordReset(toEmail: String, toName: String, resetLink: String): Result<Unit> {
+                capturedLinks.add(resetLink)
+                return emailResult
+            }
+            override fun sendGroupInvite(toEmail: String, inviteLink: String) = Result.success(Unit)
         }
         return ForgotPasswordUseCase(
             findUserByEmailGateway = FindUserByEmailGateway { Result.success(user) },

@@ -4,4 +4,5 @@ package br.com.nomar.controlai.domain.auth
 interface RequestContext {
     val userId: Long
     val groupId: Long
+    val email: String
 }

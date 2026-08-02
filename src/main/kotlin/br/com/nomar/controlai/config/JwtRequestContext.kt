@@ -22,6 +22,10 @@ class JwtRequestContext : RequestContext {
             else -> throw IllegalStateException("No authenticated principal in the current request")
         }
 
+    override val email: String
+        get() = jwt().getClaimAsString("email")
+            ?: throw IllegalStateException("JWT has no email claim")
+
     private fun jwt(): Jwt =
         (SecurityContextHolder.getContext().authentication as? JwtAuthenticationToken)?.token
             ?: throw IllegalStateException("No authenticated JWT in the current request")
