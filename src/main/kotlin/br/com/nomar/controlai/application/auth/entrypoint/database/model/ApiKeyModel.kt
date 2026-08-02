@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.auth.entrypoint.database.model
 
+import br.com.nomar.controlai.domain.auth.entity.ApiKey
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -7,7 +8,6 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
-import java.time.Instant
 import java.time.LocalDateTime
 
 @Entity
@@ -24,12 +24,12 @@ data class ApiKeyModel(
     val keyHash: String = "",
 
     @Column(name = "label", nullable = false)
-    val label: String = "iPhone Shortcut",
+    val label: String = ApiKey.DEFAULT_LABEL,
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     val createdAt: LocalDateTime? = null,
 
     @Column(name = "revoked_at")
-    val revokedAt: Instant? = null,
+    val revokedAt: LocalDateTime? = null,
 )

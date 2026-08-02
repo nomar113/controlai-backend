@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 
@@ -13,6 +14,8 @@ class ApiKeyAuthFilter(
     private val findApiKeyByHashGateway: FindApiKeyByHashGateway,
     private val meterRegistry: MeterRegistry,
 ) : OncePerRequestFilter() {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
         !(request.method == "POST" && request.requestURI == "/payments/notification")
@@ -25,7 +28,10 @@ class ApiKeyAuthFilter(
         }
 
         val keyHash = TokenHasher.sha256(rawKey)
-        val apiKey = findApiKeyByHashGateway.execute(keyHash).getOrNull()
+        val apiKey = findApiKeyByHashGateway.execute(keyHash)
+            .onFailure { ex -> log.error("Failed to look up API key from database", ex) }
+            .getOrNull()
+
         if (apiKey == null || apiKey.isRevoked()) {
             meterRegistry.counter("auth.api_key.invalid").increment()
             rejectUnauthorized(response)

@@ -8,7 +8,7 @@ import br.com.nomar.controlai.domain.auth.gateway.FindApiKeyByGroupIdGateway
 import br.com.nomar.controlai.domain.auth.gateway.FindApiKeyByHashGateway
 import br.com.nomar.controlai.domain.auth.gateway.RevokeApiKeyGateway
 import org.springframework.stereotype.Component
-import java.time.Instant
+import java.time.LocalDateTime
 
 // FindApiKeyByGroupIdGateway and FindApiKeyByHashGateway are in the same class because
 // their SAM methods have different parameter types (Long vs String) — no JVM clash.
@@ -42,7 +42,7 @@ class RevokeApiKeyProvider(
         runCatching {
             apiKeyRepository.findByGroupId(groupId)?.let { model ->
                 if (model.revokedAt == null) {
-                    apiKeyRepository.save(model.copy(revokedAt = Instant.now()))
+                    apiKeyRepository.save(model.copy(revokedAt = LocalDateTime.now()))
                 }
             }
             Unit

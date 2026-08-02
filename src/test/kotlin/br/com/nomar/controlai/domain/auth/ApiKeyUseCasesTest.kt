@@ -4,7 +4,7 @@ import br.com.nomar.controlai.domain.auth.entity.ApiKey
 import br.com.nomar.controlai.domain.auth.usecase.CreateApiKeyUseCase
 import br.com.nomar.controlai.domain.auth.usecase.GetApiKeyUseCase
 import br.com.nomar.controlai.domain.auth.usecase.RevokeApiKeyUseCase
-import java.time.Instant
+import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class ApiKeyUseCasesTest {
 
-    private fun savedKey(groupId: Long = 1, revokedAt: Instant? = null) = ApiKey(
+    private fun savedKey(groupId: Long = 1, revokedAt: LocalDateTime? = null) = ApiKey(
         id = 10,
         groupId = groupId,
         keyHash = "hash",
@@ -59,7 +59,7 @@ class ApiKeyUseCasesTest {
 
     @Test
     fun `CreateApiKeyUseCase should succeed when existing key is already revoked`() {
-        val revokedKey = savedKey(revokedAt = Instant.now())
+        val revokedKey = savedKey(revokedAt = LocalDateTime.now())
         val useCase = CreateApiKeyUseCase(
             findApiKeyByGroupIdGateway = { Result.success(revokedKey) },
             createApiKeyGateway = { Result.success(it.copy(id = 2)) },
@@ -137,7 +137,7 @@ class ApiKeyUseCasesTest {
     @Test
     fun `RevokeApiKeyUseCase should fail when key is already revoked`() {
         val useCase = RevokeApiKeyUseCase(
-            findApiKeyByGroupIdGateway = { Result.success(savedKey(revokedAt = Instant.now())) },
+            findApiKeyByGroupIdGateway = { Result.success(savedKey(revokedAt = LocalDateTime.now())) },
             revokeApiKeyGateway = { Result.success(Unit) },
         )
 

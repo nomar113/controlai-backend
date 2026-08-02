@@ -14,19 +14,17 @@ class CreateApiKeyUseCase(
 ) {
 
     // Returns (saved ApiKey, raw key value). Raw value shown only at creation time.
-    fun execute(groupId: Long, label: String = "iPhone Shortcut"): Result<Pair<ApiKey, String>> {
+    fun execute(groupId: Long, label: String = ApiKey.DEFAULT_LABEL): Result<Pair<ApiKey, String>> {
         return runCatching {
             val existing = findApiKeyByGroupIdGateway.execute(groupId).getOrThrow()
             if (existing != null && !existing.isRevoked()) {
                 throw IllegalStateException("An active API key already exists. Revoke it before creating a new one.")
             }
-
-            val rawKey = "cap_" + UUID.randomUUID().toString().replace("-", "")
+            val rawKey = ApiKey.RAW_KEY_PREFIX + UUID.randomUUID().toString().replace("-", "")
             val keyHash = TokenHasher.sha256(rawKey)
             val saved = createApiKeyGateway.execute(
                 ApiKey(groupId = groupId, keyHash = keyHash, label = label)
             ).getOrThrow()
-
             Pair(saved, rawKey)
         }
     }
