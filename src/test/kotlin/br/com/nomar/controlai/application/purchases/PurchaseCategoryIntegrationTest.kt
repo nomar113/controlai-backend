@@ -35,13 +35,13 @@ class PurchaseCategoryIntegrationTest {
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")
 
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES ('Test Holder')")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Test Holder'", Long::class.java)!!
 
-        jdbcTemplate.update("INSERT INTO payment_methods (name, type, holder_id) VALUES ('Nubank', 'CREDIT_CARD', ?)", holderId)
+        jdbcTemplate.update("INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, 1)", holderId)
         paymentMethodId = jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = 'Nubank'", Long::class.java)!!
 
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES ('Mercado')")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Mercado', 1)")
         categoryId = jdbcTemplate.queryForObject("SELECT id FROM categories WHERE name = 'Mercado'", Long::class.java)!!
     }
 
@@ -72,8 +72,8 @@ class PurchaseCategoryIntegrationTest {
     fun `GET purchases should return categoryName from JOIN`() {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id)
-               VALUES (CURRENT_TIMESTAMP, 100.00, 'Loja Teste', 1, 'MANUAL', 'MANUAL', ?)""",
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id, group_id)
+               VALUES (CURRENT_TIMESTAMP, 100.00, 'Loja Teste', 1, 'MANUAL', 'MANUAL', ?, 1)""",
             categoryId
         )
 
@@ -86,8 +86,8 @@ class PurchaseCategoryIntegrationTest {
     fun `GET purchases without category should return categoryName null`() {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (CURRENT_TIMESTAMP, 50.00, 'Loja Sem Categoria', 1, 'MANUAL', 'MANUAL')"""
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (CURRENT_TIMESTAMP, 50.00, 'Loja Sem Categoria', 1, 'MANUAL', 'MANUAL', 1)"""
         )
 
         mockMvc.perform(get("/purchases"))

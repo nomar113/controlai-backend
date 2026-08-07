@@ -167,8 +167,8 @@ class PaymentNotificationCategoryIntegrationTest {
     private fun createNotification(): Long {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, 1)""",
             "9999", 50.00, "Test Store Category", 1, "MANUAL", "MANUAL"
         )
         return jdbcTemplate.queryForObject(

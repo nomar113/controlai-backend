@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.installments.application.CreateInstall
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
+import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationPeriodQueryProvider
 import br.com.nomar.controlai.application.payments_notification.application.UpdateNotificationPaymentMethodProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
@@ -54,6 +55,7 @@ class PaymentNotificationController(
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val categoryRepository: CategoryRepository,
     private val budgetPeriodResolver: BudgetPeriodResolver,
+    private val paymentNotificationPeriodQueryProvider: PaymentNotificationPeriodQueryProvider,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
     private val associateNotificationProvider: AssociateNotificationProvider,
@@ -89,11 +91,11 @@ class PaymentNotificationController(
         }
         val yearMonthStr = yearMonth.toString()
         val groupId = requestContext.groupId
-        val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
+        val periods = budgetPeriodResolver.resolvePeriods(yearMonth)
         val offset = page * size
-        val items = paymentNotificationRepository.findByBudgetPeriods(budgetId, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
+        val items = paymentNotificationPeriodQueryProvider.findByBudgetPeriods(periods, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
             .map(PaymentNotificationResponse::from)
-        val totalElements = paymentNotificationRepository.countByBudgetPeriods(budgetId, yearMonthStr, groupId, categoryId, cardLastDigits, paymentMethodId)
+        val totalElements = paymentNotificationPeriodQueryProvider.countByBudgetPeriods(periods, yearMonthStr, groupId, categoryId, cardLastDigits, paymentMethodId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
             "content" to items,

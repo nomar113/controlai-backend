@@ -88,7 +88,7 @@ class PurchaseInvoiceControllerTest {
             purchaseItemRepository = stubOf(PurchaseItemRepository::class.java),
             purchasePaymentRepository = stubOf(PurchasePaymentRepository::class.java),
             paymentNotificationRepository = stubOf(PaymentNotificationRepository::class.java),
-            requestContext = object : RequestContext { override val userId = 1L; override val groupId = 1L },
+            requestContext = object : RequestContext { override val userId = 1L; override val groupId = 1L; override val email = "test@example.com" },
         )
 
         val result = controller.listPurchases()

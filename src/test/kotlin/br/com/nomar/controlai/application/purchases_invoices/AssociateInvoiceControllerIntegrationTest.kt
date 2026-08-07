@@ -50,8 +50,8 @@ class AssociateInvoiceControllerIntegrationTest {
     ): Long {
         jdbcTemplate.update(
             """INSERT INTO purchase_invoices
-               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount, cancelled_at)
-               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0, ?)""",
+               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount, cancelled_at, group_id)
+               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0, ?, 1)""",
             date,
             merchantName,
             UUID.randomUUID().toString().take(44),
@@ -75,8 +75,8 @@ class AssociateInvoiceControllerIntegrationTest {
     ): Long {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, purchase_invoice_id, cancelled_at, deleted_at)
-               VALUES (?, ?, ?, 1, 'MANUAL', 'MANUAL', ?, ?, ?)""",
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, purchase_invoice_id, cancelled_at, deleted_at, group_id)
+               VALUES (?, ?, ?, 1, 'MANUAL', 'MANUAL', ?, ?, ?, 1)""",
             purchasedAt,
             amount,
             merchantName,

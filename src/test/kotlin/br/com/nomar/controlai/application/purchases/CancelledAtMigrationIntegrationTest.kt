@@ -35,8 +35,8 @@ class CancelledAtMigrationIntegrationTest {
     fun `should accept null cancelled_at for existing records`() {
         // Insert a record and verify cancelled_at defaults to null
         jdbcTemplate.update(
-            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES ('1234', '2024-01-01 00:00:00', 100.00, 'TestStore', 1, 'NUBANK', 'HTTP_REQUEST')"""
+            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES ('1234', '2024-01-01 00:00:00', 100.00, 'TestStore', 1, 'NUBANK', 'HTTP_REQUEST', 1)"""
         )
         val cancelledAt = jdbcTemplate.queryForObject(
             "SELECT cancelled_at FROM payment_notifications WHERE merchant_name = 'TestStore'",

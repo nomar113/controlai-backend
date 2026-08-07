@@ -5,7 +5,9 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.purchases_invoices.application.DisassociateInvoiceProvider
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.config.TestSecurityContext
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -34,6 +36,9 @@ class DisassociateInvoiceProviderTest {
     private val createdInvoiceIds = mutableListOf<Long>()
     private val createdNotificationIds = mutableListOf<Long>()
 
+    @BeforeEach
+    fun authenticate() = TestSecurityContext.authenticateAsGroup()
+
     @AfterEach
     fun cleanup() {
         createdNotificationIds.forEach { id ->
@@ -44,11 +49,13 @@ class DisassociateInvoiceProviderTest {
         }
         createdNotificationIds.clear()
         createdInvoiceIds.clear()
+        TestSecurityContext.clear()
     }
 
     private fun createInvoice(cancelledAt: LocalDateTime? = null): PurchaseInvoiceModel {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
+                groupId = 1L,
                 date = OffsetDateTime.now(),
                 merchantName = "Mercado Teste Disassociate",
                 merchantAddress = "Rua A",

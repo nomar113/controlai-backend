@@ -24,8 +24,8 @@ class CancelPurchaseInvoiceControllerTest {
 
     private fun insertInvoice(cancelledAt: String? = null): Long {
         jdbcTemplate.update(
-            """INSERT INTO purchase_invoices (date, merchant_name, merchant_address, cnpj, total_items, subtotal, total, taxes, discount, cancelled_at)
-               VALUES ('2024-01-15 10:00:00', 'Mercado Test', 'Rua A', '12345678000199', 3, 50.00, 50.00, 0.00, 0.00, ${if (cancelledAt != null) "'$cancelledAt'" else "NULL"})"""
+            """INSERT INTO purchase_invoices (date, merchant_name, merchant_address, cnpj, total_items, subtotal, total, taxes, discount, cancelled_at, group_id)
+               VALUES ('2024-01-15 10:00:00', 'Mercado Test', 'Rua A', '12345678000199', 3, 50.00, 50.00, 0.00, 0.00, ${if (cancelledAt != null) "'$cancelledAt'" else "NULL"}, 1)"""
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM purchase_invoices", Long::class.java)!!
     }

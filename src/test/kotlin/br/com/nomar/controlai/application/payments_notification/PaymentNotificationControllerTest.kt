@@ -31,13 +31,13 @@ class PaymentNotificationControllerTest {
     }
 
     private fun insertHolder(name: String = "Titular Teste"): Long {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES ('$name')")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('$name', 1)")
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM holders", Long::class.java)!!
     }
 
     private fun insertPaymentMethod(holderId: Long, name: String = "Cartao Teste", type: String = "CREDIT"): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES ('$name', '$type', $holderId)"
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('$name', '$type', $holderId, 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
@@ -57,8 +57,8 @@ class PaymentNotificationControllerTest {
     private fun insertCancelledNotification(amount: Double = 150.00): Long {
         jdbcTemplate.update(
             "INSERT INTO payment_notifications " +
-                "(card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, cancelled_at) " +
-                "VALUES ('1234', '2024-06-15 10:00:00', $amount, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', '2024-06-20 10:00:00')"
+                "(card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, cancelled_at, group_id) " +
+                "VALUES ('1234', '2024-06-15 10:00:00', $amount, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', '2024-06-20 10:00:00', 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_notifications", Long::class.java)!!
     }
@@ -70,8 +70,8 @@ class PaymentNotificationControllerTest {
         totalItems: Int = 5,
     ): Long {
         jdbcTemplate.update(
-            "INSERT INTO purchase_invoices (date, merchant_name, cnpj, total_items, total) " +
-                "VALUES ('2024-06-15 10:00:00', '$merchantName', '$cnpj', $totalItems, $total)"
+            "INSERT INTO purchase_invoices (date, merchant_name, cnpj, total_items, total, group_id) " +
+                "VALUES ('2024-06-15 10:00:00', '$merchantName', '$cnpj', $totalItems, $total, 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM purchase_invoices", Long::class.java)!!
     }
@@ -83,8 +83,8 @@ class PaymentNotificationControllerTest {
         val invoiceIdSql = if (purchaseInvoiceId != null) purchaseInvoiceId.toString() else "NULL"
         jdbcTemplate.update(
             "INSERT INTO payment_notifications " +
-                "(card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, purchase_invoice_id) " +
-                "VALUES ('1234', '2024-06-15 10:00:00', $amount, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', $invoiceIdSql)"
+                "(card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, purchase_invoice_id, group_id) " +
+                "VALUES ('1234', '2024-06-15 10:00:00', $amount, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', $invoiceIdSql, 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_notifications", Long::class.java)!!
     }

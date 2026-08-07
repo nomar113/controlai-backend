@@ -33,8 +33,8 @@ class InstallmentControllerIntegrationTest {
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (CURRENT_TIMESTAMP, 100.00, 'Test Store', 5, 'MANUAL', 'MANUAL')"""
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (CURRENT_TIMESTAMP, 100.00, 'Test Store', 5, 'MANUAL', 'MANUAL', 1)"""
         )
         parentId = jdbcTemplate.queryForObject(
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Test Store'",
@@ -44,8 +44,8 @@ class InstallmentControllerIntegrationTest {
 
     private fun insertInstallment(number: Int, dueDate: LocalDate, amount: Double = 100.0) {
         jdbcTemplate.update(
-            """INSERT INTO installments (parent_id, installment_number, total_installments, amount, due_date)
-               VALUES (?, ?, 5, ?, ?)""",
+            """INSERT INTO installments (parent_id, installment_number, total_installments, amount, due_date, group_id)
+               VALUES (?, ?, 5, ?, ?, 1)""",
             parentId, number, amount, dueDate.toString()
         )
     }

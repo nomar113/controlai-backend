@@ -31,8 +31,8 @@ class InstallmentRepositoryIntegrationTest {
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (CURRENT_TIMESTAMP, 100.00, 'Test Store', 3, 'MANUAL', 'MANUAL')"""
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (CURRENT_TIMESTAMP, 100.00, 'Test Store', 3, 'MANUAL', 'MANUAL', 1)"""
         )
         parentId = jdbcTemplate.queryForObject(
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Test Store'",
@@ -43,9 +43,9 @@ class InstallmentRepositoryIntegrationTest {
     @Test
     fun `should save and find installments by parentId ordered by number`() {
         val installments = listOf(
-            Installment(parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15)),
-            Installment(parentId = parentId, installmentNumber = 1, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 5, 15)),
-            Installment(parentId = parentId, installmentNumber = 3, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 7, 15)),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15)),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 1, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 5, 15)),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 3, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 7, 15)),
         )
         installmentRepository.saveAll(installments)
 
@@ -59,9 +59,9 @@ class InstallmentRepositoryIntegrationTest {
     @Test
     fun `should find only non-cancelled installments`() {
         val installments = listOf(
-            Installment(parentId = parentId, installmentNumber = 1, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 5, 15)),
-            Installment(parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15), cancelledAt = LocalDateTime.now()),
-            Installment(parentId = parentId, installmentNumber = 3, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 7, 15)),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 1, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 5, 15)),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15), cancelledAt = LocalDateTime.now()),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 3, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 7, 15)),
         )
         installmentRepository.saveAll(installments)
 

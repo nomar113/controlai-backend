@@ -25,8 +25,8 @@ class CancelPaymentNotificationControllerTest {
 
     private fun insertNotification(cancelledAt: String? = null): Long {
         jdbcTemplate.update(
-            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, cancelled_at)
-               VALUES ('1234', '2024-01-15 10:00:00', 99.90, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', ${if (cancelledAt != null) "'$cancelledAt'" else "NULL"})"""
+            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, cancelled_at, group_id)
+               VALUES ('1234', '2024-01-15 10:00:00', 99.90, 'Loja Test', 1, 'NUBANK', 'HTTP_REQUEST', ${if (cancelledAt != null) "'$cancelledAt'" else "NULL"}, 1)"""
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_notifications", Long::class.java)!!
     }

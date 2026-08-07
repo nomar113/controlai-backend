@@ -21,7 +21,7 @@ class BudgetMigrationIntegrationTest {
         jdbcTemplate.update("DELETE FROM budget_items")
         jdbcTemplate.update("DELETE FROM budgets")
         jdbcTemplate.update("DELETE FROM categories")
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES ('Test Category')")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Test Category', 1)")
     }
 
     @Test
@@ -53,17 +53,17 @@ class BudgetMigrationIntegrationTest {
 
     @Test
     fun `should enforce unique constraint on reference_month`() {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", "2026-04")
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", "2026-04")
 
         val exception = runCatching {
-            jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", "2026-04")
+            jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", "2026-04")
         }
         assertTrue(exception.isFailure)
     }
 
     @Test
     fun `should enforce unique constraint on budget_id and category_id`() {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", "2026-05")
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", "2026-05")
         val budgetId = jdbcTemplate.queryForObject(
             "SELECT id FROM budgets WHERE reference_month = '2026-05'", Long::class.java
         )
@@ -88,7 +88,7 @@ class BudgetMigrationIntegrationTest {
 
     @Test
     fun `should insert budget with items and incomes`() {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", "2026-06")
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", "2026-06")
         val budgetId = jdbcTemplate.queryForObject(
             "SELECT id FROM budgets WHERE reference_month = '2026-06'", Long::class.java
         )
@@ -122,7 +122,7 @@ class BudgetMigrationIntegrationTest {
 
     @Test
     fun `should cascade delete items and incomes when budget is deleted`() {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", "2026-07")
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", "2026-07")
         val budgetId = jdbcTemplate.queryForObject(
             "SELECT id FROM budgets WHERE reference_month = '2026-07'", Long::class.java
         )

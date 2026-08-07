@@ -58,20 +58,20 @@ class BudgetCancelledExclusionTest {
     // --- Helpers ---
 
     private fun createHolder(): Long {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES ('Test Holder')")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM holders", Long::class.java)!!
     }
 
     private fun createPaymentMethod(holderId: Long): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, holder_id, type) VALUES ('Cartao Test', ?, 'CREDIT')",
+            "INSERT INTO payment_methods (name, holder_id, type, group_id) VALUES ('Cartao Test', ?, 'CREDIT', 1)",
             holderId
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
 
     private fun createBudget(yearMonth: String): Long {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", yearMonth)
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", yearMonth)
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM budgets", Long::class.java)!!
     }
 
@@ -83,7 +83,7 @@ class BudgetCancelledExclusionTest {
     }
 
     private fun createCategory(name: String): Long {
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", name)
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", name)
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM categories", Long::class.java)!!
     }
 
@@ -96,8 +96,8 @@ class BudgetCancelledExclusionTest {
 
     private fun insertNotification(pmId: Long, categoryId: Long, purchasedAt: String, amount: Double, cancelledAt: String?) {
         jdbcTemplate.update(
-            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, category_id, cancelled_at)
-               VALUES ('1234', ?, ?, 'Store', 1, 'NUBANK', 'HTTP_REQUEST', ?, ?, ${if (cancelledAt != null) "?" else "NULL"})""",
+            """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, category_id, cancelled_at, group_id)
+               VALUES ('1234', ?, ?, 'Store', 1, 'NUBANK', 'HTTP_REQUEST', ?, ?, ${if (cancelledAt != null) "?" else "NULL"}, 1)""",
             *listOfNotNull(purchasedAt, amount, pmId, categoryId, cancelledAt).toTypedArray()
         )
     }

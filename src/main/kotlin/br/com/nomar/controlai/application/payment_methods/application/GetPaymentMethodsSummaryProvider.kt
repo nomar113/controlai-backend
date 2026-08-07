@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payment_methods.application
 
 import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodSqlSupport
 import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payment_methods.entity.PaymentMethodSummary
 import br.com.nomar.controlai.domain.payment_methods.entity.SubCardTotal
@@ -19,7 +20,8 @@ class GetPaymentMethodsSummaryProvider(
 
     override fun execute(month: YearMonth): Result<List<PaymentMethodSummary>> {
         return runCatching {
-            val budgetId = budgetPeriodResolver.resolveBudgetId(month)
+            val periods = budgetPeriodResolver.resolvePeriods(month)
+            val (periodsSql, periodsParams) = BudgetPeriodSqlSupport.buildPeriodsDerivedTable(periods)
             val groupId = requestContext.groupId
 
             val rows = jdbcTemplate.queryForList(
@@ -34,9 +36,8 @@ class GetPaymentMethodsSummaryProvider(
                 FROM payment_methods pm
                 JOIN holders h ON pm.holder_id = h.id
                 LEFT JOIN sub_cards sc ON sc.payment_method_id = pm.id AND sc.deleted_at IS NULL
-                LEFT JOIN budget_payment_periods bpp
+                LEFT JOIN ($periodsSql) bpp
                     ON bpp.payment_method_id = pm.id
-                    AND bpp.budget_id = ?
                 LEFT JOIN payment_notifications pn
                     ON pn.payment_method_id = pm.id
                     AND (pn.sub_card_id = sc.id OR (pn.sub_card_id IS NULL AND sc.id IS NULL))
@@ -49,8 +50,7 @@ class GetPaymentMethodsSummaryProvider(
                 GROUP BY pm.id, pm.name, h.name, sc.id, sc.last_four_digits
                 ORDER BY pm.name, sc.last_four_digits
                 """.trimIndent(),
-                budgetId,
-                groupId,
+                *(periodsParams + groupId).toTypedArray(),
             )
 
             rows.groupBy { (it["payment_method_id"] as Number).toLong() }

@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -98,6 +99,21 @@ class PaymentNotificationFilterIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.last").value(true))
+    }
+
+    @Test
+    fun `GET notifications for a month without an existing budget lists purchases without creating one`() {
+        insertNotification("2026-09-10 14:00:00", "Store September", 100.00)
+
+        mockMvc.perform(get("/payments/notifications").param("month", "2026-09"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].merchantName").value("Store September"))
+
+        val budgetCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM budgets WHERE reference_month = ?", Long::class.java, "2026-09"
+        )
+        assertEquals(0L, budgetCount)
     }
 
     @Test
@@ -282,13 +298,13 @@ class PaymentNotificationFilterIntegrationTest {
     // --- Helpers ---
 
     private fun createHolder(): Long {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Test Holder")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Test Holder")
         return jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = ?", Long::class.java, "Test Holder")!!
     }
 
     private fun createPaymentMethod(holderId: Long, name: String = "Test Card"): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, ?, ?, 1)",
             name,
             "CREDIT_CARD",
             holderId,
@@ -313,8 +329,8 @@ class PaymentNotificationFilterIntegrationTest {
     ) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id, group_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
             "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", notificationPaymentMethodId, subCardId
         )
     }
@@ -322,8 +338,8 @@ class PaymentNotificationFilterIntegrationTest {
     private fun insertDeletedNotification(purchasedAt: String, merchantName: String, amount: Double) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, deleted_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, deleted_at, group_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)""",
             "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", paymentMethodId
         )
     }
@@ -331,8 +347,8 @@ class PaymentNotificationFilterIntegrationTest {
     private fun insertNotificationWithoutPaymentMethod(purchasedAt: String, merchantName: String, amount: Double) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
             "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL"
         )
     }

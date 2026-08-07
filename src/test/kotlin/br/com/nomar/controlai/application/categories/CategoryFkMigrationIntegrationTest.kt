@@ -39,15 +39,15 @@ class CategoryFkMigrationIntegrationTest {
 
     @Test
     fun `should insert payment_notification with valid category_id`() {
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", "FkTestCategory")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", "FkTestCategory")
         val categoryId = jdbcTemplate.queryForObject(
             "SELECT id FROM categories WHERE name = 'FkTestCategory'", Long::class.java
         )
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, 1)""",
             "7777", 50.00, "Supermercado", 1, "MANUAL", "MANUAL", categoryId
         )
 
@@ -65,8 +65,8 @@ class CategoryFkMigrationIntegrationTest {
     fun `should allow null category_id for backward compatibility`() {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, 1)""",
             "6666", 30.00, "Test Store", 1, "MANUAL", "MANUAL", null
         )
 

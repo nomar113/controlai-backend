@@ -61,7 +61,7 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should insert and retrieve holder`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Ramon")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Ramon")
 
         val holder = jdbcTemplate.queryForMap("SELECT * FROM holders WHERE name = 'Ramon'")
         assertNotNull(holder["ID"])
@@ -71,21 +71,21 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should enforce unique constraint on holder name`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "UniqueTest")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "UniqueTest")
 
         val exception = runCatching {
-            jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "UniqueTest")
+            jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "UniqueTest")
         }
         assertTrue(exception.isFailure)
     }
 
     @Test
     fun `should insert payment_method with holder FK`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Aline")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Aline")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Aline'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, brand, closing_day) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, brand, closing_day, group_id) VALUES (?, ?, ?, ?, ?, 1)",
             "Smiles Infinite", "CREDIT_CARD", holderId, "Visa", 15
         )
 
@@ -99,11 +99,11 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should insert sub_card with payment_method FK`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Ramon")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Ramon")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Ramon'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, ?, ?, 1)",
             "Nubank", "CREDIT_CARD", holderId
         )
         val pmId = jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = 'Nubank'", Long::class.java)
@@ -121,11 +121,11 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should insert sub_card with digital wallet platform`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Ramon")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Ramon")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Ramon'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, ?, ?, 1)",
             "Smiles", "CREDIT_CARD", holderId
         )
         val pmId = jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = 'Smiles'", Long::class.java)
@@ -144,8 +144,8 @@ class MigrationIntegrationTest {
     fun `should allow null FKs in payment_notifications for backward compatibility`() {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, 1)""",
             "9999", 100.00, "Test Store", 1, "NUBANK", "HTTP_REQUEST", null, null
         )
 
@@ -158,19 +158,19 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should allow payment_notifications with valid payment_method FK`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Ramon")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Ramon")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Ramon'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, ?, ?, 1)",
             "Nubank", "CREDIT_CARD", holderId
         )
         val pmId = jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = 'Nubank'", Long::class.java)
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, 1)""",
             "8888", 250.00, "Store FK", 1, "NUBANK", "HTTP_REQUEST", pmId, null
         )
 
@@ -182,11 +182,11 @@ class MigrationIntegrationTest {
 
     @Test
     fun `should support soft delete via deleted_at on payment_methods`() {
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES (?)", "Ramon")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, 1)", "Ramon")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Ramon'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id) VALUES (?, ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, ?, ?, 1)",
             "SoftDelete Card", "CREDIT_CARD", holderId
         )
 

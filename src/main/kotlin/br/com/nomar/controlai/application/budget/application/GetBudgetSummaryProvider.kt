@@ -20,9 +20,10 @@ class GetBudgetSummaryProvider(
 
     override fun execute(yearMonth: YearMonth): Result<BudgetSummary> {
         return runCatching {
-            val budgetId = budgetPeriodResolver.resolveBudgetId(yearMonth)
             val budgetModel = budgetRepository.findByYearMonthAndGroupId(yearMonth.toString(), requestContext.groupId)
                 .orElseThrow { NoSuchElementException("Budget not found: $yearMonth") }
+            budgetPeriodResolver.ensurePaymentPeriodsSynced(budgetModel, yearMonth)
+            val budgetId = budgetModel.id!!
 
             val actualByCategory = queryActualByCategory(budgetId)
             val paymentMethodTotals = queryPaymentMethodTotals(budgetId)

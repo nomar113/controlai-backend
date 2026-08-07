@@ -154,8 +154,8 @@ class PurchaseInvoiceFilterIntegrationTest {
     private fun insertInvoice(date: String, merchantName: String, total: Double) {
         jdbcTemplate.update(
             """INSERT INTO purchase_invoices
-               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount)
-               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0)""",
+               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount, group_id)
+               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0, 1)""",
             date, merchantName, java.util.UUID.randomUUID().toString().take(44), total
         )
     }
@@ -163,8 +163,8 @@ class PurchaseInvoiceFilterIntegrationTest {
     private fun insertDeletedInvoice(date: String, merchantName: String, total: Double) {
         jdbcTemplate.update(
             """INSERT INTO purchase_invoices
-               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount, deleted_at)
-               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0, CURRENT_TIMESTAMP)""",
+               (date, merchant_name, merchant_address, cnpj, invoice_url, access_key, subtotal, total, taxes, discount, deleted_at, group_id)
+               VALUES (?, ?, '', '', '', ?, 0, ?, 0, 0, CURRENT_TIMESTAMP, 1)""",
             date, merchantName, java.util.UUID.randomUUID().toString().take(44), total
         )
     }

@@ -22,6 +22,10 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.context.WebApplicationContext
 import java.time.Duration
 import java.time.Instant
 
@@ -35,6 +39,7 @@ class GroupInviteIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
     @Autowired private lateinit var jwtEncoder: JwtEncoder
+    @Autowired private lateinit var webApplicationContext: WebApplicationContext
 
     @MockitoBean private lateinit var emailGateway: EmailGateway
 
@@ -61,22 +66,31 @@ class GroupInviteIntegrationTest {
 
     @AfterEach
     fun cleanAll() {
-        listOf("inviter-gi@test.com", "invitee-gi@test.com").forEach { email ->
-            val uid = jdbcTemplate.queryForList("SELECT id FROM users WHERE email = ?", Long::class.java, email)
-                .firstOrNull() ?: return@forEach
-            val gid = jdbcTemplate.queryForList(
-                "SELECT group_id FROM group_members WHERE user_id = ?", Long::class.java, uid,
-            ).firstOrNull()
+        val emails = listOf("inviter-gi@test.com", "invitee-gi@test.com")
+        val userIds = emails.mapNotNull { email ->
+            jdbcTemplate.queryForList("SELECT id FROM users WHERE email = ?", Long::class.java, email).firstOrNull()
+        }
+        // Collect every group these test users touched (they may have moved between groups
+        // during accept-invite flows) before removing any group_members row, so a group that
+        // still has the *other* test user as a member is never deleted prematurely.
+        val groupIds = userIds.flatMap { uid ->
+            jdbcTemplate.queryForList("SELECT group_id FROM group_members WHERE user_id = ?", Long::class.java, uid)
+        }.toSet()
 
-            jdbcTemplate.update("DELETE FROM group_invites WHERE inviter_user_id = ? OR invitee_email = ?", uid, email)
+        userIds.forEachIndexed { index, uid ->
+            jdbcTemplate.update(
+                "DELETE FROM group_invites WHERE inviter_user_id = ? OR invitee_email = ?", uid, emails[index],
+            )
             jdbcTemplate.update("DELETE FROM refresh_tokens WHERE user_id = ?", uid)
             jdbcTemplate.update("DELETE FROM group_members WHERE user_id = ?", uid)
-            if (gid != null) {
-                jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", gid)
-                jdbcTemplate.update("DELETE FROM `groups` WHERE id = ?", gid)
-            }
-            jdbcTemplate.update("DELETE FROM users WHERE id = ?", uid)
         }
+        groupIds.forEach { gid ->
+            jdbcTemplate.update("DELETE FROM payment_methods WHERE group_id = ?", gid)
+            jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", gid)
+            jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", gid)
+            jdbcTemplate.update("DELETE FROM `groups` WHERE id = ?", gid)
+        }
+        userIds.forEach { uid -> jdbcTemplate.update("DELETE FROM users WHERE id = ?", uid) }
         // Clean up any orphaned groups created during leave-group tests
         jdbcTemplate.update("DELETE FROM group_invites WHERE invitee_email = 'invitee-gi@test.com'")
     }
@@ -142,7 +156,13 @@ class GroupInviteIntegrationTest {
 
     @Test
     fun `POST invites 401 without auth token`() {
-        mockMvc.perform(
+        // TestAuthMockMvcConfig injects a default Bearer token into every request on the
+        // autowired mockMvc, so anonymous-access tests need their own raw MockMvc instance.
+        val rawMockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+            .apply<DefaultMockMvcBuilder>(springSecurity())
+            .build()
+
+        rawMockMvc.perform(
             post("/invites")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"email":"anyone@test.com"}"""),
@@ -204,9 +224,12 @@ class GroupInviteIntegrationTest {
     @Test
     fun `accept invite returns 409 when personal group has data without force`() {
         // Add data to invitee's personal group
+        val holderName = "Test Holder GI ${java.util.UUID.randomUUID()}"
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES (?, ?)", holderName, inviteeGroupId)
+        val holderId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (group_id, name, type) VALUES (?, 'Test Card', 'CREDIT')",
-            inviteeGroupId,
+            "INSERT INTO payment_methods (group_id, name, type, holder_id) VALUES (?, 'Test Card', 'CREDIT', ?)",
+            inviteeGroupId, holderId,
         )
         val paymentMethodId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
 
@@ -226,6 +249,7 @@ class GroupInviteIntegrationTest {
 
         // Cleanup
         jdbcTemplate.update("DELETE FROM payment_methods WHERE id = ?", paymentMethodId)
+        jdbcTemplate.update("DELETE FROM holders WHERE id = ?", holderId)
         jdbcTemplate.update("DELETE FROM group_invites WHERE id = ?", inviteId)
     }
 

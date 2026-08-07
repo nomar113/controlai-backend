@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.math.BigDecimal
+import kotlin.test.assertEquals
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -103,6 +104,22 @@ class SummaryIntegrationTest {
     }
 
     @Test
+    fun `GET summary for a month without an existing budget computes totals without creating one`() {
+        val holderId = createHolder("Ramon")
+        val pmId = createPaymentMethod(holderId, "Smiles Infinite", "CREDIT_CARD")
+        insertExpense(pmId, null, "2026-09-10 14:00:00", BigDecimal("150.00"))
+
+        mockMvc.perform(get("/payment-methods/summary").param("month", "2026-09"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].totalSpent").value(150.00))
+
+        val budgetCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM budgets WHERE reference_month = ?", Long::class.java, "2026-09"
+        )
+        assertEquals(0L, budgetCount)
+    }
+
+    @Test
     fun `GET summary without month parameter should return 400`() {
         mockMvc.perform(get("/payment-methods/summary"))
             .andExpect(status().isBadRequest)
@@ -147,8 +164,8 @@ class SummaryIntegrationTest {
         jdbcTemplate.update(
             """
             INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name,
-                number_of_installments, origin, origin_type, payment_method_id, sub_card_id)
-            VALUES ('0000', ?, ?, 'Test Store', 1, 'NUBANK', 'HTTP_REQUEST', ?, ?)
+                number_of_installments, origin, origin_type, payment_method_id, sub_card_id, group_id)
+            VALUES ('0000', ?, ?, 'Test Store', 1, 'NUBANK', 'HTTP_REQUEST', ?, ?, 1)
             """.trimIndent(),
             purchasedAt,
             amount,

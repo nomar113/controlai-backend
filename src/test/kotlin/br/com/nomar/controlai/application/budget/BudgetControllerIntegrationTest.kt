@@ -57,9 +57,14 @@ class BudgetControllerIntegrationTest {
     }
 
     @Test
-    fun `GET budgets auto-creates budget when it does not exist`() {
+    fun `GET budgets returns 404 and does not create a budget when it does not exist`() {
         mockMvc.perform(get("/budgets?month=2099-12"))
-            .andExpect(status().isOk)
+            .andExpect(status().isNotFound)
+
+        val count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM budgets WHERE reference_month = ?", Long::class.java, "2099-12"
+        )
+        assertEquals(0L, count)
     }
 
     @Test
@@ -165,7 +170,7 @@ class BudgetControllerIntegrationTest {
 
     private fun createCategory(name: String, icon: String?): Long {
         jdbcTemplate.update(
-            "INSERT INTO categories (name, icon) VALUES (?, ?)",
+            "INSERT INTO categories (name, icon, group_id) VALUES (?, ?, 1)",
             name, icon
         )
         return jdbcTemplate.queryForList(
@@ -175,7 +180,7 @@ class BudgetControllerIntegrationTest {
     }
 
     private fun createBudgetViaJdbc(yearMonth: String): Long {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", yearMonth)
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", yearMonth)
         return jdbcTemplate.queryForList(
             "SELECT id FROM budgets WHERE reference_month = ?", yearMonth
         ).first()["ID"] as Long
@@ -197,11 +202,11 @@ class BudgetControllerIntegrationTest {
         val holderId = jdbcTemplate.queryForList(
             "SELECT id FROM holders LIMIT 1"
         ).firstOrNull()?.get("ID") as? Long ?: run {
-            jdbcTemplate.update("INSERT INTO holders (name) VALUES ('Test Holder')")
+            jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
             jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
         }
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day) VALUES ('Nubank', 'CREDIT_CARD', ?, ?)",
+            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?, 1)",
             holderId, 10
         )
         return jdbcTemplate.queryForObject("SELECT id FROM payment_methods LIMIT 1", Long::class.java)!!

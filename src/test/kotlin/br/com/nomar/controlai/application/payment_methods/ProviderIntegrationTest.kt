@@ -1,7 +1,9 @@
 package br.com.nomar.controlai.application.payment_methods
 
+import br.com.nomar.controlai.config.TestSecurityContext
 import br.com.nomar.controlai.domain.payment_methods.entity.*
 import br.com.nomar.controlai.domain.payment_methods.gateway.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,11 +30,15 @@ class ProviderIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        TestSecurityContext.authenticateAsGroup()
         jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")
     }
+
+    @AfterEach
+    fun clearAuth() = TestSecurityContext.clear()
 
     @Test
     fun `should save and list holders`() {

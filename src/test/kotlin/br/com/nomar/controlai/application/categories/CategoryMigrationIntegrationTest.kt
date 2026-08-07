@@ -28,7 +28,7 @@ class CategoryMigrationIntegrationTest {
         if (count < 15) {
             jdbcTemplate.update("DELETE FROM categories")
             seedCategories.forEach { name ->
-                jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", name)
+                jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", name)
             }
         }
     }
@@ -82,14 +82,14 @@ class CategoryMigrationIntegrationTest {
     @Test
     fun `should enforce unique constraint on category name`() {
         val exception = runCatching {
-            jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", "Mercado")
+            jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", "Mercado")
         }
         assertTrue(exception.isFailure)
     }
 
     @Test
     fun `should support soft delete via deleted_at`() {
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", "TestSoftDelete")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", "TestSoftDelete")
 
         jdbcTemplate.update(
             "UPDATE categories SET deleted_at = CURRENT_TIMESTAMP WHERE name = 'TestSoftDelete'"
@@ -104,7 +104,7 @@ class CategoryMigrationIntegrationTest {
 
     @Test
     fun `should auto-generate timestamps on insert`() {
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES (?)", "TestTimestamps")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", "TestTimestamps")
 
         val cat = jdbcTemplate.queryForMap("SELECT created_at, updated_at FROM categories WHERE name = 'TestTimestamps'")
         assertNotNull(cat["CREATED_AT"])

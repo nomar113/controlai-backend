@@ -34,13 +34,13 @@ class InstallmentCreationIntegrationTest {
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")
 
-        jdbcTemplate.update("INSERT INTO holders (name) VALUES ('Test Holder')")
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Test Holder'", Long::class.java)!!
 
-        jdbcTemplate.update("INSERT INTO payment_methods (name, type, holder_id) VALUES ('Nubank', 'CREDIT_CARD', ?)", holderId)
+        jdbcTemplate.update("INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, 1)", holderId)
         paymentMethodId = jdbcTemplate.queryForObject("SELECT id FROM payment_methods WHERE name = 'Nubank'", Long::class.java)!!
 
-        jdbcTemplate.update("INSERT INTO categories (name) VALUES ('Tecnologia')")
+        jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Tecnologia', 1)")
         categoryId = jdbcTemplate.queryForObject("SELECT id FROM categories WHERE name = 'Tecnologia'", Long::class.java)!!
     }
 

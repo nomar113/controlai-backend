@@ -3,6 +3,9 @@ package br.com.nomar.controlai.application.purchases_invoices
 import br.com.nomar.controlai.application.purchases_invoices.application.CancelPurchaseInvoiceProvider
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.config.TestSecurityContext
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -25,9 +28,16 @@ class CancelPurchaseInvoiceProviderTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @BeforeEach
+    fun authenticate() = TestSecurityContext.authenticateAsGroup()
+
+    @AfterEach
+    fun clearAuth() = TestSecurityContext.clear()
+
     private fun createInvoice(cancelledAt: LocalDateTime? = null): PurchaseInvoiceModel {
         return repository.save(
             PurchaseInvoiceModel(
+                groupId = 1L,
                 date = OffsetDateTime.now(),
                 merchantName = "Mercado Teste Cancel",
                 merchantAddress = "Rua A",

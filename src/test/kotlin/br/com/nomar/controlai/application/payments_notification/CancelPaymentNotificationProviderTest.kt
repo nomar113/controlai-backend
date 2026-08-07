@@ -3,6 +3,9 @@ package br.com.nomar.controlai.application.payments_notification
 import br.com.nomar.controlai.application.payments_notification.application.CancelPaymentNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
+import br.com.nomar.controlai.config.TestSecurityContext
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -24,6 +27,12 @@ class CancelPaymentNotificationProviderTest {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @BeforeEach
+    fun authenticate() = TestSecurityContext.authenticateAsGroup()
+
+    @AfterEach
+    fun clearAuth() = TestSecurityContext.clear()
 
     private fun createNotification(cancelledAt: LocalDateTime? = null): PaymentNotification {
         return repository.save(

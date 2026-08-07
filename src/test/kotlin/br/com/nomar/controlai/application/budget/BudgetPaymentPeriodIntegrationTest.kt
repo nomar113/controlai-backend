@@ -23,7 +23,7 @@ class BudgetPaymentPeriodIntegrationTest {
     }
 
     private fun createBudget(yearMonth: String): Long {
-        jdbcTemplate.update("INSERT INTO budgets (reference_month) VALUES (?)", yearMonth)
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES (?, 1)", yearMonth)
         return jdbcTemplate.queryForObject(
             "SELECT id FROM budgets WHERE reference_month = ?", Long::class.java, yearMonth
         )!!

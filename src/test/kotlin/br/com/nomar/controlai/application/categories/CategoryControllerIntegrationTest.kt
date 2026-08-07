@@ -162,8 +162,8 @@ class CategoryControllerIntegrationTest {
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id)
-               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)""",
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, category_id, group_id)
+               VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, 1)""",
             "1111", 100.00, "Test Store", 1, "MANUAL", "MANUAL", categoryId
         )
 

@@ -2,6 +2,8 @@ package br.com.nomar.controlai.application.installments
 
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
+import br.com.nomar.controlai.config.TestSecurityContext
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,20 +24,24 @@ class CreateInstallmentsProviderTest {
 
     @BeforeEach
     fun cleanUp() {
+        TestSecurityContext.authenticateAsGroup()
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM payment_notifications")
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
-               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type)
-               VALUES (CURRENT_TIMESTAMP, 589.90, 'Apple Store', 10, 'MANUAL', 'MANUAL')"""
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id)
+               VALUES (CURRENT_TIMESTAMP, 589.90, 'Apple Store', 10, 'MANUAL', 'MANUAL', 1)"""
         )
         parentId = jdbcTemplate.queryForObject(
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Apple Store'",
             Long::class.java
         )!!
     }
+
+    @AfterEach
+    fun clearAuth() = TestSecurityContext.clear()
 
     @Test
     fun `should create N installments with correct sequential numbers`() {
