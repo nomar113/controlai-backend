@@ -24,10 +24,10 @@ data class BudgetPaymentPeriodModel(
     val paymentMethodId: Long = 0,
 
     @Column(name = "start_date", nullable = false)
-    val startDate: LocalDate = LocalDate.now(),
+    var startDate: LocalDate = LocalDate.now(),
 
     @Column(name = "end_date", nullable = false)
-    val endDate: LocalDate = LocalDate.now(),
+    var endDate: LocalDate = LocalDate.now(),
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

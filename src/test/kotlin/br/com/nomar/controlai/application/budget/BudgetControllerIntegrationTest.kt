@@ -147,6 +147,91 @@ class BudgetControllerIntegrationTest {
     }
 
     @Test
+    fun `PUT budgets periods with replicateToFuture true does not affect another card's period in the future budget`() {
+        val currentBudgetId = createBudgetViaJdbc("2026-05")
+        val futureBudgetId = createBudgetViaJdbc("2026-06")
+        val cardAId = firstPaymentMethodId()
+        val cardBId = createPaymentMethodViaJdbc("Other Card", 20)
+
+        insertPeriod(futureBudgetId, cardAId, "2026-05-09", "2026-06-08")
+        insertPeriod(futureBudgetId, cardBId, "2026-05-19", "2026-06-18")
+
+        val body = """
+            {
+              "periods": [
+                { "paymentMethodId": $cardAId, "startDate": "2026-04-10", "endDate": "2026-05-09" }
+              ],
+              "replicateToFuture": true
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            put("/budgets/$currentBudgetId/periods")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+        ).andExpect(status().isOk)
+
+        val cardAFuturePeriod = jdbcTemplate.queryForMap(
+            "SELECT start_date, end_date FROM budget_payment_periods WHERE budget_id = ? AND payment_method_id = ?",
+            futureBudgetId, cardAId
+        )
+        assertEquals(java.sql.Date.valueOf("2026-05-10"), cardAFuturePeriod["START_DATE"])
+        assertEquals(java.sql.Date.valueOf("2026-06-09"), cardAFuturePeriod["END_DATE"])
+
+        // Card B was not part of the replicated request and must remain untouched
+        val cardBFuturePeriod = jdbcTemplate.queryForMap(
+            "SELECT start_date, end_date FROM budget_payment_periods WHERE budget_id = ? AND payment_method_id = ?",
+            futureBudgetId, cardBId
+        )
+        assertEquals(java.sql.Date.valueOf("2026-05-19"), cardBFuturePeriod["START_DATE"])
+        assertEquals(java.sql.Date.valueOf("2026-06-18"), cardBFuturePeriod["END_DATE"])
+    }
+
+    @Test
+    fun `PUT budgets periods updating one card does not affect another card's period`() {
+        val budgetId = createBudgetViaJdbc("2026-05")
+        val cardAId = firstPaymentMethodId()
+        val cardBId = createPaymentMethodViaJdbc("Other Card", 20)
+
+        insertPeriod(budgetId, cardAId, "2026-04-10", "2026-05-09")
+        insertPeriod(budgetId, cardBId, "2026-04-20", "2026-05-19")
+
+        val body = """
+            {
+              "periods": [
+                { "paymentMethodId": $cardAId, "startDate": "2026-04-15", "endDate": "2026-05-14" }
+              ]
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            put("/budgets/$budgetId/periods")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+        ).andExpect(status().isOk)
+
+        val cardAPeriod = jdbcTemplate.queryForMap(
+            "SELECT start_date, end_date FROM budget_payment_periods WHERE budget_id = ? AND payment_method_id = ?",
+            budgetId, cardAId
+        )
+        assertEquals(java.sql.Date.valueOf("2026-04-15"), cardAPeriod["START_DATE"])
+        assertEquals(java.sql.Date.valueOf("2026-05-14"), cardAPeriod["END_DATE"])
+
+        // Card B was not part of the request and must remain untouched
+        val cardBPeriod = jdbcTemplate.queryForMap(
+            "SELECT start_date, end_date FROM budget_payment_periods WHERE budget_id = ? AND payment_method_id = ?",
+            budgetId, cardBId
+        )
+        assertEquals(java.sql.Date.valueOf("2026-04-20"), cardBPeriod["START_DATE"])
+        assertEquals(java.sql.Date.valueOf("2026-05-19"), cardBPeriod["END_DATE"])
+
+        val allPeriods = jdbcTemplate.queryForList(
+            "SELECT * FROM budget_payment_periods WHERE budget_id = ?", budgetId
+        )
+        assertEquals(2, allPeriods.size)
+    }
+
+    @Test
     fun `PUT budgets periods rejects invalid date range with 400`() {
         val budgetId = createBudgetViaJdbc("2026-05")
         val paymentMethodId = firstPaymentMethodId()
@@ -210,6 +295,22 @@ class BudgetControllerIntegrationTest {
             holderId, 10
         )
         return jdbcTemplate.queryForObject("SELECT id FROM payment_methods LIMIT 1", Long::class.java)!!
+    }
+
+    private fun createPaymentMethodViaJdbc(name: String, closingDay: Int): Long {
+        val holderId = jdbcTemplate.queryForList(
+            "SELECT id FROM holders LIMIT 1"
+        ).firstOrNull()?.get("ID") as? Long ?: run {
+            jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
+            jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
+        }
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES (?, 'CREDIT_CARD', ?, ?, 1)",
+            name, holderId, closingDay
+        )
+        return jdbcTemplate.queryForList(
+            "SELECT id FROM payment_methods WHERE name = ?", name
+        ).first()["ID"] as Long
     }
 
     private fun insertPeriod(budgetId: Long, paymentMethodId: Long, startDate: String, endDate: String) {
