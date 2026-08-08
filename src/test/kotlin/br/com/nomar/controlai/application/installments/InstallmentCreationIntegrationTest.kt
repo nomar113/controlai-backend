@@ -1,7 +1,6 @@
 package br.com.nomar.controlai.application.installments
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -101,24 +100,23 @@ class InstallmentCreationIntegrationTest {
 
     @Test
     fun `POST with invalid categoryId should not create any records`() {
-        assertThrows(Exception::class.java) {
-            mockMvc.perform(
-                post("/payments/notifications/manual")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {
-                            "merchantName": "Loja X",
-                            "amount": 100.00,
-                            "purchasedAt": "2026-05-15T10:00:00",
-                            "paymentMethodId": $paymentMethodId,
-                            "categoryId": 99999,
-                            "numberOfInstallments": 3
-                        }
-                        """.trimIndent()
-                    )
-            )
-        }
+        mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                        "merchantName": "Loja X",
+                        "amount": 100.00,
+                        "purchasedAt": "2026-05-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId,
+                        "categoryId": 99999,
+                        "numberOfInstallments": 3
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isBadRequest)
 
         val notifCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM payment_notifications", Int::class.java)
         val installCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM installments", Int::class.java)

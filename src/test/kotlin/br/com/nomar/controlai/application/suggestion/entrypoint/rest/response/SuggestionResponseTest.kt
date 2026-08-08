@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.suggestion.entrypoint.rest.response
 
+import br.com.nomar.controlai.application.categories.entrypoint.database.model.CategoryModel
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -22,8 +23,7 @@ class SuggestionResponseTest {
         amount = BigDecimal("150.00"),
         merchantName = "Supermercado X",
         numberOfInstallments = 2,
-        category = "Alimentacao",
-        categoryId = 5L,
+        category = CategoryModel(id = 5L, groupId = 1, name = "Alimentacao"),
         origin = "WHATSAPP",
         originType = "PUSH_NOTIFICATION",
     )
@@ -98,7 +98,6 @@ class SuggestionResponseTest {
             merchantName = "Loja Y",
             numberOfInstallments = 1,
             category = null,
-            categoryId = null,
         )
 
         val response = SuggestionResponse.from(notification, invoiceDate)

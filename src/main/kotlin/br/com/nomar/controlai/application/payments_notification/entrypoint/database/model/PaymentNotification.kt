@@ -1,10 +1,14 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.database.model
 
+import br.com.nomar.controlai.application.categories.entrypoint.database.model.CategoryModel
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.hibernate.annotations.SQLRestriction
 import java.math.BigDecimal
@@ -45,11 +49,11 @@ data class PaymentNotification(
     @Column(name = "origin_type", nullable = false)
     val originType: String = "HTTP_REQUEST",
 
-    @Column(name = "category", length = 50)
-    val category: String? = null,
-
-    @Column(name = "category_id")
-    val categoryId: Long? = null,
+    // Fonte única de verdade para a categoria: relacionamento declarado com CategoryModel.
+    // O nome exibido é sempre resolvido a partir daqui, nunca duplicado em outra coluna.
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id")
+    val category: CategoryModel? = null,
 
     @Column(name = "payment_method_id")
     val paymentMethodId: Long? = null,

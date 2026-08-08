@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 
 import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
+import br.com.nomar.controlai.application.categories.entrypoint.database.model.CategoryModel
 import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
@@ -65,6 +66,12 @@ class PaymentNotificationController(
 
     companion object {
         private val VALID_SORTS = setOf("recent", "amount")
+    }
+
+    private fun resolveCategory(categoryId: Long?, groupId: Long): CategoryModel? {
+        if (categoryId == null) return null
+        return categoryRepository.findByIdAndGroupId(categoryId, groupId)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found")
     }
 
     @GetMapping("/notifications")
@@ -160,17 +167,8 @@ class PaymentNotificationController(
         val notification = paymentNotificationRepository.findByIdAndGroupId(id, groupId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
 
-        val (categoryId, categoryName) = if (request.categoryId != null) {
-            val category = categoryRepository.findByIdAndGroupId(request.categoryId, groupId)
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found")
-            category.id to category.name
-        } else {
-            null to null
-        }
-
-        val updated = paymentNotificationRepository.save(
-            notification.copy(categoryId = categoryId, category = categoryName)
-        )
+        val category = resolveCategory(request.categoryId, groupId)
+        val updated = paymentNotificationRepository.save(notification.copy(category = category))
         return PaymentNotificationResponse.from(updated)
     }
 
@@ -263,6 +261,7 @@ class PaymentNotificationController(
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
     fun createManualNotification(@Validated @RequestBody request: ManualPaymentNotificationRequest): PaymentNotificationResponse {
+        val category = resolveCategory(request.categoryId, requestContext.groupId)
         val paymentNotification = PaymentNotification(
             groupId = requestContext.groupId,
             cardLastDigits = request.cardLastDigits,
@@ -273,7 +272,7 @@ class PaymentNotificationController(
             currentInstallmentNumber = request.currentInstallmentNumber,
             origin = "MANUAL",
             originType = "MANUAL",
-            categoryId = request.categoryId,
+            category = category,
             paymentMethodId = request.paymentMethodId,
             subCardId = request.subCardId,
         )

@@ -24,10 +24,55 @@ class PaymentNotificationCategoryIntegrationTest {
     fun cleanUp() {
         jdbcTemplate.update("DELETE FROM budget_items")
         jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, category = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications WHERE merchant_name = 'Test Store Category'")
+        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
+        jdbcTemplate.update("DELETE FROM payment_notifications WHERE merchant_name IN ('Test Store Category', 'Supermercado Teste')")
         jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
         jdbcTemplate.update("DELETE FROM categories")
+        jdbcTemplate.update("DELETE FROM payment_methods WHERE name = 'Cartao Teste Categoria'")
+        jdbcTemplate.update("DELETE FROM holders WHERE name = 'Titular Teste Categoria'")
+    }
+
+    @Test
+    fun `POST manual notification with categoryId should resolve category name immediately`() {
+        val categoryId = createCategory("Mercado")
+        val paymentMethodId = createPaymentMethod()
+
+        mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Supermercado Teste",
+                        "amount": 99.90,
+                        "purchasedAt": "2024-06-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId,
+                        "categoryId": $categoryId
+                    }"""
+                )
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.categoryId").value(categoryId))
+            .andExpect(jsonPath("$.category").value("Mercado"))
+    }
+
+    @Test
+    fun `POST manual notification with non-existent categoryId should return 400`() {
+        val paymentMethodId = createPaymentMethod()
+
+        mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Supermercado Teste",
+                        "amount": 99.90,
+                        "purchasedAt": "2024-06-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId,
+                        "categoryId": 99999
+                    }"""
+                )
+        )
+            .andExpect(status().isBadRequest)
     }
 
     @Test
@@ -162,6 +207,19 @@ class PaymentNotificationCategoryIntegrationTest {
         ).andReturn().response.contentAsString
 
         return objectMapper.readTree(response).get("id").asLong()
+    }
+
+    private fun createPaymentMethod(): Long {
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Titular Teste Categoria', 1)")
+        val holderId = jdbcTemplate.queryForObject(
+            "SELECT id FROM holders WHERE name = 'Titular Teste Categoria' ORDER BY id DESC LIMIT 1", Long::class.java
+        )!!
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Cartao Teste Categoria', 'CREDIT', $holderId, 1)"
+        )
+        return jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_methods WHERE name = 'Cartao Teste Categoria' ORDER BY id DESC LIMIT 1", Long::class.java
+        )!!
     }
 
     private fun createNotification(): Long {

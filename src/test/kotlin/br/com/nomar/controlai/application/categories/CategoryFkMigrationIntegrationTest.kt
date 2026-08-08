@@ -80,10 +80,10 @@ class CategoryFkMigrationIntegrationTest {
     }
 
     @Test
-    fun `should preserve existing category text field`() {
+    fun `should not have legacy category text column in payment_notifications`() {
         val columns = jdbcTemplate.queryForList(
             "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CATEGORY'",
         )
-        assertEquals(1, columns.size)
+        assertEquals(0, columns.size)
     }
 }
