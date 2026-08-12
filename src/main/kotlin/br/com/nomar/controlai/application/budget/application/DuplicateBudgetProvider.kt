@@ -1,8 +1,6 @@
 package br.com.nomar.controlai.application.budget.application
 
 import br.com.nomar.controlai.application.budget.converter.BudgetConverter
-import br.com.nomar.controlai.application.budget.entrypoint.database.model.BudgetIncomeModel
-import br.com.nomar.controlai.application.budget.entrypoint.database.model.BudgetItemModel
 import br.com.nomar.controlai.application.budget.entrypoint.database.model.BudgetModel
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
@@ -35,23 +33,7 @@ class DuplicateBudgetProvider(
             }
 
             val newBudget = BudgetModel(yearMonth = targetYearMonth.toString(), groupId = groupId)
-
-            newBudget.items.addAll(source.items.map { item ->
-                BudgetItemModel(
-                    budget = newBudget,
-                    categoryId = item.categoryId,
-                    type = item.type,
-                    expected = item.expected,
-                )
-            })
-
-            newBudget.incomes.addAll(source.incomes.map { income ->
-                BudgetIncomeModel(
-                    budget = newBudget,
-                    label = income.label,
-                    amount = income.amount,
-                )
-            })
+            BudgetCopySupport.copyItemsAndIncomes(source, newBudget)
 
             val paymentMethods = paymentMethodRepository.findAllByGroupIdOrderByNameAsc(groupId)
             val periods = periodCalculator.generatePeriods(newBudget, paymentMethods, targetYearMonth)

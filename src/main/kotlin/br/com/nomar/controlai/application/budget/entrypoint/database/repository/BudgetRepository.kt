@@ -8,4 +8,5 @@ interface BudgetRepository : JpaRepository<BudgetModel, Long> {
     fun findByYearMonth(yearMonth: String): Optional<BudgetModel>
     fun findByYearMonthAndGroupId(yearMonth: String, groupId: Long): Optional<BudgetModel>
     fun findByIdAndGroupId(id: Long, groupId: Long): BudgetModel?
+    fun findFirstByGroupIdOrderByYearMonthDesc(groupId: Long): BudgetModel?
 }

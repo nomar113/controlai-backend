@@ -67,7 +67,23 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `should calculate dates as same day next month`() {
+    fun `should sum installment amounts back to total regardless of remainder`() {
+        val totals = listOf("100.00", "589.90", "37.01", "999.99")
+        val counts = listOf(3, 10, 7, 4)
+
+        totals.zip(counts).forEach { (total, count) ->
+            val previews = createInstallmentsProvider.calculate(
+                totalInstallments = count,
+                totalAmount = BigDecimal(total),
+                startDate = LocalDate.of(2026, 5, 15),
+            )
+            val sum = previews.sumOf { it.amount }
+            assertEquals(BigDecimal(total), sum, "sum of $count installments of $total should equal total")
+        }
+    }
+
+    @Test
+    fun `should fall back to calendar month when no closing day is provided`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 3,
@@ -81,7 +97,54 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `should handle day 31 in short months`() {
+    fun `should fall back to calendar month when payment method is not a credit card`() {
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 2,
+            totalAmount = BigDecimal("50.00"),
+            startDate = LocalDate.of(2026, 1, 15),
+            closingDay = 10,
+            type = "PIX",
+        )
+
+        assertEquals(LocalDate.of(2026, 1, 15), result[0].dueDate)
+        assertEquals(LocalDate.of(2026, 2, 15), result[1].dueDate)
+    }
+
+    @Test
+    fun `should delegate due_date to BudgetPeriodCalculator using card closing cycle when purchase is before closing day`() {
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 2,
+            totalAmount = BigDecimal("50.00"),
+            startDate = LocalDate.of(2026, 1, 15),
+            closingDay = 20,
+            type = "CREDIT_CARD",
+        )
+
+        assertEquals(LocalDate.of(2026, 1, 15), result[0].dueDate)
+        assertEquals(LocalDate.of(2026, 2, 15), result[1].dueDate)
+    }
+
+    @Test
+    fun `should delegate due_date to BudgetPeriodCalculator advancing cycle when purchase is after closing day`() {
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            totalInstallments = 2,
+            totalAmount = BigDecimal("50.00"),
+            startDate = LocalDate.of(2026, 1, 15),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+        )
+
+        // Purchase (Jan 15) falls after the Jan 10 closing day, so the 1st installment
+        // is billed in the February cycle instead of the purchase month.
+        assertEquals(LocalDate.of(2026, 2, 15), result[0].dueDate)
+        assertEquals(LocalDate.of(2026, 3, 15), result[1].dueDate)
+    }
+
+    @Test
+    fun `should clamp day 31 to shorter target months when advancing cycles`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             totalInstallments = 3,
@@ -92,20 +155,6 @@ class CreateInstallmentsProviderTest {
         assertEquals(LocalDate.of(2026, 1, 31), result[0].dueDate)
         assertEquals(LocalDate.of(2026, 2, 28), result[1].dueDate) // Feb 2026 has 28 days
         assertEquals(LocalDate.of(2026, 3, 31), result[2].dueDate)
-    }
-
-    @Test
-    fun `should handle day 29 in leap year February`() {
-        // 2028 is a leap year
-        val result = createInstallmentsProvider.execute(
-            parentId = parentId,
-            totalInstallments = 2,
-            totalAmount = BigDecimal("50.00"),
-            startDate = LocalDate.of(2028, 1, 29),
-        )
-
-        assertEquals(LocalDate.of(2028, 1, 29), result[0].dueDate)
-        assertEquals(LocalDate.of(2028, 2, 29), result[1].dueDate) // Leap year
     }
 
     @Test
@@ -168,8 +217,18 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `calculateDueDate should handle day 30 in February`() {
-        val dueDate = CreateInstallmentsProvider.calculateDueDate(LocalDate.of(2026, 1, 30), 2)
-        assertEquals(LocalDate.of(2026, 2, 28), dueDate)
+    fun `executeWithAmounts should also delegate due_date to BudgetPeriodCalculator`() {
+        val result = createInstallmentsProvider.executeWithAmounts(
+            parentId = parentId,
+            totalInstallments = 2,
+            amounts = mapOf(1 to BigDecimal("30.00"), 2 to BigDecimal("20.00")),
+            startDate = LocalDate.of(2026, 1, 15),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+        )
+
+        assertEquals(LocalDate.of(2026, 2, 15), result[0].dueDate)
+        assertEquals(LocalDate.of(2026, 3, 15), result[1].dueDate)
+        assertEquals(BigDecimal("50.00"), result.sumOf { it.amount })
     }
 }

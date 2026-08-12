@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.installments.application
 
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodCalculator
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
@@ -13,11 +14,14 @@ import java.time.LocalDate
 class CreateInstallmentsProvider(
     private val installmentRepository: InstallmentRepository,
     private val requestContext: RequestContext,
+    private val periodCalculator: BudgetPeriodCalculator,
 ) {
     fun calculate(
         totalInstallments: Int,
         totalAmount: BigDecimal,
         startDate: LocalDate,
+        closingDay: Int? = null,
+        type: String = "OTHER",
     ): List<InstallmentPreviewItemResponse> {
         val baseAmount = totalAmount.divide(BigDecimal(totalInstallments), 2, RoundingMode.DOWN)
         val remainder = totalAmount.subtract(baseAmount.multiply(BigDecimal(totalInstallments)))
@@ -27,7 +31,7 @@ class CreateInstallmentsProvider(
                 installmentNumber = number,
                 totalInstallments = totalInstallments,
                 amount = if (number == 1) baseAmount.add(remainder) else baseAmount,
-                dueDate = calculateDueDate(startDate, number),
+                dueDate = periodCalculator.resolveInstallmentDueDate(startDate, closingDay, type, number),
             )
         }
     }
@@ -37,9 +41,11 @@ class CreateInstallmentsProvider(
         totalInstallments: Int,
         totalAmount: BigDecimal,
         startDate: LocalDate,
+        closingDay: Int? = null,
+        type: String = "OTHER",
     ): List<Installment> {
         val groupId = requestContext.groupId
-        val previews = calculate(totalInstallments, totalAmount, startDate)
+        val previews = calculate(totalInstallments, totalAmount, startDate, closingDay, type)
         val installments = previews.map { preview ->
             Installment(
                 groupId = groupId,
@@ -58,6 +64,8 @@ class CreateInstallmentsProvider(
         totalInstallments: Int,
         amounts: Map<Int, BigDecimal>,
         startDate: LocalDate,
+        closingDay: Int? = null,
+        type: String = "OTHER",
     ): List<Installment> {
         val groupId = requestContext.groupId
         val installments = (1..totalInstallments).map { number ->
@@ -67,17 +75,9 @@ class CreateInstallmentsProvider(
                 installmentNumber = number,
                 totalInstallments = totalInstallments,
                 amount = amounts[number]!!,
-                dueDate = calculateDueDate(startDate, number),
+                dueDate = periodCalculator.resolveInstallmentDueDate(startDate, closingDay, type, number),
             )
         }
         return installmentRepository.saveAll(installments)
-    }
-
-    companion object {
-        fun calculateDueDate(startDate: LocalDate, installmentNumber: Int): LocalDate {
-            val targetMonth = startDate.plusMonths((installmentNumber - 1).toLong())
-            val dayOfMonth = minOf(startDate.dayOfMonth, targetMonth.lengthOfMonth())
-            return targetMonth.withDayOfMonth(dayOfMonth)
-        }
     }
 }

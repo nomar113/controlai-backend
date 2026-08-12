@@ -48,4 +48,22 @@ class BudgetPeriodCalculator {
 
         return Pair(startDate, endDate)
     }
+
+    fun resolveInstallmentDueDate(
+        purchasedAt: LocalDate,
+        closingDay: Int?,
+        type: String,
+        installmentNumber: Int,
+    ): LocalDate {
+        val firstInstallmentCycle = resolveFirstInstallmentCycle(purchasedAt, closingDay, type)
+        val targetCycle = firstInstallmentCycle.plusMonths((installmentNumber - 1).toLong())
+        val dayOfMonth = Math.min(purchasedAt.dayOfMonth, targetCycle.lengthOfMonth())
+        return targetCycle.atDay(dayOfMonth)
+    }
+
+    private fun resolveFirstInstallmentCycle(purchasedAt: LocalDate, closingDay: Int?, type: String): YearMonth {
+        val purchaseMonth = YearMonth.from(purchasedAt)
+        val (_, closingDate) = calculateDates(closingDay, type, purchaseMonth)
+        return if (purchasedAt <= closingDate) purchaseMonth else purchaseMonth.plusMonths(1)
+    }
 }

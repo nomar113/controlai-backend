@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.categories.entrypoint.database.model.C
 import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
+import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
 import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationPeriodQueryProvider
@@ -61,6 +62,7 @@ class PaymentNotificationController(
     private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
     private val associateNotificationProvider: AssociateNotificationProvider,
     private val updateNotificationPaymentMethodProvider: UpdateNotificationPaymentMethodProvider,
+    private val paymentMethodRepository: PaymentMethodRepository,
     private val requestContext: RequestContext,
 ) {
 
@@ -280,6 +282,10 @@ class PaymentNotificationController(
         val response = PaymentNotificationResponse.from(saved)
 
         if (request.numberOfInstallments > 1) {
+            val paymentMethod = paymentMethodRepository.findByIdAndGroupId(request.paymentMethodId, requestContext.groupId)
+            val closingDay = paymentMethod?.closingDay
+            val type = paymentMethod?.type ?: "OTHER"
+
             val installments = if (request.installments != null) {
                 require(request.installments.size == request.numberOfInstallments) {
                     "Installments size must match numberOfInstallments"
@@ -294,6 +300,8 @@ class PaymentNotificationController(
                     totalInstallments = request.numberOfInstallments,
                     amounts = amountsMap,
                     startDate = request.purchasedAt.toLocalDate(),
+                    closingDay = closingDay,
+                    type = type,
                 )
             } else {
                 createInstallmentsProvider.execute(
@@ -301,6 +309,8 @@ class PaymentNotificationController(
                     totalInstallments = request.numberOfInstallments,
                     totalAmount = request.amount,
                     startDate = request.purchasedAt.toLocalDate(),
+                    closingDay = closingDay,
+                    type = type,
                 )
             }
             return response.copy(installments = installments.map(InstallmentResponse::from))

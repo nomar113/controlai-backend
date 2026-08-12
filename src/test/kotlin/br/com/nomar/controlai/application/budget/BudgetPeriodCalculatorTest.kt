@@ -91,4 +91,87 @@ class BudgetPeriodCalculatorTest {
         assertEquals(LocalDate.of(2026, 4, 2), start)
         assertEquals(LocalDate.of(2026, 5, 1), end)
     }
+
+    @Test
+    fun `should resolve first installment to purchase month when purchase is before closing day`() {
+        val dueDate = calculator.resolveInstallmentDueDate(
+            purchasedAt = LocalDate.of(2026, 3, 5),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+            installmentNumber = 1,
+        )
+        assertEquals(LocalDate.of(2026, 3, 5), dueDate)
+    }
+
+    @Test
+    fun `should resolve first installment to next month when purchase is after closing day`() {
+        val dueDate = calculator.resolveInstallmentDueDate(
+            purchasedAt = LocalDate.of(2026, 3, 15),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+            installmentNumber = 1,
+        )
+        assertEquals(LocalDate.of(2026, 4, 15), dueDate)
+    }
+
+    @Test
+    fun `should resolve first installment to purchase month when purchase equals closing day`() {
+        val dueDate = calculator.resolveInstallmentDueDate(
+            purchasedAt = LocalDate.of(2026, 3, 10),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+            installmentNumber = 1,
+        )
+        assertEquals(LocalDate.of(2026, 3, 10), dueDate)
+    }
+
+    @Test
+    fun `should advance one cycle per subsequent installment`() {
+        val purchasedAt = LocalDate.of(2026, 3, 5)
+        val secondInstallment = calculator.resolveInstallmentDueDate(purchasedAt, 10, "CREDIT_CARD", 2)
+        val thirdInstallment = calculator.resolveInstallmentDueDate(purchasedAt, 10, "CREDIT_CARD", 3)
+        assertEquals(LocalDate.of(2026, 4, 5), secondInstallment)
+        assertEquals(LocalDate.of(2026, 5, 5), thirdInstallment)
+    }
+
+    @Test
+    fun `should fallback to calendar month when card has no closing day`() {
+        val purchasedAt = LocalDate.of(2026, 3, 20)
+        val firstInstallment = calculator.resolveInstallmentDueDate(purchasedAt, null, "CREDIT_CARD", 1)
+        val secondInstallment = calculator.resolveInstallmentDueDate(purchasedAt, null, "CREDIT_CARD", 2)
+        assertEquals(LocalDate.of(2026, 3, 20), firstInstallment)
+        assertEquals(LocalDate.of(2026, 4, 20), secondInstallment)
+    }
+
+    @Test
+    fun `should fallback to calendar month when payment method is not credit card`() {
+        val purchasedAt = LocalDate.of(2026, 3, 20)
+        val firstInstallment = calculator.resolveInstallmentDueDate(purchasedAt, 10, "PIX", 1)
+        val secondInstallment = calculator.resolveInstallmentDueDate(purchasedAt, 10, "PIX", 2)
+        assertEquals(LocalDate.of(2026, 3, 20), firstInstallment)
+        assertEquals(LocalDate.of(2026, 4, 20), secondInstallment)
+    }
+
+    @Test
+    fun `should advance to next cycle when purchase day is after closing day of a short month`() {
+        val dueDate = calculator.resolveInstallmentDueDate(
+            purchasedAt = LocalDate.of(2026, 1, 31),
+            closingDay = 10,
+            type = "CREDIT_CARD",
+            installmentNumber = 2,
+        )
+        // first cycle = Feb (day 31 > closingDay 10), installment 2 = Mar
+        assertEquals(LocalDate.of(2026, 3, 31), dueDate)
+    }
+
+    @Test
+    fun `should clamp installment day to february length in leap and non-leap years`() {
+        val purchasedAt = LocalDate.of(2026, 1, 31)
+        val nonLeapFebruary = calculator.resolveInstallmentDueDate(purchasedAt, null, "CREDIT_CARD", 2)
+        assertEquals(LocalDate.of(2026, 2, 28), nonLeapFebruary)
+
+        val leapPurchasedAt = LocalDate.of(2028, 1, 31)
+        val leapFebruary = calculator.resolveInstallmentDueDate(leapPurchasedAt, null, "CREDIT_CARD", 2)
+        assertEquals(LocalDate.of(2028, 2, 29), leapFebruary)
+    }
 }
