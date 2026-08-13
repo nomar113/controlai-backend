@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.installments
 
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -28,6 +29,10 @@ class InstallmentCreationIntegrationTest {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM payment_notifications")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
+        jdbcTemplate.update("DELETE FROM budget_items")
+        jdbcTemplate.update("DELETE FROM budgets")
         jdbcTemplate.update("DELETE FROM categories")
         jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM payment_methods")
@@ -41,6 +46,17 @@ class InstallmentCreationIntegrationTest {
 
         jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Tecnologia', 1)")
         categoryId = jdbcTemplate.queryForObject("SELECT id FROM categories WHERE name = 'Tecnologia'", Long::class.java)!!
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // POST /notifications/manual with numberOfInstallments > 1 now auto-creates budgets via
+        // EnsureFutureBudgetProvider (Task 3.0); without this, orphaned budget_payment_periods
+        // rows referencing this suite's payment_methods break other suites' cleanup by FK.
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
+        jdbcTemplate.update("DELETE FROM budget_items")
+        jdbcTemplate.update("DELETE FROM budgets")
     }
 
     @Test

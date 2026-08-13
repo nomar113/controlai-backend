@@ -47,6 +47,7 @@ class CreateInstallmentsProviderTest {
     fun `should create N installments with correct sequential numbers`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 3,
             totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 5, 15),
@@ -86,6 +87,7 @@ class CreateInstallmentsProviderTest {
     fun `should fall back to calendar month when no closing day is provided`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 3,
             totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 1, 15),
@@ -100,6 +102,7 @@ class CreateInstallmentsProviderTest {
     fun `should fall back to calendar month when payment method is not a credit card`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
@@ -115,6 +118,7 @@ class CreateInstallmentsProviderTest {
     fun `should delegate due_date to BudgetPeriodCalculator using card closing cycle when purchase is before closing day`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
@@ -130,6 +134,7 @@ class CreateInstallmentsProviderTest {
     fun `should delegate due_date to BudgetPeriodCalculator advancing cycle when purchase is after closing day`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
@@ -147,6 +152,7 @@ class CreateInstallmentsProviderTest {
     fun `should clamp day 31 to shorter target months when advancing cycles`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 3,
             totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 1, 31),
@@ -161,6 +167,7 @@ class CreateInstallmentsProviderTest {
     fun `should create single installment`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 1,
             totalAmount = BigDecimal("900.00"),
             startDate = LocalDate.of(2026, 5, 10),
@@ -176,6 +183,7 @@ class CreateInstallmentsProviderTest {
     fun `should split total evenly when divisible`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 4,
             totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 5, 15),
@@ -190,6 +198,7 @@ class CreateInstallmentsProviderTest {
         // 589.90 / 10 = 58.99 each, no remainder
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 10,
             totalAmount = BigDecimal("589.90"),
             startDate = LocalDate.of(2026, 5, 15),
@@ -204,6 +213,7 @@ class CreateInstallmentsProviderTest {
         // 100.00 / 7 = 14.28 base, remainder = 100.00 - 14.28*7 = 100.00 - 99.96 = 0.04
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 7,
             totalAmount = BigDecimal("100.00"),
             startDate = LocalDate.of(2026, 5, 15),
@@ -220,6 +230,7 @@ class CreateInstallmentsProviderTest {
     fun `executeWithAmounts should also delegate due_date to BudgetPeriodCalculator`() {
         val result = createInstallmentsProvider.executeWithAmounts(
             parentId = parentId,
+            groupId = 1L,
             totalInstallments = 2,
             amounts = mapOf(1 to BigDecimal("30.00"), 2 to BigDecimal("20.00")),
             startDate = LocalDate.of(2026, 1, 15),

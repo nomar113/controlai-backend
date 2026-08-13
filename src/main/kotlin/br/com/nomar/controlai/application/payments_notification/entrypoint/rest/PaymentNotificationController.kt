@@ -3,9 +3,9 @@ package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
 import br.com.nomar.controlai.application.categories.entrypoint.database.model.CategoryModel
 import br.com.nomar.controlai.application.categories.entrypoint.database.repository.CategoryRepository
-import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
+import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
+import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
-import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
 import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationPeriodQueryProvider
@@ -14,6 +14,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.queue.model.PaymentNotificationQueueMessage
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.AssociateNotificationRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.InstallmentOverride
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.ManualPaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
@@ -44,6 +45,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.math.BigDecimal
 import java.time.YearMonth
 
 @RestController
@@ -54,7 +56,7 @@ class PaymentNotificationController(
     private val cancelPaymentNotificationUseCase: CancelPaymentNotificationUseCase,
     private val savePaymentNotificationUseCase: SavePaymentNotificationUseCase,
     private val paymentNotificationRepository: PaymentNotificationRepository,
-    private val createInstallmentsProvider: CreateInstallmentsProvider,
+    private val installmentRepository: InstallmentRepository,
     private val categoryRepository: CategoryRepository,
     private val budgetPeriodResolver: BudgetPeriodResolver,
     private val paymentNotificationPeriodQueryProvider: PaymentNotificationPeriodQueryProvider,
@@ -62,7 +64,6 @@ class PaymentNotificationController(
     private val findNotificationInvoiceSuggestionsProvider: FindNotificationInvoiceSuggestionsProvider,
     private val associateNotificationProvider: AssociateNotificationProvider,
     private val updateNotificationPaymentMethodProvider: UpdateNotificationPaymentMethodProvider,
-    private val paymentMethodRepository: PaymentMethodRepository,
     private val requestContext: RequestContext,
 ) {
 
@@ -281,41 +282,41 @@ class PaymentNotificationController(
         val saved = savePaymentNotificationUseCase.execute(paymentNotification).getOrThrow()
         val response = PaymentNotificationResponse.from(saved)
 
-        if (request.numberOfInstallments > 1) {
-            val paymentMethod = paymentMethodRepository.findByIdAndGroupId(request.paymentMethodId, requestContext.groupId)
-            val closingDay = paymentMethod?.closingDay
-            val type = paymentMethod?.type ?: "OTHER"
-
+        if (saved.numberOfInstallments > 1) {
             val installments = if (request.installments != null) {
-                require(request.installments.size == request.numberOfInstallments) {
-                    "Installments size must match numberOfInstallments"
-                }
-                val sum = request.installments.sumOf { it.amount }
-                require(sum.compareTo(request.amount) == 0) {
-                    "Sum of installment amounts ($sum) must equal total amount (${request.amount})"
-                }
-                val amountsMap = request.installments.associate { it.installmentNumber to it.amount }
-                createInstallmentsProvider.executeWithAmounts(
-                    parentId = saved.id,
-                    totalInstallments = request.numberOfInstallments,
-                    amounts = amountsMap,
-                    startDate = request.purchasedAt.toLocalDate(),
-                    closingDay = closingDay,
-                    type = type,
-                )
+                applyInstallmentOverrides(saved.id, request.numberOfInstallments, request.amount, request.installments)
             } else {
-                createInstallmentsProvider.execute(
-                    parentId = saved.id,
-                    totalInstallments = request.numberOfInstallments,
-                    totalAmount = request.amount,
-                    startDate = request.purchasedAt.toLocalDate(),
-                    closingDay = closingDay,
-                    type = type,
-                )
+                installmentRepository.findByParentIdOrderByInstallmentNumber(saved.id)
             }
             return response.copy(installments = installments.map(InstallmentResponse::from))
         }
 
         return response
+    }
+
+    // SavePaymentNotificationProvider already created the default split; overrides only adjust
+    // the amount of each already-created installment, never a second set of rows.
+    private fun applyInstallmentOverrides(
+        parentId: Long,
+        numberOfInstallments: Int,
+        totalAmount: BigDecimal,
+        overrides: List<InstallmentOverride>,
+    ): List<Installment> {
+        require(overrides.size == numberOfInstallments) {
+            "Installments size must match numberOfInstallments"
+        }
+        val sum = overrides.sumOf { it.amount }
+        require(sum.compareTo(totalAmount) == 0) {
+            "Sum of installment amounts ($sum) must equal total amount ($totalAmount)"
+        }
+
+        val existingByNumber = installmentRepository.findByParentIdOrderByInstallmentNumber(parentId)
+            .associateBy { it.installmentNumber }
+        val adjusted = overrides.map { override ->
+            val installment = existingByNumber[override.installmentNumber]
+                ?: throw IllegalStateException("Installment ${override.installmentNumber} not found for parent $parentId")
+            installment.copy(amount = override.amount)
+        }
+        return installmentRepository.saveAll(adjusted)
     }
 }

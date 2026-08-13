@@ -1,5 +1,8 @@
 package br.com.nomar.controlai.application.payments_notification
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -19,6 +23,7 @@ class PaymentNotificationControllerTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun cleanUp() {
@@ -26,8 +31,24 @@ class PaymentNotificationControllerTest {
         jdbcTemplate.update("DELETE FROM payment_notifications")
         jdbcTemplate.update("DELETE FROM purchase_invoices")
         jdbcTemplate.update("DELETE FROM sub_cards")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
+        jdbcTemplate.update("DELETE FROM budget_items")
+        jdbcTemplate.update("DELETE FROM budgets")
         jdbcTemplate.update("DELETE FROM payment_methods")
         jdbcTemplate.update("DELETE FROM holders")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // POST /notifications/manual with numberOfInstallments > 1 now auto-creates budgets via
+        // EnsureFutureBudgetProvider, which links budget_payment_periods to this suite's
+        // payment_methods; without this cleanup those rows outlive the test and break other
+        // suites' payment_methods/categories cleanup by FK (see EnsureFutureBudgetProviderTest).
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
+        jdbcTemplate.update("DELETE FROM budget_items")
+        jdbcTemplate.update("DELETE FROM budgets")
     }
 
     private fun insertHolder(name: String = "Titular Teste"): Long {
@@ -35,9 +56,14 @@ class PaymentNotificationControllerTest {
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM holders", Long::class.java)!!
     }
 
-    private fun insertPaymentMethod(holderId: Long, name: String = "Cartao Teste", type: String = "CREDIT"): Long {
+    private fun insertPaymentMethod(
+        holderId: Long,
+        name: String = "Cartao Teste",
+        type: String = "CREDIT",
+        closingDay: Int? = null,
+    ): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('$name', '$type', $holderId, 1)"
+            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('$name', '$type', $holderId, $closingDay, 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
@@ -297,5 +323,95 @@ class PaymentNotificationControllerTest {
                 .content("""{"paymentMethodId": $paymentMethodId}""")
         )
             .andExpect(status().isConflict)
+    }
+
+    // --- POST notifications/manual ---
+
+    private fun countInstallmentsByParent(parentId: Long): Int =
+        jdbcTemplate.queryForObject("SELECT COUNT(*) FROM installments WHERE parent_id = ?", Int::class.java, parentId)!!
+
+    @Test
+    fun `POST manual creates N installments automatically with the default split, without an installments override`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+
+        val result = mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Apple Store",
+                        "amount": 300.00,
+                        "purchasedAt": "2026-01-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId,
+                        "numberOfInstallments": 3
+                    }"""
+                )
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.installments.length()").value(3))
+            .andReturn()
+
+        val notificationId = objectMapper.readTree(result.response.contentAsString).get("id").asLong()
+        assertEquals(3, countInstallmentsByParent(notificationId))
+    }
+
+    @Test
+    fun `POST manual with installments override adjusts the already-created installments instead of creating a second set`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+
+        val result = mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Apple Store",
+                        "amount": 300.00,
+                        "purchasedAt": "2026-01-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId,
+                        "numberOfInstallments": 3,
+                        "installments": [
+                            {"installmentNumber": 1, "amount": 100.00},
+                            {"installmentNumber": 2, "amount": 100.00},
+                            {"installmentNumber": 3, "amount": 100.00}
+                        ]
+                    }"""
+                )
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.installments.length()").value(3))
+            .andExpect(jsonPath("$.installments[0].amount").value(100.00))
+            .andExpect(jsonPath("$.installments[1].amount").value(100.00))
+            .andExpect(jsonPath("$.installments[2].amount").value(100.00))
+            .andReturn()
+
+        val notificationId = objectMapper.readTree(result.response.contentAsString).get("id").asLong()
+        assertEquals(3, countInstallmentsByParent(notificationId))
+    }
+
+    @Test
+    fun `POST manual does not create installments for a cash purchase`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+
+        val result = mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Padaria",
+                        "amount": 45.00,
+                        "purchasedAt": "2026-01-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId
+                    }"""
+                )
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.installments.length()").value(0))
+            .andReturn()
+
+        val notificationId = objectMapper.readTree(result.response.contentAsString).get("id").asLong()
+        assertEquals(0, countInstallmentsByParent(notificationId))
     }
 }

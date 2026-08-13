@@ -4,7 +4,6 @@ import br.com.nomar.controlai.application.budget.application.BudgetPeriodCalcula
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
-import br.com.nomar.controlai.domain.auth.RequestContext
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -13,7 +12,6 @@ import java.time.LocalDate
 @Service
 class CreateInstallmentsProvider(
     private val installmentRepository: InstallmentRepository,
-    private val requestContext: RequestContext,
     private val periodCalculator: BudgetPeriodCalculator,
 ) {
     fun calculate(
@@ -38,13 +36,13 @@ class CreateInstallmentsProvider(
 
     fun execute(
         parentId: Long,
+        groupId: Long,
         totalInstallments: Int,
         totalAmount: BigDecimal,
         startDate: LocalDate,
         closingDay: Int? = null,
         type: String = "OTHER",
     ): List<Installment> {
-        val groupId = requestContext.groupId
         val previews = calculate(totalInstallments, totalAmount, startDate, closingDay, type)
         val installments = previews.map { preview ->
             Installment(
@@ -61,13 +59,13 @@ class CreateInstallmentsProvider(
 
     fun executeWithAmounts(
         parentId: Long,
+        groupId: Long,
         totalInstallments: Int,
         amounts: Map<Int, BigDecimal>,
         startDate: LocalDate,
         closingDay: Int? = null,
         type: String = "OTHER",
     ): List<Installment> {
-        val groupId = requestContext.groupId
         val installments = (1..totalInstallments).map { number ->
             Installment(
                 groupId = groupId,
