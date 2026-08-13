@@ -37,27 +37,13 @@ class PaymentNotificationPeriodQueryProvider(
             SELECT pn.* FROM payment_notifications pn
             INNER JOIN ($periodsSql) bpp
                 ON pn.payment_method_id = bpp.payment_method_id
-            LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
+            ${BudgetPeriodSqlSupport.INSTALLMENTS_JOIN}
             WHERE pn.deleted_at IS NULL
               AND pn.group_id = :groupId
               AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
               AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
               AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
-              AND (
-                (pn.number_of_installments <= 1
-                  AND pn.purchased_at >= bpp.start_date
-                  AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
-                OR
-                (pn.number_of_installments > 1
-                  AND i.id IS NOT NULL
-                  AND DATE_FORMAT(i.due_date, '%Y-%m') = :yearMonth)
-                OR
-                (pn.number_of_installments > 1
-                  AND pn.current_installment_number IS NOT NULL
-                  AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-                  AND pn.purchased_at >= bpp.start_date
-                  AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
-              )
+              AND ${BudgetPeriodSqlSupport.PERIOD_MATCH_PREDICATE}
             GROUP BY pn.id
             ORDER BY CASE WHEN :sort = 'amount' THEN pn.amount END DESC, pn.purchased_at DESC
             LIMIT :limit OFFSET :offset
@@ -94,27 +80,13 @@ class PaymentNotificationPeriodQueryProvider(
             SELECT COUNT(DISTINCT pn.id) FROM payment_notifications pn
             INNER JOIN ($periodsSql) bpp
                 ON pn.payment_method_id = bpp.payment_method_id
-            LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
+            ${BudgetPeriodSqlSupport.INSTALLMENTS_JOIN}
             WHERE pn.deleted_at IS NULL
               AND pn.group_id = :groupId
               AND (CAST(:categoryId AS SIGNED) IS NULL OR pn.category_id = :categoryId)
               AND (:cardLastDigits IS NULL OR pn.card_last_digits = :cardLastDigits)
               AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
-              AND (
-                (pn.number_of_installments <= 1
-                  AND pn.purchased_at >= bpp.start_date
-                  AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
-                OR
-                (pn.number_of_installments > 1
-                  AND i.id IS NOT NULL
-                  AND DATE_FORMAT(i.due_date, '%Y-%m') = :yearMonth)
-                OR
-                (pn.number_of_installments > 1
-                  AND pn.current_installment_number IS NOT NULL
-                  AND NOT EXISTS (SELECT 1 FROM installments i2 WHERE i2.parent_id = pn.id AND i2.cancelled_at IS NULL)
-                  AND pn.purchased_at >= bpp.start_date
-                  AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY))
-              )
+              AND ${BudgetPeriodSqlSupport.PERIOD_MATCH_PREDICATE}
             """.trimIndent(),
         )
 

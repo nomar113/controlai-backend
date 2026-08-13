@@ -5,6 +5,7 @@ import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.budget.entity.*
 import br.com.nomar.controlai.domain.budget.gateway.GetBudgetSummaryGateway
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -14,6 +15,7 @@ import java.time.YearMonth
 class GetBudgetSummaryProvider(
     private val budgetRepository: BudgetRepository,
     private val jdbcTemplate: JdbcTemplate,
+    private val namedParameterJdbcTemplate: NamedParameterJdbcTemplate,
     private val budgetPeriodResolver: BudgetPeriodResolver,
     private val requestContext: RequestContext,
 ) : GetBudgetSummaryGateway {
@@ -25,8 +27,8 @@ class GetBudgetSummaryProvider(
             budgetPeriodResolver.ensurePaymentPeriodsSynced(budgetModel, yearMonth)
             val budgetId = budgetModel.id!!
 
-            val actualByCategory = queryActualByCategory(budgetId)
-            val paymentMethodTotals = queryPaymentMethodTotals(budgetId)
+            val actualByCategory = queryActualByCategory(budgetId, yearMonth)
+            val paymentMethodTotals = queryPaymentMethodTotals(budgetId, yearMonth)
             val categoryIds = budgetModel.items.map { it.categoryId }.distinct()
             val categoryInfo = if (categoryIds.isNotEmpty()) queryCategoryInfo(categoryIds) else emptyMap()
 
@@ -95,46 +97,46 @@ class GetBudgetSummaryProvider(
         }
     }
 
-    private fun queryActualByCategory(budgetId: Long): Map<Long, BigDecimal> {
-        val rows = jdbcTemplate.queryForList(
+    private fun queryActualByCategory(budgetId: Long, yearMonth: YearMonth): Map<Long, BigDecimal> {
+        val rows = namedParameterJdbcTemplate.queryForList(
             """
-            SELECT pn.category_id, COALESCE(SUM(pn.amount), 0) AS total
+            SELECT pn.category_id, COALESCE(SUM(${BudgetPeriodSqlSupport.AMOUNT_EXPRESSION}), 0) AS total
             FROM payment_notifications pn
             INNER JOIN budget_payment_periods bpp
                 ON pn.payment_method_id = bpp.payment_method_id
-                AND bpp.budget_id = ?
+                AND bpp.budget_id = :budgetId
+            ${BudgetPeriodSqlSupport.INSTALLMENTS_JOIN}
             WHERE pn.category_id IS NOT NULL
               AND pn.deleted_at IS NULL
               AND pn.cancelled_at IS NULL
-              AND pn.purchased_at >= bpp.start_date
-              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
+              AND ${BudgetPeriodSqlSupport.PERIOD_MATCH_PREDICATE}
             GROUP BY pn.category_id
             """.trimIndent(),
-            budgetId,
+            mapOf("budgetId" to budgetId, "yearMonth" to yearMonth.toString()),
         )
         return rows.associate {
             (it["category_id"] as Number).toLong() to (it["total"] as BigDecimal)
         }
     }
 
-    private fun queryPaymentMethodTotals(budgetId: Long): List<PaymentMethodTotal> {
-        val rows = jdbcTemplate.queryForList(
+    private fun queryPaymentMethodTotals(budgetId: Long, yearMonth: YearMonth): List<PaymentMethodTotal> {
+        val rows = namedParameterJdbcTemplate.queryForList(
             """
-            SELECT pm.id, pm.name, COALESCE(SUM(pn.amount), 0) AS total
+            SELECT pm.id, pm.name, COALESCE(SUM(${BudgetPeriodSqlSupport.AMOUNT_EXPRESSION}), 0) AS total
             FROM payment_notifications pn
             INNER JOIN budget_payment_periods bpp
                 ON pn.payment_method_id = bpp.payment_method_id
-                AND bpp.budget_id = ?
+                AND bpp.budget_id = :budgetId
             JOIN payment_methods pm ON pn.payment_method_id = pm.id
+            ${BudgetPeriodSqlSupport.INSTALLMENTS_JOIN}
             WHERE pn.deleted_at IS NULL
               AND pn.cancelled_at IS NULL
               AND pm.deleted_at IS NULL
-              AND pn.purchased_at >= bpp.start_date
-              AND pn.purchased_at < DATE_ADD(bpp.end_date, INTERVAL 1 DAY)
+              AND ${BudgetPeriodSqlSupport.PERIOD_MATCH_PREDICATE}
             GROUP BY pm.id, pm.name
             ORDER BY pm.name
             """.trimIndent(),
-            budgetId,
+            mapOf("budgetId" to budgetId, "yearMonth" to yearMonth.toString()),
         )
         return rows.map {
             PaymentMethodTotal(
