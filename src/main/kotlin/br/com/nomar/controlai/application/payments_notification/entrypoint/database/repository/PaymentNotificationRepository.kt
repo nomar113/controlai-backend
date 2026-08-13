@@ -30,6 +30,22 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
 
     fun findByIdAndGroupId(id: Long, groupId: Long): PaymentNotification?
 
+    fun findByGroupIdAndNumberOfInstallmentsGreaterThanAndCancelledAtIsNull(
+        groupId: Long,
+        numberOfInstallments: Int,
+    ): List<PaymentNotification>
+
+    @Query(
+        value = """
+            SELECT DISTINCT group_id FROM payment_notifications
+            WHERE deleted_at IS NULL
+              AND cancelled_at IS NULL
+              AND number_of_installments > 1
+        """,
+        nativeQuery = true,
+    )
+    fun findDistinctGroupIdsWithInstallmentPurchases(): List<Long>
+
     @Query(
         value = """
             SELECT * FROM payment_notifications
