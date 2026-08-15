@@ -30,21 +30,19 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
 
     fun findByIdAndGroupId(id: Long, groupId: Long): PaymentNotification?
 
-    fun findByGroupIdAndNumberOfInstallmentsGreaterThanAndCancelledAtIsNull(
-        groupId: Long,
-        numberOfInstallments: Int,
-    ): List<PaymentNotification>
+    fun findByGroupIdAndCancelledAtIsNull(groupId: Long): List<PaymentNotification>
 
+    // Native query bypasses PaymentNotification's @SQLRestriction("deleted_at IS NULL") —
+    // the deleted_at filter must stay explicit here.
     @Query(
         value = """
             SELECT DISTINCT group_id FROM payment_notifications
             WHERE deleted_at IS NULL
               AND cancelled_at IS NULL
-              AND number_of_installments > 1
         """,
         nativeQuery = true,
     )
-    fun findDistinctGroupIdsWithInstallmentPurchases(): List<Long>
+    fun findDistinctGroupIds(): List<Long>
 
     @Query(
         value = """

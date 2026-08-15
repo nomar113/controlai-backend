@@ -9,10 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.DefaultApplicationArguments
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.test.context.TestPropertySource
 import java.math.BigDecimal
 import java.time.LocalDate
 
 @SpringBootTest
+@TestPropertySource(properties = ["app.reconciliation.installments.run-full-backfill=true"])
 class InstallmentReconciliationRunnerIT {
 
     @Autowired private lateinit var runner: InstallmentReconciliationRunner
@@ -21,6 +23,11 @@ class InstallmentReconciliationRunnerIT {
     private var missingParentId: Long = 0
     private var existingParentId: Long = 0
     private var cancelledParentId: Long = 0
+    private var deletedParentId: Long = 0
+    private var cardAVistaMissingParentId: Long = 0
+    private var cardAVistaExistingParentId: Long = 0
+    private var pixMissingParentId: Long = 0
+    private var cashMissingParentId: Long = 0
 
     @BeforeEach
     fun setUp() {
@@ -46,6 +53,22 @@ class InstallmentReconciliationRunnerIT {
         )
         val paymentMethodId = jdbcTemplate.queryForObject(
             "SELECT id FROM payment_methods WHERE name = 'Nubank'", Long::class.java
+        )!!
+
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Conta Pix', 'PIX', ?, 1)",
+            holderId,
+        )
+        val pixPaymentMethodId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_methods WHERE name = 'Conta Pix'", Long::class.java
+        )!!
+
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Carteira', 'CASH', ?, 1)",
+            holderId,
+        )
+        val cashPaymentMethodId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_methods WHERE name = 'Carteira'", Long::class.java
         )!!
 
         // Installment purchase with no rows in `installments` yet (fully pre-migration scenario).
@@ -90,6 +113,67 @@ class InstallmentReconciliationRunnerIT {
         cancelledParentId = jdbcTemplate.queryForObject(
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Cancelled'", Long::class.java
         )!!
+
+        // Soft-deleted purchase with no rows in `installments` — must not be revived either.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id, deleted_at)
+               VALUES ('2026-01-05 10:00:00', 70.00, 'Loja Deleted', 1, 'MANUAL', 'MANUAL', 1, ?, '2026-01-06 09:00:00')""",
+            paymentMethodId,
+        )
+        deletedParentId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Deleted'", Long::class.java
+        )!!
+
+        // Card purchase paid in full (a vista, number_of_installments = 1), no rows in `installments` yet.
+        // Purchased before the closing day (10th) -> statement falls in January's own cycle.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
+               VALUES ('2026-01-05 10:00:00', 150.00, 'Loja AVista Missing', 1, 'MANUAL', 'MANUAL', 1, ?)""",
+            paymentMethodId,
+        )
+        cardAVistaMissingParentId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja AVista Missing'", Long::class.java
+        )!!
+
+        // Card purchase paid in full with a statement already existing — confirms idempotency does not duplicate.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
+               VALUES ('2026-01-05 10:00:00', 60.00, 'Loja AVista Existing', 1, 'MANUAL', 'MANUAL', 1, ?)""",
+            paymentMethodId,
+        )
+        cardAVistaExistingParentId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja AVista Existing'", Long::class.java
+        )!!
+        jdbcTemplate.update(
+            """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
+               VALUES (1, ?, 1, 1, 60.00, '2026-01-05')""",
+            cardAVistaExistingParentId,
+        )
+
+        // Pix purchase, no rows in `installments` yet — always the calendar month of the purchase date.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
+               VALUES ('2026-01-20 10:00:00', 80.00, 'Loja Pix', 1, 'MANUAL', 'MANUAL', 1, ?)""",
+            pixPaymentMethodId,
+        )
+        pixMissingParentId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Pix'", Long::class.java
+        )!!
+
+        // Cash purchase, no rows in `installments` yet — always the calendar month of the purchase date.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
+               VALUES ('2026-01-25 10:00:00', 40.00, 'Loja Dinheiro', 1, 'MANUAL', 'MANUAL', 1, ?)""",
+            cashPaymentMethodId,
+        )
+        cashMissingParentId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Dinheiro'", Long::class.java
+        )!!
     }
 
     @AfterEach
@@ -125,6 +209,38 @@ class InstallmentReconciliationRunnerIT {
         assertEquals(LocalDate.of(2026, 4, 15), (existing[2]["due_date"] as java.sql.Date).toLocalDate())
         // Recalculation does not change the installment amount, only the due date.
         existing.forEach { assertEquals(BigDecimal("100.00"), it["amount"]) }
+
+        val cardAVista = jdbcTemplate.queryForList(
+            "SELECT installment_number, amount, due_date FROM installments WHERE parent_id = ?",
+            cardAVistaMissingParentId,
+        )
+        assertEquals(1, cardAVista.size)
+        assertEquals(1, cardAVista[0]["installment_number"])
+        assertEquals(LocalDate.of(2026, 1, 5), (cardAVista[0]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(BigDecimal("150.00"), cardAVista[0]["amount"])
+
+        val cardAVistaExisting = jdbcTemplate.queryForList(
+            "SELECT installment_number, amount, due_date FROM installments WHERE parent_id = ?",
+            cardAVistaExistingParentId,
+        )
+        assertEquals(1, cardAVistaExisting.size)
+        assertEquals(BigDecimal("60.00"), cardAVistaExisting[0]["amount"])
+
+        val pix = jdbcTemplate.queryForList(
+            "SELECT installment_number, amount, due_date FROM installments WHERE parent_id = ?",
+            pixMissingParentId,
+        )
+        assertEquals(1, pix.size)
+        assertEquals(LocalDate.of(2026, 1, 20), (pix[0]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(BigDecimal("80.00"), pix[0]["amount"])
+
+        val cash = jdbcTemplate.queryForList(
+            "SELECT installment_number, amount, due_date FROM installments WHERE parent_id = ?",
+            cashMissingParentId,
+        )
+        assertEquals(1, cash.size)
+        assertEquals(LocalDate.of(2026, 1, 25), (cash[0]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(BigDecimal("40.00"), cash[0]["amount"])
     }
 
     @Test
@@ -133,6 +249,16 @@ class InstallmentReconciliationRunnerIT {
 
         val count = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM installments WHERE parent_id = ?", Int::class.java, cancelledParentId,
+        )
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun `should not create installments for a soft-deleted purchase`() {
+        runner.run(DefaultApplicationArguments())
+
+        val count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM installments WHERE parent_id = ?", Int::class.java, deletedParentId,
         )
         assertEquals(0, count)
     }

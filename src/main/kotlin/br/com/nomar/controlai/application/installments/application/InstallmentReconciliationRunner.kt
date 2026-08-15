@@ -10,6 +10,7 @@ import br.com.nomar.controlai.domain.budget.gateway.EnsureFutureBudgetGateway
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 import java.time.YearMonth
@@ -17,11 +18,14 @@ import java.time.YearMonth
 private data class ReconciliationResult(val created: Int, val recalculated: Int)
 
 /**
- * On boot, recalculates installments for purchases already registered (with or without rows in
- * `installments`) for the new invoice-closing model. Does not use RequestContext (request-scoped,
- * unavailable at boot) nor its own gateway/usecase: this is boot infrastructure, not a domain operation.
+ * Full backfill for every non-cancelled/non-deleted purchase (installment or not) without rows in
+ * `installments`, or with rows computed by the old due-date rule. Gated by a property instead of
+ * running on every boot: this is a one-off migration, not boot infrastructure that every future
+ * startup should pay for. Does not use RequestContext (request-scoped, unavailable at boot) nor its
+ * own gateway/usecase.
  */
 @Component
+@ConditionalOnProperty(name = ["app.reconciliation.installments.run-full-backfill"], havingValue = "true")
 class InstallmentReconciliationRunner(
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val installmentRepository: InstallmentRepository,
@@ -34,7 +38,7 @@ class InstallmentReconciliationRunner(
     private val logger = LoggerFactory.getLogger(InstallmentReconciliationRunner::class.java)
 
     override fun run(args: ApplicationArguments) {
-        paymentNotificationRepository.findDistinctGroupIdsWithInstallmentPurchases().forEach { groupId ->
+        paymentNotificationRepository.findDistinctGroupIds().forEach { groupId ->
             runCatching { reconcileGroup(groupId) }
                 .onSuccess { (created, recalculated) ->
                     logger.info(
@@ -52,7 +56,7 @@ class InstallmentReconciliationRunner(
 
     private fun reconcileGroup(groupId: Long): ReconciliationResult {
         val notifications = paymentNotificationRepository
-            .findByGroupIdAndNumberOfInstallmentsGreaterThanAndCancelledAtIsNull(groupId, 1)
+            .findByGroupIdAndCancelledAtIsNull(groupId)
 
         var created = 0
         var recalculated = 0
