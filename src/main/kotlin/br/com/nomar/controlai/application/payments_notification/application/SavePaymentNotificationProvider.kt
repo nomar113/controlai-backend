@@ -49,7 +49,7 @@ class SavePaymentNotificationProvider(
                     )
             }
 
-            require(existingCount < 3) {
+            require(existingCount == 0L) {
                 "Payment notification limit reached for identical payload"
             }
 
