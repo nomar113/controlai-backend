@@ -54,9 +54,7 @@ class SavePaymentNotificationProvider(
             }
 
             val saved = paymentNotificationRepository.save(enriched)
-            if (saved.numberOfInstallments > 1) {
-                createInstallments(saved)
-            }
+            createInstallments(saved)
             saved
         }.onFailure {
             // runCatching swallows the exception into Result.failure, so it never reaches the

@@ -90,7 +90,7 @@ class InstallmentCreationIntegrationTest {
     }
 
     @Test
-    fun `POST with numberOfInstallments 1 should create zero installment records`() {
+    fun `POST with numberOfInstallments 1 should create a single installment record but omit it from the response`() {
         mockMvc.perform(
             post("/payments/notifications/manual")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +111,7 @@ class InstallmentCreationIntegrationTest {
             .andExpect(jsonPath("$.installments").isEmpty)
 
         val count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM installments", Int::class.java)
-        assert(count == 0) { "Expected 0 installments in DB but found $count" }
+        assert(count == 1) { "Expected 1 installment in DB but found $count" }
     }
 
     @Test

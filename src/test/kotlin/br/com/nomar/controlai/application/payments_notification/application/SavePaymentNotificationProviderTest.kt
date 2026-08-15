@@ -129,7 +129,7 @@ class SavePaymentNotificationProviderTest {
     }
 
     @Test
-    fun `should not create installments for a cash purchase`() {
+    fun `should create a single installment for a cash purchase, due on the purchase's calendar month`() {
         val notification = PaymentNotification(
             groupId = groupId,
             purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
@@ -143,7 +143,63 @@ class SavePaymentNotificationProviderTest {
         val result = savePaymentNotificationProvider.execute(notification)
 
         assertTrue(result.isSuccess)
-        assertEquals(0, countInstallmentsByParent(result.getOrNull()!!.id))
+        val saved = result.getOrNull()!!
+        assertEquals(1, countInstallmentsByParent(saved.id))
+        val dueDates = jdbcTemplate.queryForList(
+            "SELECT due_date, amount FROM installments WHERE parent_id = ?",
+            saved.id,
+        )
+        assertEquals(LocalDate.of(2026, 1, 15), (dueDates[0]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(0, BigDecimal("89.90").compareTo(dueDates[0]["amount"] as BigDecimal))
+        assertEquals(1, countBudgetsFor("2026-01"))
+    }
+
+    @Test
+    fun `should create a single installment for a Pix purchase, due on the purchase's calendar month`() {
+        val notification = PaymentNotification(
+            groupId = groupId,
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            amount = BigDecimal("150.00"),
+            merchantName = "Mercado",
+            numberOfInstallments = 1,
+            origin = "MANUAL",
+            originType = "MANUAL",
+        )
+
+        val result = savePaymentNotificationProvider.execute(notification)
+
+        assertTrue(result.isSuccess)
+        val saved = result.getOrNull()!!
+        assertEquals(1, countInstallmentsByParent(saved.id))
+        assertEquals(1, countBudgetsFor("2026-01"))
+    }
+
+    @Test
+    fun `should create a single installment for a credit card cash purchase, following the card's billing cycle`() {
+        val paymentMethodId = insertCreditCard(closingDay = 10)
+        // Purchase on the 15th, after the 10th closing day, so it bills in the next cycle (Feb).
+        val notification = PaymentNotification(
+            groupId = groupId,
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            amount = BigDecimal("89.90"),
+            merchantName = "Restaurante",
+            numberOfInstallments = 1,
+            origin = "NUBANK",
+            originType = "SMS",
+            paymentMethodId = paymentMethodId,
+        )
+
+        val result = savePaymentNotificationProvider.execute(notification)
+
+        assertTrue(result.isSuccess)
+        val saved = result.getOrNull()!!
+        assertEquals(1, countInstallmentsByParent(saved.id))
+        val dueDate = jdbcTemplate.queryForObject(
+            "SELECT due_date FROM installments WHERE parent_id = ?",
+            java.sql.Date::class.java, saved.id,
+        )!!.toLocalDate()
+        assertEquals(LocalDate.of(2026, 2, 15), dueDate)
+        assertEquals(1, countBudgetsFor("2026-02"))
     }
 
     @Test

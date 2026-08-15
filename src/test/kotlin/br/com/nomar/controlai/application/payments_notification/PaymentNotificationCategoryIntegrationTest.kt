@@ -22,6 +22,11 @@ class PaymentNotificationCategoryIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        // Every payment_notifications row now gets an installment (Task 1.0) and a budget via
+        // EnsureFutureBudgetProvider, so both must be purged before the FK-scoped deletes below.
+        jdbcTemplate.update("DELETE FROM installments")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
         jdbcTemplate.update("DELETE FROM budget_items")
         jdbcTemplate.update("DELETE FROM budgets")
         jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")

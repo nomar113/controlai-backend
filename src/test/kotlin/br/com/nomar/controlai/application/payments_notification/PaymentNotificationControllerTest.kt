@@ -325,6 +325,20 @@ class PaymentNotificationControllerTest {
             .andExpect(status().isConflict)
     }
 
+    // --- PATCH installment-number (removed endpoint) ---
+
+    @Test
+    fun `PATCH installment-number returns 404 since the legacy endpoint was removed`() {
+        val notificationId = insertNotification()
+
+        mockMvc.perform(
+            patch("/payments/notifications/$notificationId/installment-number")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"currentInstallmentNumber": 2}""")
+        )
+            .andExpect(status().isNotFound)
+    }
+
     // --- POST notifications/manual ---
 
     private fun countInstallmentsByParent(parentId: Long): Int =
@@ -391,7 +405,7 @@ class PaymentNotificationControllerTest {
     }
 
     @Test
-    fun `POST manual does not create installments for a cash purchase`() {
+    fun `POST manual creates a single installment for a cash purchase but omits it from the response override list`() {
         val holderId = insertHolder()
         val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
 
@@ -412,6 +426,6 @@ class PaymentNotificationControllerTest {
             .andReturn()
 
         val notificationId = objectMapper.readTree(result.response.contentAsString).get("id").asLong()
-        assertEquals(0, countInstallmentsByParent(notificationId))
+        assertEquals(1, countInstallmentsByParent(notificationId))
     }
 }
