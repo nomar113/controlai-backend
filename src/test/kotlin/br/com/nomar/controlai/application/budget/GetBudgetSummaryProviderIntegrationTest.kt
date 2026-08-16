@@ -15,9 +15,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 import kotlin.test.assertEquals
 
-// Real-MySQL companion to GetBudgetSummaryProviderTest: proves the native SQL added by
-// Tarefa 4.0 (installments JOIN + CASE WHEN in BudgetPeriodSqlSupport) actually aggregates
-// correctly against a real database, which a mocked JdbcTemplate cannot verify. Goes through
+// Real-MySQL companion to GetBudgetSummaryProviderTest: proves the native SQL in
+// BudgetPeriodSqlSupport (INNER JOIN installments, amount always read from the installment row)
+// actually aggregates correctly against a real database, which a mocked JdbcTemplate cannot
+// verify. Goes through
 // GET /budgets (MockMvc/DispatcherServlet) rather than calling GetBudgetSummaryProvider
 // directly, since BudgetModel.items/incomes are lazy collections that only stay attached to a
 // Hibernate session for the lifetime of a real request (Open Session In View).
@@ -156,9 +157,10 @@ class GetBudgetSummaryProviderIntegrationTest {
     }
 
     @Test
-    fun `GET budgets still sums the full amount for a cash purchase, unaffected by the installments JOIN`() {
+    fun `GET budgets sums a cash purchase's single installment, the same statement path as a parceled purchase`() {
         val paymentMethodId = insertCreditCard(closingDay = 10)
-        insertNotification("Padaria", BigDecimal("45.00"), "2026-01-20 10:00:00", 1, paymentMethodId)
+        val parentId = insertNotification("Padaria", BigDecimal("45.00"), "2026-01-20 10:00:00", 1, paymentMethodId)
+        insertInstallment(parentId, 1, 1, BigDecimal("45.00"), "2026-02-20")
 
         val februaryBudgetId = insertBudget("2026-02")
         insertPeriod(februaryBudgetId, paymentMethodId, "2026-01-11", "2026-02-10")
@@ -177,8 +179,8 @@ class GetBudgetSummaryProviderIntegrationTest {
             "SELECT id FROM categories WHERE name = 'Servicos'", Long::class.java,
         )!!
 
-        // Compras: two overlapping parceladas (3x and 2x) fan out to 5 installment rows total
-        // via the LEFT JOIN, plus one cash purchase — must collapse to 100 + 100 + 50 = 250.00.
+        // Compras: two overlapping parceladas (3x and 2x) fan out to 5 installment rows total,
+        // plus one cash purchase's own single installment — must collapse to 100 + 100 + 50 = 250.00.
         val purchaseA = insertNotification("Compra 3x", BigDecimal("300.00"), "2026-01-15 10:00:00", 3, paymentMethodId)
         insertInstallment(purchaseA, 1, 3, BigDecimal("100.00"), "2026-02-15")
         insertInstallment(purchaseA, 2, 3, BigDecimal("100.00"), "2026-03-15")
@@ -186,11 +188,13 @@ class GetBudgetSummaryProviderIntegrationTest {
         val purchaseB = insertNotification("Compra 2x", BigDecimal("200.00"), "2026-01-16 10:00:00", 2, paymentMethodId)
         insertInstallment(purchaseB, 1, 2, BigDecimal("100.00"), "2026-02-16")
         insertInstallment(purchaseB, 2, 2, BigDecimal("100.00"), "2026-03-16")
-        insertNotification("Compra a vista Compras", BigDecimal("50.00"), "2026-01-20 10:00:00", 1, paymentMethodId)
+        val purchaseCashCompras = insertNotification("Compra a vista Compras", BigDecimal("50.00"), "2026-01-20 10:00:00", 1, paymentMethodId)
+        insertInstallment(purchaseCashCompras, 1, 1, BigDecimal("50.00"), "2026-02-20")
 
         // Servicos: one cash purchase + one 4x parcelada fans out to 4 more installment rows —
         // must not leak into Compras' total, and must collapse to 80 + 50 = 130.00.
-        insertNotification("Compra a vista Servicos", BigDecimal("80.00"), "2026-01-22 10:00:00", 1, paymentMethodId, categoryId = servicesCategoryId)
+        val purchaseCashServicos = insertNotification("Compra a vista Servicos", BigDecimal("80.00"), "2026-01-22 10:00:00", 1, paymentMethodId, categoryId = servicesCategoryId)
+        insertInstallment(purchaseCashServicos, 1, 1, BigDecimal("80.00"), "2026-02-22")
         val purchaseE = insertNotification("Compra 4x", BigDecimal("200.00"), "2026-01-18 10:00:00", 4, paymentMethodId, categoryId = servicesCategoryId)
         insertInstallment(purchaseE, 1, 4, BigDecimal("50.00"), "2026-02-18")
         insertInstallment(purchaseE, 2, 4, BigDecimal("50.00"), "2026-03-18")

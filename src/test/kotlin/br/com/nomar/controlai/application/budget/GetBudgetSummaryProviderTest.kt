@@ -22,8 +22,8 @@ import kotlin.test.assertEquals
 
 // Pure Mockito unit test (no H2, no MySQL): mocks the JDBC layer directly to verify the
 // aggregation glue in GetBudgetSummaryProvider.execute() correctly folds queryActualByCategory/
-// queryPaymentMethodTotals results into BudgetSummary. Real SQL correctness (the CASE WHEN /
-// installments JOIN added by Tarefa 4.0) is covered separately by
+// queryPaymentMethodTotals results into BudgetSummary. Real SQL correctness (INNER JOIN
+// installments, amount always read from the installment row) is covered separately by
 // GetBudgetSummaryProviderIntegrationTest against real MySQL.
 class GetBudgetSummaryProviderTest {
 

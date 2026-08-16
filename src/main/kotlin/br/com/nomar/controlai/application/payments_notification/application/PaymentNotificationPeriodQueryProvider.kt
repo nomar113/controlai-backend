@@ -45,7 +45,7 @@ class PaymentNotificationPeriodQueryProvider(
               AND (CAST(:paymentMethodId AS SIGNED) IS NULL OR pn.payment_method_id = :paymentMethodId)
               AND ${BudgetPeriodSqlSupport.PERIOD_MATCH_PREDICATE}
             GROUP BY pn.id
-            ORDER BY CASE WHEN :sort = 'amount' THEN pn.amount END DESC, pn.purchased_at DESC
+            ORDER BY CASE WHEN :sort = 'amount' THEN MAX(i.amount) END DESC, pn.purchased_at DESC
             LIMIT :limit OFFSET :offset
             """.trimIndent(),
             PaymentNotification::class.java,

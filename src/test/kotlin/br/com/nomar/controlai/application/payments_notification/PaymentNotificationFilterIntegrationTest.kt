@@ -251,6 +251,41 @@ class PaymentNotificationFilterIntegrationTest {
     }
 
     @Test
+    fun `GET notifications with sort=amount orders by the installment due this month, not the purchase's total amount`() {
+        // Notebook is 900.00 total in 3x (300.00/mo) — its May installment (300.00) is smaller
+        // than the cash purchase below (500.00), so sort=amount must rank it AFTER. Sorting by
+        // the raw pn.amount (900.00) would rank it first instead, which is exactly the bug this
+        // proves fixed (PRD 3.1/3.2, Criterio de Sucesso #3 da Tarefa 4.0).
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, group_id)
+               VALUES ('1234', '2026-05-05 10:00:00', 900.00, 'Notebook Parcelado', 3, 'MANUAL', 'MANUAL', ?, 1)""",
+            paymentMethodId,
+        )
+        val parceledId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Notebook Parcelado'", Long::class.java,
+        )!!
+        listOf(Triple(1, 3, "2026-05-05"), Triple(2, 3, "2026-06-05"), Triple(3, 3, "2026-07-05")).forEach { (number, total, dueDate) ->
+            jdbcTemplate.update(
+                """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
+                   VALUES (1, ?, ?, ?, 300.00, ?)""",
+                parceledId, number, total, dueDate,
+            )
+        }
+
+        insertNotification("2026-05-10 10:00:00", "Sofa a Vista", 500.00)
+
+        mockMvc.perform(
+            get("/payments/notifications")
+                .param("month", "2026-05")
+                .param("sort", "amount")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].merchantName").value("Sofa a Vista"))
+            .andExpect(jsonPath("$.content[1].merchantName").value("Notebook Parcelado"))
+    }
+
+    @Test
     fun `GET notifications with sort=amount paginates correctly`() {
         for (i in 1..5) {
             insertNotification("2026-05-${10 + i} 10:00:00", "Store $i", i * 10.0)
@@ -320,19 +355,31 @@ class PaymentNotificationFilterIntegrationTest {
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM sub_cards", Long::class.java)!!
     }
 
+    // Every purchase now needs its own installment (statement) row after Tarefa 4.0's INNER
+    // JOIN — this payment method has no closingDay, so its single installment falls back to the
+    // calendar month/day of purchasedAt, same as BudgetPeriodCalculator.resolveInstallmentDueDate.
     private fun insertNotification(
         purchasedAt: String,
         merchantName: String,
         amount: Double,
         notificationPaymentMethodId: Long = paymentMethodId,
         subCardId: Long? = null,
-    ) {
+    ): Long {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
                (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, sub_card_id, group_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
             "1234", purchasedAt, amount, merchantName, 1, "MANUAL", "MANUAL", notificationPaymentMethodId, subCardId
         )
+        val id = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = ?", Long::class.java, merchantName,
+        )!!
+        jdbcTemplate.update(
+            """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
+               VALUES (1, ?, 1, 1, ?, ?)""",
+            id, amount, purchasedAt.substring(0, 10),
+        )
+        return id
     }
 
     private fun insertDeletedNotification(purchasedAt: String, merchantName: String, amount: Double) {

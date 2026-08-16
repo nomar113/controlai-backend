@@ -94,11 +94,21 @@ class BudgetCancelledExclusionTest {
         )
     }
 
+    // Every purchase needs its own installment (statement) row after Tarefa 4.0's INNER JOIN;
+    // this payment method's type ('CREDIT') doesn't match the 'CREDIT_CARD' cycle branch, so
+    // BudgetPeriodCalculator falls back to the calendar month/day of purchasedAt, same as the
+    // budget period ('2026-03-01'..'2026-03-31') set up above.
     private fun insertNotification(pmId: Long, categoryId: Long, purchasedAt: String, amount: Double, cancelledAt: String?) {
         jdbcTemplate.update(
             """INSERT INTO payment_notifications (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, category_id, cancelled_at, group_id)
                VALUES ('1234', ?, ?, 'Store', 1, 'NUBANK', 'HTTP_REQUEST', ?, ?, ${if (cancelledAt != null) "?" else "NULL"}, 1)""",
             *listOfNotNull(purchasedAt, amount, pmId, categoryId, cancelledAt).toTypedArray()
+        )
+        val id = jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_notifications", Long::class.java)!!
+        jdbcTemplate.update(
+            """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
+               VALUES (1, ?, 1, 1, ?, ?)""",
+            id, amount, purchasedAt.substring(0, 10),
         )
     }
 }

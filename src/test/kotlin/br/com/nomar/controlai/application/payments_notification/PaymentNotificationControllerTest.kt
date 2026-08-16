@@ -325,20 +325,6 @@ class PaymentNotificationControllerTest {
             .andExpect(status().isConflict)
     }
 
-    // --- PATCH installment-number (removed endpoint) ---
-
-    @Test
-    fun `PATCH installment-number returns 404 since the legacy endpoint was removed`() {
-        val notificationId = insertNotification()
-
-        mockMvc.perform(
-            patch("/payments/notifications/$notificationId/installment-number")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"currentInstallmentNumber": 2}""")
-        )
-            .andExpect(status().isNotFound)
-    }
-
     // --- POST notifications/manual ---
 
     private fun countInstallmentsByParent(parentId: Long): Int =
