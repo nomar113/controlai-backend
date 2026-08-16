@@ -298,4 +298,38 @@ class InstallmentReconciliationRunnerIT {
         assertEquals(firstRun, secondRun)
         assertEquals(firstBudgetMonths, secondBudgetMonths)
     }
+
+    @Test
+    fun `no active payment notification should be left without a statement after reconciliation`() {
+        runner.run(DefaultApplicationArguments())
+
+        val orphanCount = jdbcTemplate.queryForObject(
+            """SELECT COUNT(*)
+               FROM payment_notifications pn
+               LEFT JOIN installments i ON i.parent_id = pn.id
+               WHERE pn.cancelled_at IS NULL AND pn.deleted_at IS NULL AND i.id IS NULL""",
+            Int::class.java,
+        )
+        assertEquals(0, orphanCount)
+    }
+
+    @Test
+    fun `sum of statements per active purchase should equal the original purchase amount after reconciliation`() {
+        runner.run(DefaultApplicationArguments())
+
+        val mismatchedCount = jdbcTemplate.queryForObject(
+            """SELECT COUNT(*)
+               FROM payment_notifications pn
+               JOIN (
+                   SELECT parent_id, SUM(amount) AS sum_installments
+                   FROM installments
+                   WHERE cancelled_at IS NULL
+                   GROUP BY parent_id
+               ) i ON i.parent_id = pn.id
+               WHERE pn.cancelled_at IS NULL AND pn.deleted_at IS NULL
+                 AND ABS(pn.amount - i.sum_installments) > 0.01""",
+            Int::class.java,
+        )
+        assertEquals(0, mismatchedCount)
+    }
 }
