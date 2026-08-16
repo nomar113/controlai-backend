@@ -38,3 +38,6 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### Local backups (contains real financial data, never commit) ###
+backups/
