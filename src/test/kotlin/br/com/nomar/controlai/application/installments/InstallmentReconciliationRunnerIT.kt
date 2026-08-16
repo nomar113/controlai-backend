@@ -306,7 +306,7 @@ class InstallmentReconciliationRunnerIT {
         val orphanCount = jdbcTemplate.queryForObject(
             """SELECT COUNT(*)
                FROM payment_notifications pn
-               LEFT JOIN installments i ON i.parent_id = pn.id
+               LEFT JOIN installments i ON i.parent_id = pn.id AND i.cancelled_at IS NULL
                WHERE pn.cancelled_at IS NULL AND pn.deleted_at IS NULL AND i.id IS NULL""",
             Int::class.java,
         )
