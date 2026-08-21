@@ -1,9 +1,8 @@
 package br.com.nomar.controlai.application.installments.application
 
-import br.com.nomar.controlai.application.budget.application.BudgetPeriodCalculator
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
-import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.domain.budget.gateway.EnsureFutureBudgetGateway
@@ -29,8 +28,7 @@ private data class ReconciliationResult(val created: Int, val recalculated: Int)
 class InstallmentReconciliationRunner(
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val installmentRepository: InstallmentRepository,
-    private val paymentMethodRepository: PaymentMethodRepository,
-    private val periodCalculator: BudgetPeriodCalculator,
+    private val budgetPeriodResolver: BudgetPeriodResolver,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val ensureFutureBudgetGateway: EnsureFutureBudgetGateway,
 ) : ApplicationRunner {
@@ -72,30 +70,27 @@ class InstallmentReconciliationRunner(
     }
 
     private fun createInstallments(notification: PaymentNotification): Int {
-        val paymentMethod = resolvePaymentMethod(notification)
         val installments = createInstallmentsProvider.execute(
             parentId = notification.id,
             groupId = notification.groupId,
             totalInstallments = notification.numberOfInstallments,
             totalAmount = notification.amount,
             startDate = notification.purchasedAt.toLocalDate(),
-            closingDay = paymentMethod?.closingDay,
-            type = paymentMethod?.type ?: "OTHER",
+            paymentMethodId = notification.paymentMethodId,
         )
         ensureBudgetsFor(notification.groupId, installments.map { it.dueDate })
         return installments.size
     }
 
     private fun recalculateDueDates(notification: PaymentNotification, existing: List<Installment>): Int {
-        val paymentMethod = resolvePaymentMethod(notification)
         val purchasedAt = notification.purchasedAt.toLocalDate()
 
         val updated = existing.mapNotNull { installment ->
-            val newDueDate = periodCalculator.resolveInstallmentDueDate(
+            val newDueDate = budgetPeriodResolver.resolveInstallmentDueDate(
                 purchasedAt = purchasedAt,
-                closingDay = paymentMethod?.closingDay,
-                type = paymentMethod?.type ?: "OTHER",
+                paymentMethodId = notification.paymentMethodId,
                 installmentNumber = installment.installmentNumber,
+                groupId = notification.groupId,
             )
             if (newDueDate != installment.dueDate) installment.copy(dueDate = newDueDate) else null
         }
@@ -112,7 +107,4 @@ class InstallmentReconciliationRunner(
             ensureFutureBudgetGateway.execute(groupId, yearMonth).getOrThrow()
         }
     }
-
-    private fun resolvePaymentMethod(notification: PaymentNotification) =
-        notification.paymentMethodId?.let { paymentMethodRepository.findByIdAndGroupId(it, notification.groupId) }
 }

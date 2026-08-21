@@ -7,7 +7,6 @@ import br.com.nomar.controlai.application.budget.entrypoint.database.model.Budge
 import br.com.nomar.controlai.application.budget.entrypoint.database.repository.BudgetRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.model.PaymentMethodModel
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
-import br.com.nomar.controlai.domain.auth.RequestContext
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
@@ -24,12 +23,10 @@ class BudgetPeriodResolverTest {
 
     private val budgetRepository: BudgetRepository = mock()
     private val paymentMethodRepository: PaymentMethodRepository = mock()
-    private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
     private val resolver = BudgetPeriodResolver(
         budgetRepository,
         paymentMethodRepository,
         BudgetPeriodCalculator(),
-        requestContext,
     )
 
     private val yearMonth = YearMonth.of(2026, 5)
@@ -48,7 +45,7 @@ class BudgetPeriodResolverTest {
         `when`(budgetRepository.findByYearMonthAndGroupId("2026-05", 1L)).thenReturn(Optional.empty())
         `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 42, closingDay = 10)))
 
-        val periods = resolver.resolvePeriods(yearMonth)
+        val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertEquals(1, periods.size)
         assertEquals(42L, periods[0].paymentMethodId)
@@ -71,7 +68,7 @@ class BudgetPeriodResolverTest {
         `when`(budgetRepository.findByYearMonthAndGroupId("2026-05", 1L)).thenReturn(Optional.of(budget))
         `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 42)))
 
-        val periods = resolver.resolvePeriods(yearMonth)
+        val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertEquals(1, periods.size)
         // manually-customized dates from the persisted period, NOT recalculated via closingDay
@@ -85,7 +82,7 @@ class BudgetPeriodResolverTest {
         `when`(budgetRepository.findByYearMonthAndGroupId("2026-05", 1L)).thenReturn(Optional.of(budget))
         `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 99, closingDay = 5)))
 
-        val periods = resolver.resolvePeriods(yearMonth)
+        val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertEquals(1, periods.size)
         assertEquals(99L, periods[0].paymentMethodId)
@@ -105,7 +102,7 @@ class BudgetPeriodResolverTest {
         )
         `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 42)))
 
-        resolver.ensurePaymentPeriodsSynced(budget, yearMonth)
+        resolver.ensurePaymentPeriodsSynced(budget, yearMonth, 1L)
 
         assertEquals(1, budget.paymentPeriods.size)
         verify(budgetRepository, never()).save(any(BudgetModel::class.java))
@@ -118,7 +115,7 @@ class BudgetPeriodResolverTest {
             listOf(PaymentMethodModel(id = 1L, groupId = 1L, name = "Unsupported", type = "OTHER", holderId = 1L))
         )
 
-        val periods = resolver.resolvePeriods(yearMonth)
+        val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertTrue(periods.isEmpty())
     }

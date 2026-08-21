@@ -6,7 +6,6 @@ import br.com.nomar.controlai.application.installments.entrypoint.rest.request.I
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.MonthlyProjectionResponse
-import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.domain.auth.RequestContext
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
@@ -35,28 +34,23 @@ data class UpdateInstallmentRequest(
 class InstallmentController(
     private val installmentRepository: InstallmentRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
-    private val paymentMethodRepository: PaymentMethodRepository,
     private val requestContext: RequestContext,
 ) {
 
     @PostMapping("/preview")
     fun previewInstallments(
         @Validated @RequestBody request: InstallmentPreviewRequest,
-    ): List<InstallmentPreviewItemResponse> {
+    ): List<InstallmentPreviewItemResponse> =
         // Must mirror SavePaymentNotificationProvider.createInstallments: without the real
-        // card's closingDay/type, the preview falls back to plain calendar months and can
-        // land the first installment a cycle earlier than what actually gets persisted.
-        val paymentMethod = request.paymentMethodId
-            ?.let { paymentMethodRepository.findByIdAndGroupId(it, requestContext.groupId) }
-
-        return createInstallmentsProvider.calculate(
+        // card, the preview falls back to plain calendar months and can land the first
+        // installment on a different month than what actually gets persisted.
+        createInstallmentsProvider.calculate(
             totalInstallments = request.numberOfInstallments,
             totalAmount = request.totalAmount,
             startDate = request.startDate,
-            closingDay = paymentMethod?.closingDay,
-            type = paymentMethod?.type ?: "OTHER",
+            groupId = requestContext.groupId,
+            paymentMethodId = request.paymentMethodId,
         )
-    }
 
     @GetMapping
     fun listByParent(@RequestParam parentId: Long): List<InstallmentResponse> =

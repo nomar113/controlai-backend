@@ -1,7 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
-import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.SubCardRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
@@ -16,7 +15,6 @@ import java.time.YearMonth
 class SavePaymentNotificationProvider(
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val subCardRepository: SubCardRepository,
-    private val paymentMethodRepository: PaymentMethodRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val ensureFutureBudgetGateway: EnsureFutureBudgetGateway,
 ): SavePaymentNotificationGateway {
@@ -83,17 +81,13 @@ class SavePaymentNotificationProvider(
     }
 
     private fun createInstallments(notification: PaymentNotification) {
-        val paymentMethod = notification.paymentMethodId
-            ?.let { paymentMethodRepository.findByIdAndGroupId(it, notification.groupId) }
-
         val installments = createInstallmentsProvider.execute(
             parentId = notification.id,
             groupId = notification.groupId,
             totalInstallments = notification.numberOfInstallments,
             totalAmount = notification.amount,
             startDate = notification.purchasedAt.toLocalDate(),
-            closingDay = paymentMethod?.closingDay,
-            type = paymentMethod?.type ?: "OTHER",
+            paymentMethodId = notification.paymentMethodId,
         )
 
         installments.map { YearMonth.from(it.dueDate) }.distinct().forEach { yearMonth ->

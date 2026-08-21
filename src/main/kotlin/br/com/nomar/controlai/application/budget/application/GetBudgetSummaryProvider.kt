@@ -24,7 +24,7 @@ class GetBudgetSummaryProvider(
         return runCatching {
             val budgetModel = budgetRepository.findByYearMonthAndGroupId(yearMonth.toString(), requestContext.groupId)
                 .orElseThrow { NoSuchElementException("Budget not found: $yearMonth") }
-            budgetPeriodResolver.ensurePaymentPeriodsSynced(budgetModel, yearMonth)
+            budgetPeriodResolver.ensurePaymentPeriodsSynced(budgetModel, yearMonth, requestContext.groupId)
             val budgetId = budgetModel.id!!
 
             val actualByCategory = queryActualByCategory(budgetId, yearMonth)

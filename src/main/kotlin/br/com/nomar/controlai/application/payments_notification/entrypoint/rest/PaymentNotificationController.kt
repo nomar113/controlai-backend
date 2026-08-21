@@ -101,7 +101,7 @@ class PaymentNotificationController(
         }
         val yearMonthStr = yearMonth.toString()
         val groupId = requestContext.groupId
-        val periods = budgetPeriodResolver.resolvePeriods(yearMonth)
+        val periods = budgetPeriodResolver.resolvePeriods(yearMonth, groupId)
         val offset = page * size
         val notifications = paymentNotificationPeriodQueryProvider.findByBudgetPeriods(periods, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
         // The join in findByBudgetPeriods only picks the month's installment for filtering/sorting

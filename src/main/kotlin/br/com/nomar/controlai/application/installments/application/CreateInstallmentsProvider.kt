@@ -1,6 +1,6 @@
 package br.com.nomar.controlai.application.installments.application
 
-import br.com.nomar.controlai.application.budget.application.BudgetPeriodCalculator
+import br.com.nomar.controlai.application.budget.application.BudgetPeriodResolver
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
@@ -12,14 +12,14 @@ import java.time.LocalDate
 @Service
 class CreateInstallmentsProvider(
     private val installmentRepository: InstallmentRepository,
-    private val periodCalculator: BudgetPeriodCalculator,
+    private val budgetPeriodResolver: BudgetPeriodResolver,
 ) {
     fun calculate(
         totalInstallments: Int,
         totalAmount: BigDecimal,
         startDate: LocalDate,
-        closingDay: Int? = null,
-        type: String = "OTHER",
+        groupId: Long,
+        paymentMethodId: Long? = null,
     ): List<InstallmentPreviewItemResponse> {
         val baseAmount = totalAmount.divide(BigDecimal(totalInstallments), 2, RoundingMode.DOWN)
         val remainder = totalAmount.subtract(baseAmount.multiply(BigDecimal(totalInstallments)))
@@ -29,7 +29,7 @@ class CreateInstallmentsProvider(
                 installmentNumber = number,
                 totalInstallments = totalInstallments,
                 amount = if (number == 1) baseAmount.add(remainder) else baseAmount,
-                dueDate = periodCalculator.resolveInstallmentDueDate(startDate, closingDay, type, number),
+                dueDate = budgetPeriodResolver.resolveInstallmentDueDate(startDate, paymentMethodId, number, groupId),
             )
         }
     }
@@ -40,10 +40,9 @@ class CreateInstallmentsProvider(
         totalInstallments: Int,
         totalAmount: BigDecimal,
         startDate: LocalDate,
-        closingDay: Int? = null,
-        type: String = "OTHER",
+        paymentMethodId: Long? = null,
     ): List<Installment> {
-        val previews = calculate(totalInstallments, totalAmount, startDate, closingDay, type)
+        val previews = calculate(totalInstallments, totalAmount, startDate, groupId, paymentMethodId)
         val installments = previews.map { preview ->
             Installment(
                 groupId = groupId,
@@ -63,8 +62,7 @@ class CreateInstallmentsProvider(
         totalInstallments: Int,
         amounts: Map<Int, BigDecimal>,
         startDate: LocalDate,
-        closingDay: Int? = null,
-        type: String = "OTHER",
+        paymentMethodId: Long? = null,
     ): List<Installment> {
         val installments = (1..totalInstallments).map { number ->
             Installment(
@@ -73,7 +71,7 @@ class CreateInstallmentsProvider(
                 installmentNumber = number,
                 totalInstallments = totalInstallments,
                 amount = amounts[number]!!,
-                dueDate = periodCalculator.resolveInstallmentDueDate(startDate, closingDay, type, number),
+                dueDate = budgetPeriodResolver.resolveInstallmentDueDate(startDate, paymentMethodId, number, groupId),
             )
         }
         return installmentRepository.saveAll(installments)

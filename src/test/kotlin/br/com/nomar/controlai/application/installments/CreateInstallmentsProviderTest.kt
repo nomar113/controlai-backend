@@ -28,6 +28,13 @@ class CreateInstallmentsProviderTest {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
         jdbcTemplate.update("DELETE FROM payment_notifications")
+        jdbcTemplate.update("DELETE FROM budget_payment_periods")
+        jdbcTemplate.update("DELETE FROM budget_incomes")
+        jdbcTemplate.update("DELETE FROM budget_items")
+        jdbcTemplate.update("DELETE FROM budgets")
+        jdbcTemplate.update("DELETE FROM sub_cards")
+        jdbcTemplate.update("DELETE FROM payment_methods")
+        jdbcTemplate.update("DELETE FROM holders")
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
@@ -42,6 +49,24 @@ class CreateInstallmentsProviderTest {
 
     @AfterEach
     fun clearAuth() = TestSecurityContext.clear()
+
+    // No persisted budget exists for the months exercised below, so BudgetPeriodResolver falls
+    // back to a fresh closingDay/type calculation for this payment method — same behavior the
+    // old (closingDay, type) params exercised directly.
+    private fun createPaymentMethod(type: String, closingDay: Int?): Long {
+        val name = "Card ${System.nanoTime()}"
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
+        val holderId = jdbcTemplate.queryForObject(
+            "SELECT id FROM holders WHERE name = 'Test Holder' ORDER BY id DESC LIMIT 1", Long::class.java
+        )!!
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id, closing_day) VALUES (?, ?, ?, 1, ?)",
+            name, type, holderId, closingDay,
+        )
+        return jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_methods WHERE name = ?", Long::class.java, name,
+        )!!
+    }
 
     @Test
     fun `should create N installments with correct sequential numbers`() {
@@ -77,6 +102,7 @@ class CreateInstallmentsProviderTest {
                 totalInstallments = count,
                 totalAmount = BigDecimal(total),
                 startDate = LocalDate.of(2026, 5, 15),
+                groupId = 1L,
             )
             val sum = previews.sumOf { it.amount }
             assertEquals(BigDecimal(total), sum, "sum of $count installments of $total should equal total")
@@ -84,7 +110,7 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `should fall back to calendar month when no closing day is provided`() {
+    fun `should fall back to calendar month when no payment method is provided`() {
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             groupId = 1L,
@@ -100,14 +126,14 @@ class CreateInstallmentsProviderTest {
 
     @Test
     fun `should fall back to calendar month when payment method is not a credit card`() {
+        val paymentMethodId = createPaymentMethod("PIX", 10)
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
-            closingDay = 10,
-            type = "PIX",
+            paymentMethodId = paymentMethodId,
         )
 
         assertEquals(LocalDate.of(2026, 1, 15), result[0].dueDate)
@@ -115,15 +141,15 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `should delegate due_date to BudgetPeriodCalculator using card closing cycle when purchase is before closing day`() {
+    fun `should use card closing cycle when purchase is before closing day`() {
+        val paymentMethodId = createPaymentMethod("CREDIT_CARD", 20)
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
-            closingDay = 20,
-            type = "CREDIT_CARD",
+            paymentMethodId = paymentMethodId,
         )
 
         assertEquals(LocalDate.of(2026, 1, 15), result[0].dueDate)
@@ -131,21 +157,49 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `should delegate due_date to BudgetPeriodCalculator advancing cycle when purchase is after closing day`() {
+    fun `should advance cycle when purchase is after closing day`() {
+        val paymentMethodId = createPaymentMethod("CREDIT_CARD", 10)
         val result = createInstallmentsProvider.execute(
             parentId = parentId,
             groupId = 1L,
             totalInstallments = 2,
             totalAmount = BigDecimal("50.00"),
             startDate = LocalDate.of(2026, 1, 15),
-            closingDay = 10,
-            type = "CREDIT_CARD",
+            paymentMethodId = paymentMethodId,
         )
 
         // Purchase (Jan 15) falls after the Jan 10 closing day, so the 1st installment
         // is billed in the February cycle instead of the purchase month.
         assertEquals(LocalDate.of(2026, 2, 15), result[0].dueDate)
         assertEquals(LocalDate.of(2026, 3, 15), result[1].dueDate)
+    }
+
+    @Test
+    fun `should honor a manually edited period over the card's raw closing day`() {
+        // Card closes day 1 (so a Jan 15 purchase would normally land in February), but the
+        // January budget's persisted period for this card was edited to run through Jan 31 —
+        // installment placement must follow that persisted period, not the raw closingDay.
+        val paymentMethodId = createPaymentMethod("CREDIT_CARD", 1)
+        jdbcTemplate.update("INSERT INTO budgets (reference_month, group_id) VALUES ('2026-01', 1)")
+        val budgetId = jdbcTemplate.queryForObject(
+            "SELECT id FROM budgets WHERE reference_month = '2026-01'", Long::class.java,
+        )!!
+        jdbcTemplate.update(
+            "INSERT INTO budget_payment_periods (budget_id, payment_method_id, start_date, end_date) VALUES (?, ?, '2026-01-01', '2026-01-31')",
+            budgetId, paymentMethodId,
+        )
+
+        val result = createInstallmentsProvider.execute(
+            parentId = parentId,
+            groupId = 1L,
+            totalInstallments = 2,
+            totalAmount = BigDecimal("50.00"),
+            startDate = LocalDate.of(2026, 1, 15),
+            paymentMethodId = paymentMethodId,
+        )
+
+        assertEquals(LocalDate.of(2026, 1, 15), result[0].dueDate)
+        assertEquals(LocalDate.of(2026, 2, 15), result[1].dueDate)
     }
 
     @Test
@@ -227,15 +281,15 @@ class CreateInstallmentsProviderTest {
     }
 
     @Test
-    fun `executeWithAmounts should also delegate due_date to BudgetPeriodCalculator`() {
+    fun `executeWithAmounts should also advance the cycle using the card's closing day`() {
+        val paymentMethodId = createPaymentMethod("CREDIT_CARD", 10)
         val result = createInstallmentsProvider.executeWithAmounts(
             parentId = parentId,
             groupId = 1L,
             totalInstallments = 2,
             amounts = mapOf(1 to BigDecimal("30.00"), 2 to BigDecimal("20.00")),
             startDate = LocalDate.of(2026, 1, 15),
-            closingDay = 10,
-            type = "CREDIT_CARD",
+            paymentMethodId = paymentMethodId,
         )
 
         assertEquals(LocalDate.of(2026, 2, 15), result[0].dueDate)

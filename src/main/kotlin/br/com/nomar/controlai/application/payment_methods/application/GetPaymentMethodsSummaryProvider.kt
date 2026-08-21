@@ -20,9 +20,9 @@ class GetPaymentMethodsSummaryProvider(
 
     override fun execute(month: YearMonth): Result<List<PaymentMethodSummary>> {
         return runCatching {
-            val periods = budgetPeriodResolver.resolvePeriods(month)
-            val (periodsSql, periodsParams) = BudgetPeriodSqlSupport.buildPeriodsDerivedTable(periods)
             val groupId = requestContext.groupId
+            val periods = budgetPeriodResolver.resolvePeriods(month, groupId)
+            val (periodsSql, periodsParams) = BudgetPeriodSqlSupport.buildPeriodsDerivedTable(periods)
 
             val rows = jdbcTemplate.queryForList(
                 """
