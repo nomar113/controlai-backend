@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDate
@@ -143,5 +144,69 @@ class InstallmentControllerIntegrationTest {
                 .content("""{"amount": 150.00}""")
         )
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST preview with a credit card paymentMethodId should honor its closing day, not plain calendar months`() {
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Preview Holder', 1)")
+        val holderId = jdbcTemplate.queryForObject(
+            "SELECT id FROM holders WHERE name = 'Preview Holder'", Long::class.java
+        )!!
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id, closing_day) VALUES ('Preview Card', 'CREDIT_CARD', ?, 1, 1)",
+            holderId,
+        )
+        val paymentMethodId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_methods WHERE name = 'Preview Card'", Long::class.java
+        )!!
+
+        try {
+            // Card closes on day 1: a purchase on the 20th falls in the cycle that closes the
+            // following month, so the first installment is due next month, not this one — the
+            // same rule SavePaymentNotificationProvider applies when it actually persists the
+            // installments (see BudgetPeriodCalculator.resolveInstallmentDueDate).
+            mockMvc.perform(
+                post("/installments/preview")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "totalAmount": 300.00,
+                            "numberOfInstallments": 3,
+                            "startDate": "2026-08-20",
+                            "paymentMethodId": $paymentMethodId
+                        }
+                        """.trimIndent()
+                    )
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$[0].dueDate").value("2026-09-20"))
+                .andExpect(jsonPath("$[1].dueDate").value("2026-10-20"))
+                .andExpect(jsonPath("$[2].dueDate").value("2026-11-20"))
+        } finally {
+            jdbcTemplate.update("DELETE FROM payment_methods WHERE id = ?", paymentMethodId)
+            jdbcTemplate.update("DELETE FROM holders WHERE id = ?", holderId)
+        }
+    }
+
+    @Test
+    fun `POST preview without paymentMethodId should keep the plain calendar-month fallback`() {
+        mockMvc.perform(
+            post("/installments/preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                        "totalAmount": 300.00,
+                        "numberOfInstallments": 3,
+                        "startDate": "2026-08-20"
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].dueDate").value("2026-08-20"))
+            .andExpect(jsonPath("$[1].dueDate").value("2026-09-20"))
+            .andExpect(jsonPath("$[2].dueDate").value("2026-10-20"))
     }
 }

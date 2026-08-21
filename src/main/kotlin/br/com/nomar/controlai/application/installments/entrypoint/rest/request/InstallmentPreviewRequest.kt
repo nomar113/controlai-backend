@@ -17,4 +17,6 @@ data class InstallmentPreviewRequest(
 
     @field:NotNull
     val startDate: LocalDate,
+
+    val paymentMethodId: Long? = null,
 )
