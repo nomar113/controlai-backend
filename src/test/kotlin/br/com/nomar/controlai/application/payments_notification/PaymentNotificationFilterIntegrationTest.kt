@@ -286,6 +286,45 @@ class PaymentNotificationFilterIntegrationTest {
     }
 
     @Test
+    fun `GET notifications exposes the month's installment amount, not the purchase total`() {
+        // Same "Notebook Parcelado" fixture as the sort=amount regression above: 900.00 total
+        // in 3x (300.00/mo), due May/Jun/Jul. The monthly listing must show 300.00 for each
+        // month via installmentAmount, while `amount` keeps carrying the raw 900.00 total —
+        // this is what PurchaseList.tsx falls back to (`installmentAmount ?? amount`) when the
+        // field is missing, which used to overstate a parceled purchase's cost in every month.
+        jdbcTemplate.update(
+            """INSERT INTO payment_notifications
+               (card_last_digits, purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, payment_method_id, group_id)
+               VALUES ('1234', '2026-05-05 10:00:00', 900.00, 'Notebook Parcelado', 3, 'MANUAL', 'MANUAL', ?, 1)""",
+            paymentMethodId,
+        )
+        val parceledId = jdbcTemplate.queryForObject(
+            "SELECT id FROM payment_notifications WHERE merchant_name = 'Notebook Parcelado'", Long::class.java,
+        )!!
+        listOf(Triple(1, 3, "2026-05-05"), Triple(2, 3, "2026-06-05"), Triple(3, 3, "2026-07-05")).forEach { (number, total, dueDate) ->
+            jdbcTemplate.update(
+                """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
+                   VALUES (1, ?, ?, ?, 300.00, ?)""",
+                parceledId, number, total, dueDate,
+            )
+        }
+
+        mockMvc.perform(get("/payments/notifications").param("month", "2026-05"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].merchantName").value("Notebook Parcelado"))
+            .andExpect(jsonPath("$.content[0].amount").value(900.00))
+            .andExpect(jsonPath("$.content[0].installmentAmount").value(300.00))
+            .andExpect(jsonPath("$.content[0].installmentNumberForMonth").value(1))
+
+        mockMvc.perform(get("/payments/notifications").param("month", "2026-06"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].merchantName").value("Notebook Parcelado"))
+            .andExpect(jsonPath("$.content[0].amount").value(900.00))
+            .andExpect(jsonPath("$.content[0].installmentAmount").value(300.00))
+            .andExpect(jsonPath("$.content[0].installmentNumberForMonth").value(2))
+    }
+
+    @Test
     fun `GET notifications with sort=amount paginates correctly`() {
         for (i in 1..5) {
             insertNotification("2026-05-${10 + i} 10:00:00", "Store $i", i * 10.0)

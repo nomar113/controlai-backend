@@ -21,6 +21,12 @@ interface InstallmentRepository : JpaRepository<Installment, Long> {
 
     fun findByIdAndGroupId(id: Long, groupId: Long): Installment?
 
+    fun findByParentIdInAndCancelledAtIsNullAndDueDateBetween(
+        parentIds: List<Long>,
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): List<Installment>
+
     @Query(
         value = """
             SELECT YEAR(i.due_date) AS year, MONTH(i.due_date) AS month,

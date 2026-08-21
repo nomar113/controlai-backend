@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response
 
+import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
@@ -25,9 +26,19 @@ data class PaymentNotificationResponse(
     val installments: List<InstallmentResponse> = emptyList(),
     val purchaseInvoiceId: Long? = null,
     val associatedInvoice: AssociatedInvoiceResponse? = null,
+    // The installment actually due in the month being listed (see
+    // PaymentNotificationController.listNotifications) — the monthly listing shows this
+    // instead of `amount` so a parceled purchase doesn't overstate the month's spend with
+    // its full total.
+    val installmentAmount: BigDecimal? = null,
+    val installmentNumberForMonth: Int? = null,
 ) {
     companion object {
-        fun from(entity: PaymentNotification, invoice: PurchaseInvoiceModel? = null) = PaymentNotificationResponse(
+        fun from(
+            entity: PaymentNotification,
+            invoice: PurchaseInvoiceModel? = null,
+            installmentForMonth: Installment? = null,
+        ) = PaymentNotificationResponse(
             id = entity.id,
             cardLastDigits = entity.cardLastDigits,
             purchasedAt = entity.purchasedAt,
@@ -45,6 +56,8 @@ data class PaymentNotificationResponse(
             cancelledAt = entity.cancelledAt?.toString(),
             purchaseInvoiceId = entity.purchaseInvoiceId,
             associatedInvoice = invoice?.let { AssociatedInvoiceResponse.from(it) },
+            installmentAmount = installmentForMonth?.amount,
+            installmentNumberForMonth = installmentForMonth?.installmentNumber,
         )
     }
 }

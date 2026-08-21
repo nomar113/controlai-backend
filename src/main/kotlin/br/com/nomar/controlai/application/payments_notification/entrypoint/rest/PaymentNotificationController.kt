@@ -103,8 +103,17 @@ class PaymentNotificationController(
         val groupId = requestContext.groupId
         val periods = budgetPeriodResolver.resolvePeriods(yearMonth)
         val offset = page * size
-        val items = paymentNotificationPeriodQueryProvider.findByBudgetPeriods(periods, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
-            .map(PaymentNotificationResponse::from)
+        val notifications = paymentNotificationPeriodQueryProvider.findByBudgetPeriods(periods, yearMonthStr, groupId, size, offset, categoryId, cardLastDigits, paymentMethodId, sort)
+        // The join in findByBudgetPeriods only picks the month's installment for filtering/sorting
+        // and doesn't surface it in the pn.* projection, so it's fetched again here per notification.
+        val installmentsByParentId = if (notifications.isEmpty()) {
+            emptyMap()
+        } else {
+            installmentRepository
+                .findByParentIdInAndCancelledAtIsNullAndDueDateBetween(notifications.map { it.id }, yearMonth.atDay(1), yearMonth.atEndOfMonth())
+                .associateBy { it.parentId }
+        }
+        val items = notifications.map { PaymentNotificationResponse.from(it, installmentForMonth = installmentsByParentId[it.id]) }
         val totalElements = paymentNotificationPeriodQueryProvider.countByBudgetPeriods(periods, yearMonthStr, groupId, categoryId, cardLastDigits, paymentMethodId)
         val totalPages = if (size > 0) ((totalElements + size - 1) / size).toInt() else 0
         return mapOf(
