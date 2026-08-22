@@ -42,7 +42,7 @@ class UpdateNotificationPaymentMethodProvider(
                     )
             }
 
-            val newCardLastDigits = subCard?.lastFourDigits ?: notification.cardLastDigits
+            val newCardLastDigits = subCard?.lastFourDigits
 
             val updated = paymentNotificationRepository.save(
                 notification.copy(
