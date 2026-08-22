@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.installments.entrypoint.rest
 
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
+import br.com.nomar.controlai.application.installments.application.InstallmentReconciliationService
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.request.InstallmentPreviewRequest
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentPreviewItemResponse
@@ -29,11 +30,17 @@ data class UpdateInstallmentRequest(
     val amount: BigDecimal? = null,
 )
 
+data class ReconcileInstallmentsResponse(
+    val created: Int,
+    val recalculated: Int,
+)
+
 @RestController
 @RequestMapping("/installments")
 class InstallmentController(
     private val installmentRepository: InstallmentRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
+    private val reconciliationService: InstallmentReconciliationService,
     private val requestContext: RequestContext,
 ) {
 
@@ -97,5 +104,15 @@ class InstallmentController(
 
         val cancelled = futureInstallments.map { it.copy(cancelledAt = LocalDateTime.now()) }
         installmentRepository.saveAll(cancelled)
+    }
+
+    // Run right after correcting a card's period (PUT /budgets/{id}/periods): that call only
+    // overwrites budget_payment_periods, it never touches installments already persisted with
+    // the old due_date. Scoped to the caller's own group via RequestContext.
+    @PostMapping("/reconcile")
+    @Transactional
+    fun reconcile(): ReconcileInstallmentsResponse {
+        val (created, recalculated) = reconciliationService.reconcileGroup(requestContext.groupId)
+        return ReconcileInstallmentsResponse(created, recalculated)
     }
 }
