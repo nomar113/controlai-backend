@@ -15,7 +15,7 @@ class PaymentNotificationTextParserTest {
         val result = parser.parse(text, "bank", "sms")
 
         assertEquals("1234", result.cardLastDigits)
-        assertEquals("2026-02-01T10:30:00Z", result.purchasedAt.toString())
+        assertEquals("2026-02-01T13:30:00Z", result.purchasedAt.toString())
         assertEquals(0, result.amount.compareTo("1234.56".toBigDecimal()))
         assertEquals("MERCADO CENTRAL", result.merchantName)
         assertEquals(3, result.numberOfInstallments)
@@ -50,7 +50,7 @@ class PaymentNotificationTextParserTest {
         val result = parser.parse(text, "bradesco", "sms")
 
         assertEquals("9687", result.cardLastDigits)
-        assertEquals("2026-03-17T02:15:00Z", result.purchasedAt.toString())
+        assertEquals("2026-03-17T05:15:00Z", result.purchasedAt.toString())
         assertEquals(0, result.amount.compareTo("251.90".toBigDecimal()))
         assertEquals("AMAZON MARKETPLACE SAO PAULO", result.merchantName)
         assertEquals(1, result.numberOfInstallments)
@@ -63,9 +63,27 @@ class PaymentNotificationTextParserTest {
         val result = parser.parse(text, "bradesco", "sms")
 
         assertEquals("9687", result.cardLastDigits)
-        assertEquals("2026-03-14T14:56:00Z", result.purchasedAt.toString())
+        assertEquals("2026-03-14T17:56:00Z", result.purchasedAt.toString())
         assertEquals(0, result.amount.compareTo("303.44".toBigDecimal()))
         assertEquals("COBASI RIO DE JANEI", result.merchantName)
         assertEquals(2, result.numberOfInstallments)
+    }
+
+    @Test
+    fun `should roll over to the next UTC day when SMS time is near midnight in Sao Paulo`() {
+        val text = "FINAL 1234 EM 10/01/2026 23:30 NO VALOR DE R$ 50,00 LOJA NOTURNA."
+
+        val result = parser.parse(text, "bank", "sms")
+
+        assertEquals("2026-01-11T02:30:00Z", result.purchasedAt.toString())
+    }
+
+    @Test
+    fun `should keep UTC day when Sao Paulo time is just after midnight`() {
+        val text = "FINAL 1234 EM 11/01/2026 00:10 NO VALOR DE R$ 50,00 LOJA NOTURNA."
+
+        val result = parser.parse(text, "bank", "sms")
+
+        assertEquals("2026-01-11T03:10:00Z", result.purchasedAt.toString())
     }
 }

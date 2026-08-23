@@ -1,14 +1,16 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Component
 class PaymentNotificationTextParser {
+    private val log = LoggerFactory.getLogger(javaClass)
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
     private val installmentsPattern = Regex("""\bEM\s+(\d+)\s*X\b""", RegexOption.IGNORE_CASE)
     private val notificationPattern = Regex(
@@ -18,14 +20,17 @@ class PaymentNotificationTextParser {
 
     fun parse(text: String, origin: String, originType: String): PaymentNotification {
         val match = notificationPattern.find(text)
-            ?: throw PaymentNotificationTextParseException()
+            ?: run {
+                log.warn("Payment notification text did not match expected date/time format. origin={}, originType={}", origin, originType)
+                throw PaymentNotificationTextParseException()
+            }
 
         val cardLastDigits = match.groupValues[1]
-        // Zona ainda nao declarada explicitamente aqui (America/Sao_Paulo) — correcao dedicada na Tarefa 3.0.
-        // UTC preserva o valor naive atual sem deslocamento ate essa correcao.
+        // The bank SMS timestamp is always Brasilia time (America/Sao_Paulo),
+        // regardless of the host timezone the backend runs on.
         val purchasedAt = LocalDateTime
             .parse("${match.groupValues[2]} ${match.groupValues[3]}", dateTimeFormatter)
-            .atZone(ZoneOffset.UTC)
+            .atZone(ZoneId.of("America/Sao_Paulo"))
             .toInstant()
         val amount = parseAmount(match.groupValues[4])
         val merchantName = normalizeMerchantName(match.groupValues[5])

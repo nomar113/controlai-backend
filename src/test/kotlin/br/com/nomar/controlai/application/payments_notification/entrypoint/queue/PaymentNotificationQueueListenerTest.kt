@@ -67,6 +67,7 @@ class PaymentNotificationQueueListenerTest {
         assertEquals(3, savedNotification?.numberOfInstallments)
         assertEquals("sms-app", savedNotification?.origin)
         assertEquals("SMS", savedNotification?.originType)
+        assertEquals("2026-03-18T13:45:00Z", savedNotification?.purchasedAt.toString())
     }
 
     @Test
