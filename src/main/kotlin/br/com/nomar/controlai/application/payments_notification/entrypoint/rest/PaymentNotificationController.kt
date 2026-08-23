@@ -18,6 +18,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.ManualPaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PaymentNotificationTextRequest
+import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateAmountRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCategoryRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateCurrentInstallmentNumberRequest
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
@@ -167,6 +168,20 @@ class PaymentNotificationController(
         val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
         val updated = paymentNotificationRepository.save(notification.copy(description = request.description))
+        return PaymentNotificationResponse.from(updated)
+    }
+
+    @PatchMapping("/notifications/{id}/amount")
+    fun updateAmount(
+        @PathVariable id: Long,
+        @Validated @RequestBody request: UpdateAmountRequest,
+    ): PaymentNotificationResponse {
+        val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
+        if (notification.numberOfInstallments > 1) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot edit amount of a purchase with installments")
+        }
+        val updated = paymentNotificationRepository.save(notification.copy(amount = request.amount))
         return PaymentNotificationResponse.from(updated)
     }
 
