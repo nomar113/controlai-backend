@@ -172,6 +172,7 @@ class PaymentNotificationController(
     }
 
     @PatchMapping("/notifications/{id}/amount")
+    @Transactional
     fun updateAmount(
         @PathVariable id: Long,
         @Validated @RequestBody request: UpdateAmountRequest,
@@ -182,6 +183,12 @@ class PaymentNotificationController(
             throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot edit amount of a purchase with installments")
         }
         val updated = paymentNotificationRepository.save(notification.copy(amount = request.amount))
+        // Every notification, even a 1x one, has a matching Installment row used for budget-period
+        // matching and for the monthly listing's displayed amount (see PaymentNotificationResponse.installmentAmount) —
+        // it must stay in sync or the list keeps showing the pre-edit value.
+        installmentRepository.findByParentIdOrderByInstallmentNumber(id).forEach { installment ->
+            installmentRepository.save(installment.copy(amount = request.amount))
+        }
         return PaymentNotificationResponse.from(updated)
     }
 
