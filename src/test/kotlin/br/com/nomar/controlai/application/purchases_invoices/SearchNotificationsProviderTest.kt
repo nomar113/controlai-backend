@@ -13,8 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -59,7 +60,7 @@ class SearchNotificationsProviderTest {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
-                date = OffsetDateTime.now(),
+                date = Instant.now(),
                 merchantName = "Mercado Teste Search",
                 merchantAddress = "Rua A",
                 cnpj = "12345678000199",
@@ -86,7 +87,7 @@ class SearchNotificationsProviderTest {
 
     private fun createNotification(
         amount: BigDecimal = BigDecimal("50.00"),
-        purchasedAt: LocalDateTime = LocalDateTime.now(),
+        purchasedAt: Instant = Instant.now(),
         purchaseInvoiceId: Long? = null,
         cancelledAt: LocalDateTime? = null,
         deletedAt: LocalDateTime? = null,
@@ -137,15 +138,15 @@ class SearchNotificationsProviderTest {
     @Test
     fun `should filter by date range when start and end provided`() {
         val invoice = createInvoice()
-        val baseDate = LocalDateTime.now().minusDays(2)
+        val baseDate = Instant.now().minus(Duration.ofDays(2))
         val target = createNotification(purchasedAt = baseDate)
-        createNotification(purchasedAt = baseDate.minusDays(30))
+        createNotification(purchasedAt = baseDate.minus(Duration.ofDays(30)))
 
         val result = provider.execute(
             invoiceId = invoice.id!!,
             amount = null,
-            startDate = baseDate.minusHours(1),
-            endDate = baseDate.plusHours(1),
+            startDate = baseDate.minus(Duration.ofHours(1)),
+            endDate = baseDate.plus(Duration.ofHours(1)),
         )
 
         assertTrue(result.isSuccess)
@@ -157,16 +158,16 @@ class SearchNotificationsProviderTest {
     @Test
     fun `should filter by both amount and date range when both provided`() {
         val invoice = createInvoice()
-        val baseDate = LocalDateTime.now().minusDays(1)
+        val baseDate = Instant.now().minus(Duration.ofDays(1))
         val target = createNotification(amount = BigDecimal("200.00"), purchasedAt = baseDate)
-        createNotification(amount = BigDecimal("200.00"), purchasedAt = baseDate.minusDays(30))
+        createNotification(amount = BigDecimal("200.00"), purchasedAt = baseDate.minus(Duration.ofDays(30)))
         createNotification(amount = BigDecimal("99.99"), purchasedAt = baseDate)
 
         val result = provider.execute(
             invoiceId = invoice.id!!,
             amount = BigDecimal("200.00"),
-            startDate = baseDate.minusHours(1),
-            endDate = baseDate.plusHours(1),
+            startDate = baseDate.minus(Duration.ofHours(1)),
+            endDate = baseDate.plus(Duration.ofHours(1)),
         )
 
         assertTrue(result.isSuccess)
@@ -178,8 +179,8 @@ class SearchNotificationsProviderTest {
     @Test
     fun `should return last 7 days when no filters provided`() {
         val invoice = createInvoice()
-        val recent = createNotification(purchasedAt = LocalDateTime.now().minusDays(3))
-        createNotification(purchasedAt = LocalDateTime.now().minusDays(10))
+        val recent = createNotification(purchasedAt = Instant.now().minus(Duration.ofDays(3)))
+        createNotification(purchasedAt = Instant.now().minus(Duration.ofDays(10)))
 
         val result = provider.execute(
             invoiceId = invoice.id!!,
@@ -192,14 +193,14 @@ class SearchNotificationsProviderTest {
         val suggestions = result.getOrThrow()
         val ids = suggestions.map { it.id }
         assertTrue(ids.contains(recent.id))
-        assertTrue(suggestions.all { it.purchasedAt.isAfter(LocalDateTime.now().minusDays(7)) })
+        assertTrue(suggestions.all { it.purchasedAt.isAfter(Instant.now().minus(Duration.ofDays(7))) })
     }
 
     @Test
     fun `should exclude deleted, cancelled and notifications already associated to other invoices`() {
         val invoice = createInvoice()
         val otherInvoice = createInvoice()
-        val baseDate = LocalDateTime.now().minusDays(1)
+        val baseDate = Instant.now().minus(Duration.ofDays(1))
 
         val valid = createNotification(purchasedAt = baseDate)
         createNotification(purchasedAt = baseDate, deletedAt = LocalDateTime.now())
@@ -227,9 +228,9 @@ class SearchNotificationsProviderTest {
     @Test
     fun `should limit results to 20`() {
         val invoice = createInvoice()
-        val baseDate = LocalDateTime.now().minusDays(1)
+        val baseDate = Instant.now().minus(Duration.ofDays(1))
         repeat(25) { index ->
-            createNotification(purchasedAt = baseDate.minusMinutes(index.toLong()))
+            createNotification(purchasedAt = baseDate.minus(Duration.ofMinutes(index.toLong())))
         }
 
         val result = provider.execute(
@@ -263,7 +264,7 @@ class SearchNotificationsProviderTest {
         val invoice = createInvoice()
         val oldTarget = createNotification(
             amount = BigDecimal("150.00"),
-            purchasedAt = LocalDateTime.now().minusDays(30),
+            purchasedAt = Instant.now().minus(Duration.ofDays(30)),
         )
 
         val result = provider.execute(

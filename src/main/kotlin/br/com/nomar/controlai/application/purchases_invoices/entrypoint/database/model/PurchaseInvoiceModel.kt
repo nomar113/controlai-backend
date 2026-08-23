@@ -10,8 +10,8 @@ import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.SQLRestriction
 import org.hibernate.annotations.UpdateTimestamp
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 
 @Entity
 @Table(name = "purchase_invoices")
@@ -25,7 +25,7 @@ data class PurchaseInvoiceModel (
     val groupId: Long = 0,
 
     @Column(name = "date")
-    val date: OffsetDateTime,
+    val date: Instant,
 
     @Column(name = "merchant_name")
     val merchantName: String?,

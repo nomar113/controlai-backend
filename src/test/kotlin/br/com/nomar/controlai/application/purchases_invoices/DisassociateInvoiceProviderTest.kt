@@ -13,8 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -56,7 +56,7 @@ class DisassociateInvoiceProviderTest {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
-                date = OffsetDateTime.now(),
+                date = Instant.now(),
                 merchantName = "Mercado Teste Disassociate",
                 merchantAddress = "Rua A",
                 cnpj = "12345678000199",
@@ -77,7 +77,7 @@ class DisassociateInvoiceProviderTest {
     private fun createNotification(purchaseInvoiceId: Long? = null): PaymentNotification {
         val notification = notificationRepository.save(
             PaymentNotification(
-                purchasedAt = LocalDateTime.now(),
+                purchasedAt = Instant.now(),
                 amount = BigDecimal("50.00"),
                 merchantName = "Mercado Teste",
                 origin = "MANUAL",

@@ -6,13 +6,13 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Repository
 interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Long> {
     fun countByCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
         cardLastDigits: String,
-        purchasedAt: LocalDateTime,
+        purchasedAt: Instant,
         amount: BigDecimal,
         merchantName: String,
         numberOfInstallments: Int,
@@ -21,7 +21,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
 
     fun countByPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
         paymentMethodId: Long?,
-        purchasedAt: LocalDateTime,
+        purchasedAt: Instant,
         amount: BigDecimal,
         merchantName: String,
         numberOfInstallments: Int,
@@ -81,7 +81,7 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         @Param("invoiceId") invoiceId: Long,
         @Param("groupId") groupId: Long,
         @Param("amount") amount: BigDecimal?,
-        @Param("startDate") startDate: LocalDateTime?,
-        @Param("endDate") endDate: LocalDateTime?,
+        @Param("startDate") startDate: Instant?,
+        @Param("endDate") endDate: Instant?,
     ): List<PaymentNotification>
 }

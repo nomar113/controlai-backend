@@ -4,18 +4,19 @@ import br.com.nomar.controlai.application.categories.entrypoint.database.model.C
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
 
 class SuggestionResponseTest {
 
-    private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC)
+    private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC).toInstant()
 
     private fun createNotification(
         id: Long = 1L,
-        purchasedAt: LocalDateTime = invoiceDate.toLocalDateTime(),
+        purchasedAt: Instant = invoiceDate,
     ) = PaymentNotification(
         id = id,
         cardLastDigits = "1234",
@@ -30,7 +31,7 @@ class SuggestionResponseTest {
 
     @Test
     fun `should calculate timeDeltaMinutes as 0 when times are equal`() {
-        val notification = createNotification(purchasedAt = invoiceDate.toLocalDateTime())
+        val notification = createNotification(purchasedAt = invoiceDate)
 
         val response = SuggestionResponse.from(notification, invoiceDate)
 
@@ -40,7 +41,7 @@ class SuggestionResponseTest {
     @Test
     fun `should calculate timeDeltaMinutes as 30 when notification is 30 minutes after invoice`() {
         val notification = createNotification(
-            purchasedAt = invoiceDate.toLocalDateTime().plusMinutes(30),
+            purchasedAt = invoiceDate.plus(Duration.ofMinutes(30)),
         )
 
         val response = SuggestionResponse.from(notification, invoiceDate)
@@ -51,7 +52,7 @@ class SuggestionResponseTest {
     @Test
     fun `should calculate timeDeltaMinutes as 30 when notification is 30 minutes before invoice`() {
         val notification = createNotification(
-            purchasedAt = invoiceDate.toLocalDateTime().minusMinutes(30),
+            purchasedAt = invoiceDate.minus(Duration.ofMinutes(30)),
         )
 
         val response = SuggestionResponse.from(notification, invoiceDate)
@@ -62,7 +63,7 @@ class SuggestionResponseTest {
     @Test
     fun `should calculate timeDeltaMinutes as 59 when notification is 59 minutes away`() {
         val notification = createNotification(
-            purchasedAt = invoiceDate.toLocalDateTime().plusMinutes(59),
+            purchasedAt = invoiceDate.plus(Duration.ofMinutes(59)),
         )
 
         val response = SuggestionResponse.from(notification, invoiceDate)
@@ -78,7 +79,7 @@ class SuggestionResponseTest {
 
         assertEquals(1L, response.id)
         assertEquals("1234", response.cardLastDigits)
-        assertEquals(invoiceDate.toLocalDateTime(), response.purchasedAt)
+        assertEquals(invoiceDate, response.purchasedAt)
         assertEquals(BigDecimal("150.00"), response.amount)
         assertEquals("Supermercado X", response.merchantName)
         assertEquals(2, response.numberOfInstallments)
@@ -93,7 +94,7 @@ class SuggestionResponseTest {
         val notification = PaymentNotification(
             id = 2L,
             cardLastDigits = null,
-            purchasedAt = invoiceDate.toLocalDateTime().plusMinutes(10),
+            purchasedAt = invoiceDate.plus(Duration.ofMinutes(10)),
             amount = BigDecimal("50.00"),
             merchantName = "Loja Y",
             numberOfInstallments = 1,

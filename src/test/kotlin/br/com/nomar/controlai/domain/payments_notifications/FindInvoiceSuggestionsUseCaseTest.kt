@@ -11,6 +11,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
@@ -23,7 +24,7 @@ class FindInvoiceSuggestionsUseCaseTest {
     private val requestContext: RequestContext = mock<RequestContext>().also { `when`(it.groupId).thenReturn(1L) }
     private val useCase = FindInvoiceSuggestionsUseCase(purchaseInvoiceRepository, findSuggestionsGateway, requestContext)
 
-    private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC)
+    private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC).toInstant()
     private val invoiceTotal = BigDecimal("150.00")
 
     private fun createInvoice(id: Long = 1L) = PurchaseInvoiceModel(
@@ -44,7 +45,7 @@ class FindInvoiceSuggestionsUseCaseTest {
     private fun createNotification(id: Long, minutesDelta: Long = 0) = PaymentNotification(
         id = id,
         cardLastDigits = "1234",
-        purchasedAt = invoiceDate.toLocalDateTime().plusMinutes(minutesDelta),
+        purchasedAt = invoiceDate.plus(Duration.ofMinutes(minutesDelta)),
         amount = invoiceTotal,
         merchantName = "Supermercado X",
         numberOfInstallments = 1,

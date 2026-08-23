@@ -15,6 +15,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -46,7 +47,7 @@ class UpdateNotificationPaymentMethodProviderTest {
     ) = PaymentNotification(
         id = id,
         cardLastDigits = cardLastDigits,
-        purchasedAt = LocalDateTime.of(2024, 6, 15, 14, 0, 0),
+        purchasedAt = LocalDateTime.of(2024, 6, 15, 14, 0, 0).toInstant(ZoneOffset.UTC),
         amount = BigDecimal("150.00"),
         merchantName = "Loja Teste",
         numberOfInstallments = 1,

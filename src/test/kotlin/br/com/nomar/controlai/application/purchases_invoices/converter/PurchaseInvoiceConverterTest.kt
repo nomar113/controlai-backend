@@ -79,7 +79,7 @@ class PurchaseInvoiceConverterTest {
 
     private fun sampleEntity() = PurchaseInvoice(
         id = 1,
-        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00"),
+        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00").toInstant(),
         merchantName = "Mercado",
         merchantAddress = "Rua A",
         cnpj = Cnpj.of("12.345.678/0001-90"),
@@ -94,7 +94,7 @@ class PurchaseInvoiceConverterTest {
 
     private fun sampleModel() = PurchaseInvoiceModel(
         id = 1,
-        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00"),
+        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00").toInstant(),
         merchantName = "Mercado",
         merchantAddress = "Rua A",
         cnpj = "12.345.678/0001-90",

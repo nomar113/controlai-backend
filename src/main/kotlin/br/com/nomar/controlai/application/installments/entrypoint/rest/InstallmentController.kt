@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 data class UpdateInstallmentRequest(
     val amount: BigDecimal? = null,
@@ -102,7 +102,7 @@ class InstallmentController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "No future installments to cancel")
         }
 
-        val cancelled = futureInstallments.map { it.copy(cancelledAt = LocalDateTime.now()) }
+        val cancelled = futureInstallments.map { it.copy(cancelledAt = Instant.now()) }
         installmentRepository.saveAll(cancelled)
     }
 

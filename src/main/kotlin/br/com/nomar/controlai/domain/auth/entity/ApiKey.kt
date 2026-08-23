@@ -1,14 +1,14 @@
 package br.com.nomar.controlai.domain.auth.entity
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 data class ApiKey(
     val id: Long? = null,
     val groupId: Long,
     val keyHash: String,
     val label: String = DEFAULT_LABEL,
-    val createdAt: LocalDateTime? = null,
-    val revokedAt: LocalDateTime? = null,
+    val createdAt: Instant? = null,
+    val revokedAt: Instant? = null,
 ) {
     fun isRevoked(): Boolean = revokedAt != null
 

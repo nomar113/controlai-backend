@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest
+import java.time.ZoneOffset
 
 @Component
 class PaymentNotificationQueueListener(
@@ -76,7 +77,11 @@ class PaymentNotificationQueueListener(
         return PaymentNotification(
             groupId = resolvedGroupId,
             cardLastDigits = requireNotNull(cardLastDigits) { "cardLastDigits is required when text is not provided" },
-            purchasedAt = requireNotNull(purchasedAt) { "purchasedAt is required when text is not provided" },
+            // Zona ainda nao declarada explicitamente aqui — mensagens estruturadas da fila
+            // continuam naive ate a Tarefa 4.0 exigir offset explicito no contrato.
+            purchasedAt = requireNotNull(purchasedAt) { "purchasedAt is required when text is not provided" }
+                .atZone(ZoneOffset.UTC)
+                .toInstant(),
             amount = requireNotNull(amount) { "amount is required when text is not provided" },
             merchantName = requireNotNull(merchantName) { "merchantName is required when text is not provided" },
             numberOfInstallments = numberOfInstallments ?: 1,

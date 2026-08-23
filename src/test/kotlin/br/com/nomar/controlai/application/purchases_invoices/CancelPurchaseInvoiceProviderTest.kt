@@ -11,8 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -38,7 +38,7 @@ class CancelPurchaseInvoiceProviderTest {
         return repository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
-                date = OffsetDateTime.now(),
+                date = Instant.now(),
                 merchantName = "Mercado Teste Cancel",
                 merchantAddress = "Rua A",
                 cnpj = "12345678000199",

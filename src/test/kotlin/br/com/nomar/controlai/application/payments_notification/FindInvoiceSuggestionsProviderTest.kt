@@ -9,6 +9,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -24,7 +25,7 @@ class FindInvoiceSuggestionsProviderTest {
     private fun createNotification(id: Long, purchasedAt: LocalDateTime): PaymentNotification {
         return PaymentNotification(
             id = id,
-            purchasedAt = purchasedAt,
+            purchasedAt = purchasedAt.toInstant(ZoneOffset.UTC),
             amount = amount,
             merchantName = "Loja Teste",
             numberOfInstallments = 1,

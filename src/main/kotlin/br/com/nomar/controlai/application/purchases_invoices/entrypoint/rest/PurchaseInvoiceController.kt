@@ -35,9 +35,11 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
+import java.time.ZoneOffset
 
 @RestController
 @RequestMapping("/purchases")
@@ -207,10 +209,10 @@ class PurchaseInvoiceController(
         }
     }
 
-    private fun parseDateTimeParam(name: String, value: String?): LocalDateTime? {
+    private fun parseDateTimeParam(name: String, value: String?): Instant? {
         if (value.isNullOrBlank()) return null
         return try {
-            LocalDateTime.parse(value)
+            LocalDateTime.parse(value).atZone(ZoneOffset.UTC).toInstant()
         } catch (e: Exception) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid $name format. Expected ISO LocalDateTime (yyyy-MM-ddTHH:mm:ss)")
         }

@@ -1,6 +1,6 @@
 package br.com.nomar.controlai.domain.groups.entity
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 enum class InviteStatus { PENDING, ACCEPTED, DECLINED, CANCELLED }
 
@@ -11,9 +11,9 @@ data class GroupInvite(
     val inviteeEmail: String,
     val status: InviteStatus,
     val token: String,
-    val expiresAt: LocalDateTime,
-    val createdAt: LocalDateTime? = null,
+    val expiresAt: Instant,
+    val createdAt: Instant? = null,
 ) {
-    fun isExpired(): Boolean = LocalDateTime.now().isAfter(expiresAt)
+    fun isExpired(): Boolean = Instant.now().isAfter(expiresAt)
     fun isPending(): Boolean = status == InviteStatus.PENDING && !isExpired()
 }

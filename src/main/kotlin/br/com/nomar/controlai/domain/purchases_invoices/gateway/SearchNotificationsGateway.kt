@@ -2,13 +2,13 @@ package br.com.nomar.controlai.domain.purchases_invoices.gateway
 
 import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 fun interface SearchNotificationsGateway {
     fun execute(
         invoiceId: Long,
         amount: BigDecimal?,
-        startDate: LocalDateTime?,
-        endDate: LocalDateTime?,
+        startDate: Instant?,
+        endDate: Instant?,
     ): Result<List<SuggestionResponse>>
 }

@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.payments_notification.entrypoint.rest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.ZoneId
 
 data class AssociatedInvoiceResponse(
     val id: Long,
@@ -19,7 +20,7 @@ data class AssociatedInvoiceResponse(
             cnpj = invoice.cnpj,
             totalItems = invoice.totalItems,
             total = invoice.total ?: BigDecimal.ZERO,
-            date = invoice.date.toLocalDate(),
+            date = invoice.date.atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate(),
         )
     }
 }

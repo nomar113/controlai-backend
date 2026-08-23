@@ -4,7 +4,7 @@ import br.com.nomar.controlai.domain.auth.entity.ApiKey
 import br.com.nomar.controlai.domain.auth.entity.AuthSession
 import br.com.nomar.controlai.domain.auth.entity.Profile
 import br.com.nomar.controlai.domain.auth.entity.User
-import java.time.LocalDateTime
+import java.time.Instant
 
 data class UserResponse(
     val id: Long,
@@ -56,14 +56,14 @@ data class ApiKeyCreatedResponse(
     val id: Long,
     val label: String,
     val key: String,
-    val createdAt: LocalDateTime?,
+    val createdAt: Instant?,
 )
 
 // Returned by GET /me/api-key — raw key is never returned after creation
 data class ApiKeyResponse(
     val id: Long,
     val label: String,
-    val createdAt: LocalDateTime?,
+    val createdAt: Instant?,
     val revoked: Boolean,
 ) {
     companion object {

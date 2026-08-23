@@ -16,7 +16,8 @@ import br.com.nomar.controlai.domain.groups.usecase.DeclineInviteUseCase
 import br.com.nomar.controlai.domain.groups.usecase.InviteToGroupUseCase
 import br.com.nomar.controlai.domain.groups.usecase.LeaveGroupUseCase
 import br.com.nomar.controlai.domain.groups.usecase.ListPendingInvitesUseCase
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -25,9 +26,9 @@ import kotlin.test.assertEquals
 
 class GroupInviteUseCasesTest {
 
-    private val now: LocalDateTime = LocalDateTime.now()
+    private val now: Instant = Instant.now()
 
-    private fun pendingInvite(id: Long = 1L, groupId: Long = 10L, expiresAt: LocalDateTime = now.plusDays(7)) =
+    private fun pendingInvite(id: Long = 1L, groupId: Long = 10L, expiresAt: Instant = now.plus(Duration.ofDays(7))) =
         GroupInvite(
             id = id,
             groupId = groupId,
@@ -199,7 +200,7 @@ class GroupInviteUseCasesTest {
 
     @Test
     fun `AcceptInviteUseCase fails when invite is expired`() {
-        val expiredInvite = pendingInvite(expiresAt = now.minusHours(1))
+        val expiredInvite = pendingInvite(expiresAt = now.minus(Duration.ofHours(1)))
         val useCase = AcceptInviteUseCase(
             findInviteByIdGateway = { Result.success(expiredInvite) },
             findUserGroupGateway = { Result.success(Group(id = 20L, name = "Personal")) },
@@ -322,8 +323,8 @@ class GroupInviteUseCasesTest {
 
     @Test
     fun `ListPendingInvitesUseCase filters out expired invites`() {
-        val fresh = pendingInvite(id = 1L, expiresAt = now.plusDays(3))
-        val expired = pendingInvite(id = 2L, expiresAt = now.minusHours(1))
+        val fresh = pendingInvite(id = 1L, expiresAt = now.plus(Duration.ofDays(3)))
+        val expired = pendingInvite(id = 2L, expiresAt = now.minus(Duration.ofHours(1)))
         val useCase = ListPendingInvitesUseCase(
             listPendingInvitesGateway = { Result.success(listOf(fresh, expired)) },
         )
@@ -355,13 +356,13 @@ class GroupInviteUseCasesTest {
 
     @Test
     fun `GroupInvite isPending returns true for pending non-expired invite`() {
-        val invite = pendingInvite(expiresAt = now.plusDays(1))
+        val invite = pendingInvite(expiresAt = now.plus(Duration.ofDays(1)))
         assertTrue(invite.isPending())
     }
 
     @Test
     fun `GroupInvite isPending returns false for expired invite`() {
-        val invite = pendingInvite(expiresAt = now.minusMinutes(1))
+        val invite = pendingInvite(expiresAt = now.minus(Duration.ofMinutes(1)))
         assertFalse(invite.isPending())
     }
 

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Repository
 interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> {
@@ -17,6 +17,12 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
 
     fun findByIdAndGroupId(id: Long, groupId: Long): PurchaseInvoiceModel?
 
+    // ATENCAO: ate a Tarefa 3.0 corrigir PaymentNotificationTextParser para declarar
+    // America/Sao_Paulo explicitamente, o :purchasedAt recebido aqui (PaymentNotification.
+    // purchasedAt) preserva os digitos naive do SMS rotulados como UTC, enquanto pi.date
+    // (PurchaseInvoiceModel.date) ja e um Instant real e correto. O TIMESTAMPDIFF abaixo fica
+    // sistematicamente deslocado em ~3h (offset de Brasilia) para pares que de fato representam
+    // o mesmo evento, podendo alterar a ordenacao por proximidade ate a Tarefa 3.0 ser concluida.
     @Query(
         value = """
             SELECT * FROM purchase_invoices pi
@@ -34,7 +40,7 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
     )
     fun findByTotalAndNotAssociated(
         @Param("amount") amount: BigDecimal,
-        @Param("purchasedAt") purchasedAt: LocalDateTime,
+        @Param("purchasedAt") purchasedAt: Instant,
         @Param("groupId") groupId: Long,
     ): List<PurchaseInvoiceModel>
 }

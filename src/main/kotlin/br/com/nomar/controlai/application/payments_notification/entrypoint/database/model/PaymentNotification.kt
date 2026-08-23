@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.hibernate.annotations.SQLRestriction
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 
 @Entity
@@ -29,7 +30,7 @@ data class PaymentNotification(
     val cardLastDigits: String? = null,
 
     @Column(name = "purchased_at", nullable = false)
-    val purchasedAt: LocalDateTime,
+    val purchasedAt: Instant,
 
     @Column(nullable = false, precision = 19, scale = 2)
     val amount: BigDecimal,

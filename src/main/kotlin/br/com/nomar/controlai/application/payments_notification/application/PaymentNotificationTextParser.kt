@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Component
@@ -20,7 +21,12 @@ class PaymentNotificationTextParser {
             ?: throw PaymentNotificationTextParseException()
 
         val cardLastDigits = match.groupValues[1]
-        val purchasedAt = LocalDateTime.parse("${match.groupValues[2]} ${match.groupValues[3]}", dateTimeFormatter)
+        // Zona ainda nao declarada explicitamente aqui (America/Sao_Paulo) — correcao dedicada na Tarefa 3.0.
+        // UTC preserva o valor naive atual sem deslocamento ate essa correcao.
+        val purchasedAt = LocalDateTime
+            .parse("${match.groupValues[2]} ${match.groupValues[3]}", dateTimeFormatter)
+            .atZone(ZoneOffset.UTC)
+            .toInstant()
         val amount = parseAmount(match.groupValues[4])
         val merchantName = normalizeMerchantName(match.groupValues[5])
         val numberOfInstallments = parseInstallments(text)

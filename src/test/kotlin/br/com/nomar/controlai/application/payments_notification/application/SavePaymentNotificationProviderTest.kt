@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -82,7 +83,7 @@ class SavePaymentNotificationProviderTest {
         // the next cycle (Feb) instead of the purchase month (Jan).
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("300.00"),
             merchantName = "Apple Store",
             numberOfInstallments = 3,
@@ -112,7 +113,7 @@ class SavePaymentNotificationProviderTest {
         val paymentMethodId = insertCreditCard(closingDay = 10)
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("300.00"),
             merchantName = "Apple Store",
             numberOfInstallments = 3,
@@ -132,7 +133,7 @@ class SavePaymentNotificationProviderTest {
     fun `should create a single installment for a cash purchase, due on the purchase's calendar month`() {
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("89.90"),
             merchantName = "Padaria",
             numberOfInstallments = 1,
@@ -158,7 +159,7 @@ class SavePaymentNotificationProviderTest {
     fun `should create a single installment for a Pix purchase, due on the purchase's calendar month`() {
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("150.00"),
             merchantName = "Mercado",
             numberOfInstallments = 1,
@@ -180,7 +181,7 @@ class SavePaymentNotificationProviderTest {
         // Purchase on the 15th, after the 10th closing day, so it bills in the next cycle (Feb).
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("89.90"),
             merchantName = "Restaurante",
             numberOfInstallments = 1,
@@ -206,7 +207,7 @@ class SavePaymentNotificationProviderTest {
     fun `should fall back to calendar month cycle when payment method has no closing day`() {
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("200.00"),
             merchantName = "Loja Sem Cartao",
             numberOfInstallments = 2,

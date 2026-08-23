@@ -9,6 +9,7 @@ import br.com.nomar.controlai.domain.budget.gateway.EnsureFutureBudgetGateway
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneOffset
 
 data class InstallmentReconciliationResult(val created: Int, val recalculated: Int)
 
@@ -52,7 +53,7 @@ class InstallmentReconciliationService(
             groupId = notification.groupId,
             totalInstallments = notification.numberOfInstallments,
             totalAmount = notification.amount,
-            startDate = notification.purchasedAt.toLocalDate(),
+            startDate = notification.purchasedAt.atZone(ZoneOffset.UTC).toLocalDate(),
             paymentMethodId = notification.paymentMethodId,
         )
         ensureBudgetsFor(notification.groupId, installments.map { it.dueDate })
@@ -60,7 +61,7 @@ class InstallmentReconciliationService(
     }
 
     private fun recalculateDueDates(notification: PaymentNotification, existing: List<Installment>): Int {
-        val purchasedAt = notification.purchasedAt.toLocalDate()
+        val purchasedAt = notification.purchasedAt.atZone(ZoneOffset.UTC).toLocalDate()
 
         val updated = existing.mapNotNull { installment ->
             val newDueDate = budgetPeriodResolver.resolveInstallmentDueDate(

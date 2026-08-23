@@ -10,7 +10,8 @@ import br.com.nomar.controlai.domain.groups.gateway.FindUserGroupGateway
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 @Component
@@ -43,7 +44,7 @@ class InviteToGroupUseCase(
                     inviteeEmail = normalizedEmail,
                     status = InviteStatus.PENDING,
                     token = token,
-                    expiresAt = LocalDateTime.now().plusDays(INVITE_TTL_DAYS),
+                    expiresAt = Instant.now().plus(Duration.ofDays(INVITE_TTL_DAYS)),
                 ),
             ).getOrThrow()
 

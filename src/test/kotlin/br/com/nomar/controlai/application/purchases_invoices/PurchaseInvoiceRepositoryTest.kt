@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -27,7 +28,7 @@ class PurchaseInvoiceRepositoryTest {
 
     private fun createInvoice(
         total: BigDecimal = BigDecimal("100.00"),
-        date: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
+        date: Instant = Instant.now(),
         cancelledAt: LocalDateTime? = null,
     ): PurchaseInvoiceModel {
         return invoiceRepository.save(
@@ -53,7 +54,7 @@ class PurchaseInvoiceRepositoryTest {
         notificationRepository.save(
             PaymentNotification(
                 groupId = 1L,
-                purchasedAt = LocalDateTime.now(),
+                purchasedAt = Instant.now(),
                 amount = BigDecimal("100.00"),
                 merchantName = "Loja Teste",
                 origin = "MANUAL",
@@ -69,7 +70,7 @@ class PurchaseInvoiceRepositoryTest {
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("100.00"),
-            purchasedAt = LocalDateTime.now(),
+            purchasedAt = Instant.now(),
             groupId = 1L,
         )
 
@@ -82,7 +83,7 @@ class PurchaseInvoiceRepositoryTest {
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("150.00"),
-            purchasedAt = LocalDateTime.now(),
+            purchasedAt = Instant.now(),
             groupId = 1L,
         )
 
@@ -91,19 +92,19 @@ class PurchaseInvoiceRepositoryTest {
 
     @Test
     fun `should return multiple candidates ordered by date proximity`() {
-        val notificationTime = LocalDateTime.of(2025, 6, 15, 14, 0, 0)
+        val notificationTime = LocalDateTime.of(2025, 6, 15, 14, 0, 0).toInstant(ZoneOffset.UTC)
 
         val invoiceFar = createInvoice(
             total = BigDecimal("99.90"),
-            date = OffsetDateTime.of(2025, 6, 10, 10, 0, 0, 0, ZoneOffset.UTC),
+            date = OffsetDateTime.of(2025, 6, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant(),
         )
         val invoiceClose = createInvoice(
             total = BigDecimal("99.90"),
-            date = OffsetDateTime.of(2025, 6, 15, 13, 45, 0, 0, ZoneOffset.UTC),
+            date = OffsetDateTime.of(2025, 6, 15, 13, 45, 0, 0, ZoneOffset.UTC).toInstant(),
         )
         val invoiceMedium = createInvoice(
             total = BigDecimal("99.90"),
-            date = OffsetDateTime.of(2025, 6, 14, 9, 0, 0, 0, ZoneOffset.UTC),
+            date = OffsetDateTime.of(2025, 6, 14, 9, 0, 0, 0, ZoneOffset.UTC).toInstant(),
         )
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
@@ -127,7 +128,7 @@ class PurchaseInvoiceRepositoryTest {
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("75.00"),
-            purchasedAt = LocalDateTime.now(),
+            purchasedAt = Instant.now(),
             groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
@@ -141,7 +142,7 @@ class PurchaseInvoiceRepositoryTest {
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("50.00"),
-            purchasedAt = LocalDateTime.now(),
+            purchasedAt = Instant.now(),
             groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 
@@ -158,7 +159,7 @@ class PurchaseInvoiceRepositoryTest {
 
         val result = invoiceRepository.findByTotalAndNotAssociated(
             amount = BigDecimal("300.00"),
-            purchasedAt = LocalDateTime.now(),
+            purchasedAt = Instant.now(),
             groupId = 1L,
         ).filter { it.merchantName == "Loja Teste Repository" }
 

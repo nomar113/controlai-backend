@@ -12,8 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @SpringBootTest
 class InstallmentRepositoryIntegrationTest {
@@ -60,7 +60,7 @@ class InstallmentRepositoryIntegrationTest {
     fun `should find only non-cancelled installments`() {
         val installments = listOf(
             Installment(groupId = 1L, parentId = parentId, installmentNumber = 1, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 5, 15)),
-            Installment(groupId = 1L, parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15), cancelledAt = LocalDateTime.now()),
+            Installment(groupId = 1L, parentId = parentId, installmentNumber = 2, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 6, 15), cancelledAt = Instant.now()),
             Installment(groupId = 1L, parentId = parentId, installmentNumber = 3, totalInstallments = 3, amount = BigDecimal("100.00"), dueDate = LocalDate.of(2026, 7, 15)),
         )
         installmentRepository.saveAll(installments)
@@ -98,7 +98,7 @@ class InstallmentRepositoryIntegrationTest {
             totalInstallments = 3,
             amount = BigDecimal("100.00"),
             dueDate = LocalDate.of(2026, 5, 15),
-            cancelledAt = LocalDateTime.now(),
+            cancelledAt = Instant.now(),
         )
 
         val response = InstallmentResponse.from(installment)

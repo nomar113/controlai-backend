@@ -13,6 +13,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.YearMonth
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -57,7 +58,7 @@ class SavePaymentNotificationProviderRollbackTest {
 
         val notification = PaymentNotification(
             groupId = groupId,
-            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0),
+            purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
             amount = BigDecimal("300.00"),
             merchantName = "Rollback Test Merchant",
             numberOfInstallments = 3,

@@ -39,7 +39,7 @@ class AssociateNotificationProviderTest {
         cancelledAt: LocalDateTime? = null,
     ) = PaymentNotification(
         id = id,
-        purchasedAt = LocalDateTime.of(2024, 6, 15, 14, 0, 0),
+        purchasedAt = LocalDateTime.of(2024, 6, 15, 14, 0, 0).toInstant(ZoneOffset.UTC),
         amount = BigDecimal("150.00"),
         merchantName = "Loja Teste",
         numberOfInstallments = 1,
@@ -54,7 +54,7 @@ class AssociateNotificationProviderTest {
         cancelledAt: LocalDateTime? = null,
     ) = PurchaseInvoiceModel(
         id = id,
-        date = OffsetDateTime.of(2024, 6, 15, 14, 0, 0, 0, ZoneOffset.UTC),
+        date = OffsetDateTime.of(2024, 6, 15, 14, 0, 0, 0, ZoneOffset.UTC).toInstant(),
         merchantName = "Mercado Teste",
         merchantAddress = null,
         cnpj = "12.345.678/0001-90",

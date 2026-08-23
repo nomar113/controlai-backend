@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDateTime
+import java.time.Instant
 
 @RestController
 class GroupInviteController(
@@ -46,8 +46,8 @@ class GroupInviteController(
         val groupId: Long,
         val inviteeEmail: String,
         val token: String,
-        val expiresAt: LocalDateTime,
-        val createdAt: LocalDateTime?,
+        val expiresAt: Instant,
+        val createdAt: Instant?,
     )
 
     data class PendingInviteResponse(
@@ -55,7 +55,7 @@ class GroupInviteController(
         val groupId: Long,
         val inviterUserId: Long,
         val token: String,
-        val expiresAt: LocalDateTime,
+        val expiresAt: Instant,
     )
 
     @PostMapping("/invites")

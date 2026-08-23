@@ -24,6 +24,7 @@ import kotlin.test.assertTrue
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class UseCasesTest {
 
@@ -76,7 +77,7 @@ class UseCasesTest {
 
     private fun sampleNotification() = PaymentNotification(
         cardLastDigits = "1234",
-        purchasedAt = LocalDateTime.of(2026, 2, 1, 10, 30),
+        purchasedAt = LocalDateTime.of(2026, 2, 1, 10, 30).toInstant(ZoneOffset.UTC),
         amount = BigDecimal("99.90"),
         merchantName = "Loja",
         numberOfInstallments = 1,
@@ -91,7 +92,7 @@ class UseCasesTest {
     )
 
     private fun sampleInvoice() = PurchaseInvoice(
-        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00"),
+        date = OffsetDateTime.parse("2026-02-01T10:30:00-03:00").toInstant(),
         merchantName = "Mercado",
         merchantAddress = "Rua A",
         cnpj = Cnpj.of("12.345.678/0001-90"),

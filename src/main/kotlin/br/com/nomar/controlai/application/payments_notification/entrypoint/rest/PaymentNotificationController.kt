@@ -48,6 +48,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.time.YearMonth
+import java.time.ZoneOffset
 
 @RestController
 @RequestMapping("/payments")
@@ -213,7 +214,9 @@ class PaymentNotificationController(
     ): PaymentNotificationResponse {
         val notification = paymentNotificationRepository.findByIdAndGroupId(id, requestContext.groupId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found")
-        val updated = paymentNotificationRepository.save(notification.copy(purchasedAt = request.purchasedAt))
+        val updated = paymentNotificationRepository.save(
+            notification.copy(purchasedAt = request.purchasedAt.atZone(ZoneOffset.UTC).toInstant())
+        )
         return PaymentNotificationResponse.from(updated)
     }
 
@@ -299,7 +302,7 @@ class PaymentNotificationController(
         val paymentNotification = PaymentNotification(
             groupId = requestContext.groupId,
             cardLastDigits = request.cardLastDigits,
-            purchasedAt = request.purchasedAt,
+            purchasedAt = request.purchasedAt.atZone(ZoneOffset.UTC).toInstant(),
             amount = request.amount,
             merchantName = request.merchantName,
             numberOfInstallments = request.numberOfInstallments,

@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -37,7 +38,7 @@ class CancelPaymentNotificationProviderTest {
     private fun createNotification(cancelledAt: LocalDateTime? = null): PaymentNotification {
         return repository.save(
             PaymentNotification(
-                purchasedAt = LocalDateTime.of(2024, 1, 15, 10, 0),
+                purchasedAt = LocalDateTime.of(2024, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
                 amount = BigDecimal("99.90"),
                 merchantName = "Loja Teste Cancel",
                 numberOfInstallments = 1,

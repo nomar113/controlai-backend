@@ -7,8 +7,8 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Entity
 @Table(name = "installments")
@@ -35,11 +35,11 @@ data class Installment(
     val dueDate: LocalDate,
 
     @Column(name = "cancelled_at")
-    val cancelledAt: LocalDateTime? = null,
+    val cancelledAt: Instant? = null,
 
     @Column(name = "created_at", insertable = false, updatable = false)
-    val createdAt: LocalDateTime? = null,
+    val createdAt: Instant? = null,
 
     @Column(name = "updated_at", insertable = false, updatable = false)
-    val updatedAt: LocalDateTime? = null,
+    val updatedAt: Instant? = null,
 )

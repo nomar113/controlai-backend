@@ -4,7 +4,7 @@ import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.Su
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Component
 class SearchNotificationsUseCase(
@@ -13,8 +13,8 @@ class SearchNotificationsUseCase(
     fun execute(
         invoiceId: Long,
         amount: BigDecimal?,
-        startDate: LocalDateTime?,
-        endDate: LocalDateTime?,
+        startDate: Instant?,
+        endDate: Instant?,
     ): Result<List<SuggestionResponse>> {
         return runCatching {
             searchNotificationsGateway.execute(invoiceId, amount, startDate, endDate).getOrThrow()

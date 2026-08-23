@@ -5,12 +5,12 @@ import br.com.nomar.controlai.application.installments.entrypoint.rest.response.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 data class PaymentNotificationResponse(
     val id: Long,
     val cardLastDigits: String? = null,
-    val purchasedAt: LocalDateTime,
+    val purchasedAt: Instant,
     val amount: BigDecimal,
     val merchantName: String,
     val numberOfInstallments: Int,

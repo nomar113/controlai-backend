@@ -9,7 +9,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Entity
 @Table(name = "group_invites")
@@ -35,11 +35,11 @@ data class GroupInviteModel(
     val token: String = "",
 
     @Column(name = "expires_at", nullable = false)
-    val expiresAt: LocalDateTime = LocalDateTime.now(),
+    val expiresAt: Instant = Instant.now(),
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    val createdAt: LocalDateTime? = null,
+    val createdAt: Instant? = null,
 )
 
 enum class GroupInviteStatusModel { PENDING, ACCEPTED, DECLINED, CANCELLED }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.interceptor.TransactionAspectSupport
 import java.time.YearMonth
+import java.time.ZoneOffset
 
 @Component
 class SavePaymentNotificationProvider(
@@ -86,7 +87,7 @@ class SavePaymentNotificationProvider(
             groupId = notification.groupId,
             totalInstallments = notification.numberOfInstallments,
             totalAmount = notification.amount,
-            startDate = notification.purchasedAt.toLocalDate(),
+            startDate = notification.purchasedAt.atZone(ZoneOffset.UTC).toLocalDate(),
             paymentMethodId = notification.paymentMethodId,
         )
 

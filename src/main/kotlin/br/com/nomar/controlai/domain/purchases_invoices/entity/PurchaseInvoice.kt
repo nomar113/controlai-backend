@@ -6,13 +6,13 @@ import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.Inv
 import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.TotalItems
 import com.fasterxml.jackson.annotation.JsonFormat
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 
 class PurchaseInvoice(
     val id: Long? = null,
     @param:JsonFormat(pattern = "dd/MM/yyyy HH:mm:ssXXX")
-    val date: OffsetDateTime,
+    val date: Instant,
     val merchantName: String,
     val merchantAddress: String,
     val cnpj: Cnpj,

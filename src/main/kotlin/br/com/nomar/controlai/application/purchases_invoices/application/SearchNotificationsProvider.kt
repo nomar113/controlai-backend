@@ -7,7 +7,8 @@ import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 
 @Component
 class SearchNotificationsProvider(
@@ -19,8 +20,8 @@ class SearchNotificationsProvider(
     override fun execute(
         invoiceId: Long,
         amount: BigDecimal?,
-        startDate: LocalDateTime?,
-        endDate: LocalDateTime?,
+        startDate: Instant?,
+        endDate: Instant?,
     ): Result<List<SuggestionResponse>> {
         return runCatching {
             val groupId = requestContext.groupId
@@ -36,7 +37,7 @@ class SearchNotificationsProvider(
             }
 
             val effectiveStartDate = when {
-                amount == null && startDate == null && endDate == null -> LocalDateTime.now().minusDays(7)
+                amount == null && startDate == null && endDate == null -> Instant.now().minus(Duration.ofDays(7))
                 else -> startDate
             }
 

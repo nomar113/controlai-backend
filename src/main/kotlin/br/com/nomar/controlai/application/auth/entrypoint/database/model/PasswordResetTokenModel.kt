@@ -8,7 +8,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
-import java.time.LocalDateTime
 
 @Entity
 @Table(name = "password_reset_tokens")
@@ -31,5 +30,5 @@ data class PasswordResetTokenModel(
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    val createdAt: LocalDateTime? = null,
+    val createdAt: Instant? = null,
 )

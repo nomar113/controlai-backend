@@ -5,11 +5,11 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payments_notifications.gateway.FindInvoiceSuggestionsGateway
 import org.springframework.stereotype.Component
-import java.time.OffsetDateTime
+import java.time.Instant
 
 data class InvoiceSuggestionsResult(
     val notifications: List<PaymentNotification>,
-    val invoiceDate: OffsetDateTime,
+    val invoiceDate: Instant,
 )
 
 @Component

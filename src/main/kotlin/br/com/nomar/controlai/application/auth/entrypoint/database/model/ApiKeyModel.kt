@@ -8,7 +8,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Entity
 @Table(name = "api_keys")
@@ -28,8 +28,8 @@ data class ApiKeyModel(
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    val createdAt: LocalDateTime? = null,
+    val createdAt: Instant? = null,
 
     @Column(name = "revoked_at")
-    val revokedAt: LocalDateTime? = null,
+    val revokedAt: Instant? = null,
 )

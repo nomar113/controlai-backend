@@ -5,12 +5,11 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseItemModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchasePaymentModel
 import java.math.BigDecimal
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
+import java.time.Instant
 
 data class PurchaseInvoiceDetailResponse(
     val id: Long,
-    val date: OffsetDateTime,
+    val date: Instant,
     val merchantName: String?,
     val merchantAddress: String?,
     val cnpj: String?,
@@ -59,7 +58,7 @@ data class AssociatedPaymentResponse(
     val id: Long,
     val merchantName: String,
     val amount: BigDecimal,
-    val purchasedAt: LocalDateTime,
+    val purchasedAt: Instant,
     val cardLastDigits: String?,
 ) {
     companion object {
