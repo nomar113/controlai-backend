@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.ZoneOffset
 
 data class PaymentNotificationResponse(
     val id: Long,
@@ -22,7 +23,7 @@ data class PaymentNotificationResponse(
     val description: String? = null,
     val origin: String? = null,
     val originType: String? = null,
-    val cancelledAt: String? = null,
+    val cancelledAt: Instant? = null,
     val installments: List<InstallmentResponse> = emptyList(),
     val purchaseInvoiceId: Long? = null,
     val associatedInvoice: AssociatedInvoiceResponse? = null,
@@ -53,7 +54,10 @@ data class PaymentNotificationResponse(
             description = entity.description,
             origin = entity.origin,
             originType = entity.originType,
-            cancelledAt = entity.cancelledAt?.toString(),
+            // PaymentNotification.cancelledAt is still LocalDateTime (task 2.0 didn't cover it), but
+            // CancelPaymentNotificationProvider pins it to LocalDateTime.now(ZoneOffset.UTC) at write
+            // time, so its wall-clock value is already the UTC instant.
+            cancelledAt = entity.cancelledAt?.atZone(ZoneOffset.UTC)?.toInstant(),
             purchaseInvoiceId = entity.purchaseInvoiceId,
             associatedInvoice = invoice?.let { AssociatedInvoiceResponse.from(it) },
             installmentAmount = installmentForMonth?.amount,

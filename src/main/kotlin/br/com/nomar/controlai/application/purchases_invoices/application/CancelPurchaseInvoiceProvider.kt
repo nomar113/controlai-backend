@@ -6,6 +6,7 @@ import br.com.nomar.controlai.domain.purchases_invoices.gateway.CancelPurchaseIn
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Component
 class CancelPurchaseInvoiceProvider(
@@ -23,7 +24,11 @@ class CancelPurchaseInvoiceProvider(
                 throw IllegalStateException("PurchaseInvoice already cancelled: $id")
             }
 
-            purchaseInvoiceRepository.save(model.copy(cancelledAt = LocalDateTime.now()))
+            // cancelledAt is still LocalDateTime (not Instant — see PurchaseInvoiceDetailResponse), so it
+            // must be pinned to UTC explicitly here: hibernate.jdbc.time_zone=UTC only controls how the
+            // value is bound/read against the DB session (already forced to UTC), not what JVM-local
+            // clock LocalDateTime.now() would otherwise capture.
+            purchaseInvoiceRepository.save(model.copy(cancelledAt = LocalDateTime.now(ZoneOffset.UTC)))
         }
     }
 }

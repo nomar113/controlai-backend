@@ -7,7 +7,7 @@ import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.AssociateInvoiceGateway
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Component
 class AssociateInvoiceProvider(
@@ -50,7 +50,7 @@ class AssociateInvoiceProvider(
             AssociateInvoiceResponse(
                 invoiceId = invoiceId,
                 paymentNotificationId = notificationId,
-                associatedAt = LocalDateTime.now(),
+                associatedAt = Instant.now(),
             )
         }
     }

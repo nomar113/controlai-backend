@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchasePaymentModel
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.ZoneOffset
 
 data class PurchaseInvoiceDetailResponse(
     val id: Long,
@@ -21,7 +22,7 @@ data class PurchaseInvoiceDetailResponse(
     val taxes: BigDecimal?,
     val discount: BigDecimal?,
     val description: String?,
-    val cancelledAt: String?,
+    val cancelledAt: Instant?,
     val items: List<PurchaseItemResponse>,
     val payments: List<PurchasePaymentResponse>,
     val associatedPayment: AssociatedPaymentResponse?,
@@ -46,7 +47,10 @@ data class PurchaseInvoiceDetailResponse(
             taxes = invoice.taxes,
             discount = invoice.discount,
             description = invoice.description,
-            cancelledAt = invoice.cancelledAt?.toString(),
+            // PurchaseInvoiceModel.cancelledAt is still LocalDateTime (task 2.0 didn't cover it), but
+            // CancelPurchaseInvoiceProvider pins it to LocalDateTime.now(ZoneOffset.UTC) at write time,
+            // so its wall-clock value is already the UTC instant.
+            cancelledAt = invoice.cancelledAt?.atZone(ZoneOffset.UTC)?.toInstant(),
             items = items.map(PurchaseItemResponse::from),
             payments = payments.map(PurchasePaymentResponse::from),
             associatedPayment = associatedPayment?.let(AssociatedPaymentResponse::from),

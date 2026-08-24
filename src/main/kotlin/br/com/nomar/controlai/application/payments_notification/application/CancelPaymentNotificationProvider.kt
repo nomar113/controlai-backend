@@ -6,6 +6,7 @@ import br.com.nomar.controlai.domain.payments_notifications.gateway.CancelPaymen
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Component
 class CancelPaymentNotificationProvider(
@@ -23,7 +24,11 @@ class CancelPaymentNotificationProvider(
                 throw IllegalStateException("PaymentNotification already cancelled: $id")
             }
 
-            paymentNotificationRepository.save(model.copy(cancelledAt = LocalDateTime.now()))
+            // cancelledAt is still LocalDateTime (not Instant — see PaymentNotificationResponse), so it
+            // must be pinned to UTC explicitly here: hibernate.jdbc.time_zone=UTC only controls how the
+            // value is bound/read against the DB session (already forced to UTC), not what JVM-local
+            // clock LocalDateTime.now() would otherwise capture.
+            paymentNotificationRepository.save(model.copy(cancelledAt = LocalDateTime.now(ZoneOffset.UTC)))
         }
     }
 }
