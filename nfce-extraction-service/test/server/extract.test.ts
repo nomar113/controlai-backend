@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { closeBrowser, getOpenContextCount } from '../../src/browser/browser-manager';
 import { createServer } from '../../src/server';
-import { FixtureServer, startFixtureServer } from '../fixtures/server';
+import { findClosedPortUrl, FixtureServer, startFixtureServer } from '../fixtures/server';
 
 jest.setTimeout(30_000);
 
@@ -93,5 +93,17 @@ describe('POST /extract', () => {
     } finally {
       delete process.env.EXTRACTION_TIMEOUT_MS;
     }
+  });
+
+  it('retorna 200 com status NAVIGATION_ERROR quando o servico de destino esta indisponivel', async () => {
+    const unreachableUrl = await findClosedPortUrl();
+
+    const response = await request(app)
+      .post('/extract')
+      .set('X-Internal-Key', TEST_KEY)
+      .send({ invoiceUrl: unreachableUrl });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('NAVIGATION_ERROR');
   });
 });

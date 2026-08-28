@@ -7,8 +7,8 @@ function isValidKey(expected: string, provided: string): boolean {
   return expectedBuffer.length === providedBuffer.length && timingSafeEqual(expectedBuffer, providedBuffer);
 }
 
-// Uma X_INTERNAL_KEY nao configurada nunca e tratada como "sem autenticacao
-// exigida" (fail-closed): sem a variavel de ambiente, toda requisicao e rejeitada.
+// A missing X_INTERNAL_KEY is never treated as "no auth required" (fail-closed):
+// without the environment variable, every request is rejected.
 export function internalAuth(req: Request, res: Response, next: NextFunction): void {
   const expectedKey = process.env.X_INTERNAL_KEY;
   const providedKey = req.header('X-Internal-Key');

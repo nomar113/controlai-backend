@@ -1,6 +1,6 @@
-// Autocontida por ser serializada via `page.evaluate` (ver comentario em
-// extract.ts). `doc` tem `document` como default para permitir a chamada sem
-// argumentos dentro da pagina.
+// Self-contained because it's serialized via `page.evaluate` (see comment in
+// extract.ts). `doc` defaults to `document` so it can be called without
+// arguments inside the page.
 export function getBlockMessageRJ(): string | null;
 export function getBlockMessageRJ(doc: Document): string | null;
 export function getBlockMessageRJ(doc: Document = document): string | null {

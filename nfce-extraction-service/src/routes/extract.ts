@@ -25,8 +25,8 @@ extractRouter.post('/extract', async (req, res) => {
     const result = await extractInvoice(req.body.invoiceUrl);
     const durationMs = Date.now() - startedAt;
 
-    // Log estruturado: apenas status final e duracao, nunca HTML da pagina
-    // ou dados pessoais da nota (CPF/CNPJ do consumidor, endereco).
+    // Structured log: only the final status and duration, never the page HTML
+    // or personal data from the invoice (consumer CPF/CNPJ, address).
     logger.info({ status: result.status, durationMs }, 'nfce_extraction_completed');
 
     res.status(200).json(result);

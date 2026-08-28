@@ -5,8 +5,8 @@ import { getBlockMessageRJ } from './block-detection';
 import { extractDataFromRJ } from './extract';
 import { isInvoiceReadyRJ } from './readiness';
 
-// Mesma ordem de grandeza do timeout ja usado no fluxo client-side
-// (PAGE_LOAD_TIMEOUT_MS em InvoiceProcessingContext.tsx).
+// Same order of magnitude as the timeout already used in the client-side flow
+// (PAGE_LOAD_TIMEOUT_MS in InvoiceProcessingContext.tsx).
 const DEFAULT_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 500;
 
@@ -15,13 +15,13 @@ function getTimeoutMs(): number {
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_TIMEOUT_MS;
 }
 
-// A pagina real da SEFAZ-RJ recarrega o documento varias vezes durante o
-// desafio anti-bot (reCAPTCHA v3/F5-TSPD, ver comentario em readiness.ts).
-// Se um reload acontecer entre o inicio e o fim de um `page.evaluate`, o
-// Playwright rejeita a chamada com um erro de contexto de execucao
-// destruido/frame destacado — isso NAO e uma falha real, e sim o sinal de
-// que a pagina ainda esta no meio do desafio, entao tratamos como "ainda nao
-// pronto" e continuamos o polling ate o deadline.
+// The real SEFAZ-RJ page reloads the document several times during the
+// anti-bot challenge (reCAPTCHA v3/F5-TSPD, see comment in readiness.ts).
+// If a reload happens between the start and end of a `page.evaluate` call,
+// Playwright rejects it with a destroyed-execution-context/detached-frame
+// error — this is NOT a real failure, it's the signal that the page is still
+// mid-challenge, so we treat it as "not ready yet" and keep polling until
+// the deadline.
 function isPageReloadInterruption(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return (

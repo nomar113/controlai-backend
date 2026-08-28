@@ -13,7 +13,7 @@ const httpServer = app.listen(PORT, HOST, () => {
 
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'nfce_extraction_service_shutting_down');
-  httpServer.close();
+  await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   await closeBrowser();
   process.exit(0);
 }

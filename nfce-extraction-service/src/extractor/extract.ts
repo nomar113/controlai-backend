@@ -1,12 +1,12 @@
 import { ExtractedInvoice, ExtractedInvoiceItem, ExtractedInvoicePayment } from '../types';
 
-// Todo o corpo desta funcao precisa ser autocontido (sem referencias a modulos
-// externos): ela e serializada via `Function.prototype.toString()` e reexecutada
-// dentro da pagina por `page.evaluate` (Tarefa 2.0), que nao tem acesso ao escopo
-// deste modulo Node — apenas ao que estiver escrito dentro da propria funcao. O
-// parametro `doc` tem `document` como default para permitir a chamada sem
-// argumentos a partir do `page.evaluate`, onde `document` resolve para o DOM da
-// pagina; nos testes (Node/jsdom) o `doc` e sempre passado explicitamente.
+// The entire body of this function must be self-contained (no references to
+// external modules): it is serialized via `Function.prototype.toString()` and
+// re-executed inside the page by `page.evaluate`, which has no access to this
+// Node module's scope — only to what is written inside the function itself.
+// The `doc` parameter defaults to `document` so it can be called without
+// arguments from `page.evaluate`, where `document` resolves to the page's DOM;
+// in tests (Node/jsdom) `doc` is always passed explicitly.
 export function extractDataFromRJ(): ExtractedInvoice;
 export function extractDataFromRJ(doc: Document): ExtractedInvoice;
 export function extractDataFromRJ(doc: Document = document): ExtractedInvoice {
@@ -75,9 +75,9 @@ export function extractDataFromRJ(doc: Document = document): ExtractedInvoice {
 
   function extractDate(): string {
     const DATE_FIELD_LENGTH = '00/00/0000 00:00:00-00:00'.length;
-    // outerText (usado no script original de WebView) nao existe em ambientes sem
-    // layout como o jsdom; textContent nao colapsa espacos/quebras de linha como o
-    // layout faria, entao normalizamos antes de comparar o rotulo.
+    // outerText (used by the original WebView script) doesn't exist in layout-less
+    // environments like jsdom; textContent doesn't collapse whitespace/line breaks
+    // the way layout would, so we normalize before comparing the label.
     const label = Array.from(doc.querySelectorAll('strong')).find(
       (el) => el.textContent?.replace(/\s+/g, ' ').trim() === 'Emissão:',
     );

@@ -1,9 +1,8 @@
-// A pagina da SEFAZ-RJ passa por reCAPTCHA v3 e um desafio anti-bot F5/TSPD que
-// recarregam o documento varias vezes antes da nota renderizar — por isso a
-// prontidao precisa ser verificada via polling, nunca por um delay fixo.
-// `doc` tem `document` como default para permitir a chamada sem argumentos
-// dentro do `page.evaluate` (Tarefa 2.0); nos testes (Node/jsdom) e sempre
-// passado explicitamente.
+// The SEFAZ-RJ page goes through reCAPTCHA v3 and an F5/TSPD anti-bot challenge
+// that reloads the document several times before the invoice renders — that's
+// why readiness must be checked via polling, never a fixed delay. `doc`
+// defaults to `document` so it can be called without arguments inside
+// `page.evaluate`; in tests (Node/jsdom) it's always passed explicitly.
 export function isInvoiceReadyRJ(): boolean;
 export function isInvoiceReadyRJ(doc: Document): boolean;
 export function isInvoiceReadyRJ(doc: Document = document): boolean {
