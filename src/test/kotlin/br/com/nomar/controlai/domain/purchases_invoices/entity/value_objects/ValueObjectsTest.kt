@@ -32,6 +32,17 @@ class ValueObjectsTest {
     }
 
     @Test
+    fun `should extract access key when p param separator is percent-encoded`() {
+        val invoiceUrl = InvoiceUrl.of(
+            "https://consultadfe.fazenda.rj.gov.br/consultaNFCe/QRCode?p=33260845543915001404650630000458281638566961%7C2%7C1%7C3%7CA49373F580F9FAEE593D99C5A1AB109B3F8BE660"
+        )
+
+        val accessKey = AccessKey.fromInvoiceUrl(invoiceUrl)
+
+        assertEquals("33260845543915001404650630000458281638566961", accessKey.value)
+    }
+
+    @Test
     fun `should fail to extract access key when invoice url has no query string`() {
         assertFailsWith<IllegalArgumentException> {
             AccessKey.fromInvoiceUrl(InvoiceUrl.of("https://example.com/invoice/123"))

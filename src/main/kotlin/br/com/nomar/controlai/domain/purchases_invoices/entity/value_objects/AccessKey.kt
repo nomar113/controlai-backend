@@ -2,6 +2,7 @@ package br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
+import java.net.URLDecoder
 
 class AccessKey private constructor(val value: String) {
 
@@ -23,12 +24,16 @@ class AccessKey private constructor(val value: String) {
             val queryStart = url.indexOf('?')
             require(queryStart >= 0) { "Invoice URL não contém query string" }
 
-            val pValue = url.substring(queryStart + 1)
+            val rawPValue = url.substring(queryStart + 1)
                 .split("&")
                 .map { it.split("=", limit = 2) }
                 .firstOrNull { it.getOrNull(0) == "p" }
                 ?.getOrNull(1)
                 ?: throw IllegalArgumentException("Invoice URL não contém o parâmetro 'p'")
+
+            // Some scanners/readers percent-encode the '|' separator (e.g. "%7C") instead of
+            // sending it raw, so the value must be decoded before splitting on it.
+            val pValue = URLDecoder.decode(rawPValue, Charsets.UTF_8)
 
             return of(pValue.substringBefore('|'))
         }
