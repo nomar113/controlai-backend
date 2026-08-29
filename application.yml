@@ -8,11 +8,6 @@ spring:
   jackson:
     time-zone: UTC
 
-  http:
-    client:
-      connect-timeout: 5s
-      read-timeout: 70s
-
   jpa:
     hibernate:
       ddl-auto: none
@@ -43,10 +38,6 @@ aws:
 app:
   cors:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:*}
-
-nfce-extraction:
-  base-url: ${NFCE_EXTRACTION_BASE_URL:http://localhost:3000}
-  internal-key: ${NFCE_EXTRACTION_INTERNAL_KEY:}
 
 springdoc:
   api-docs:
