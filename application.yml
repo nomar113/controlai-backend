@@ -39,6 +39,10 @@ app:
   cors:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:*}
 
+nfce-extraction:
+  base-url: ${NFCE_EXTRACTION_BASE_URL:http://localhost:3000}
+  internal-key: ${NFCE_EXTRACTION_INTERNAL_KEY:}
+
 springdoc:
   api-docs:
     path: /api-docs
