@@ -8,6 +8,11 @@ spring:
   jackson:
     time-zone: UTC
 
+  http:
+    client:
+      connect-timeout: 5s
+      read-timeout: 70s
+
   jpa:
     hibernate:
       ddl-auto: none
