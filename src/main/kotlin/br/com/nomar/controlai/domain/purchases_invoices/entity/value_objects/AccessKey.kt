@@ -16,6 +16,22 @@ class AccessKey private constructor(val value: String) {
             }
             return AccessKey(value)
         }
+
+        @JvmStatic
+        fun fromInvoiceUrl(invoiceUrl: InvoiceUrl): AccessKey {
+            val url = invoiceUrl.asString()
+            val queryStart = url.indexOf('?')
+            require(queryStart >= 0) { "Invoice URL não contém query string" }
+
+            val pValue = url.substring(queryStart + 1)
+                .split("&")
+                .map { it.split("=", limit = 2) }
+                .firstOrNull { it.getOrNull(0) == "p" }
+                ?.getOrNull(1)
+                ?: throw IllegalArgumentException("Invoice URL não contém o parâmetro 'p'")
+
+            return of(pValue.substringBefore('|'))
+        }
     }
 
     @JsonValue
