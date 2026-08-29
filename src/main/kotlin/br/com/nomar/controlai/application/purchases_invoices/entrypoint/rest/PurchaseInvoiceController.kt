@@ -7,16 +7,23 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.AssociateInvoiceRequest
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.ExtractPurchaseInvoiceRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.AssociateInvoiceResponse
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.ExtractedPurchaseInvoiceResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
 import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.entity.value_objects.InvoiceUrl
+import br.com.nomar.controlai.domain.purchases_invoices.exception.NfceExtractionBlockedException
+import br.com.nomar.controlai.domain.purchases_invoices.exception.NfceExtractionNavigationException
+import br.com.nomar.controlai.domain.purchases_invoices.exception.NfceExtractionTimeoutException
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.ExtractPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
 import br.com.nomar.controlai.domain.auth.RequestContext
@@ -51,6 +58,7 @@ class PurchaseInvoiceController(
     private val associateInvoiceUseCase: AssociateInvoiceUseCase,
     private val disassociateInvoiceUseCase: DisassociateInvoiceUseCase,
     private val searchNotificationsUseCase: SearchNotificationsUseCase,
+    private val extractPurchaseInvoiceUseCase: ExtractPurchaseInvoiceUseCase,
     private val purchaseRepository: PurchaseRepository,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val purchaseItemRepository: PurchaseItemRepository,
@@ -176,6 +184,22 @@ class PurchaseInvoiceController(
         return request
     }
 
+    @PostMapping("/invoice/extraction")
+    fun extractPurchaseInvoice(
+        @Validated @RequestBody request: ExtractPurchaseInvoiceRequest,
+    ): ExtractedPurchaseInvoiceResponse {
+        val invoiceUrl = try {
+            InvoiceUrl.of(request.invoiceUrl)
+        } catch (ex: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+        }
+
+        val extracted = extractPurchaseInvoiceUseCase.execute(invoiceUrl).getOrElse { ex ->
+            throw mapExtractionError(ex)
+        }
+        return ExtractedPurchaseInvoiceResponse.from(extracted)
+    }
+
     @PatchMapping("/invoices/{invoiceId}/associate")
     fun associateInvoice(
         @PathVariable invoiceId: Long,
@@ -221,6 +245,15 @@ class PurchaseInvoiceController(
     private fun mapAssociationError(ex: Throwable): ResponseStatusException = when (ex) {
         is NoSuchElementException -> ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
         is IllegalStateException -> ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+        is IllegalArgumentException -> ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+        else -> ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+    }
+
+    private fun mapExtractionError(ex: Throwable): ResponseStatusException = when (ex) {
+        is IllegalStateException -> ResponseStatusException(HttpStatus.CONFLICT, ex.message)
+        is NfceExtractionBlockedException -> ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, ex.message)
+        is NfceExtractionTimeoutException -> ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, ex.message)
+        is NfceExtractionNavigationException -> ResponseStatusException(HttpStatus.BAD_GATEWAY, ex.message)
         is IllegalArgumentException -> ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
         else -> ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
     }
