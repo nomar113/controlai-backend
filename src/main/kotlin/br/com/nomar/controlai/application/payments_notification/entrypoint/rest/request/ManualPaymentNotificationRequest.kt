@@ -1,7 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import jakarta.validation.constraints.DecimalMin
+import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -18,8 +18,8 @@ data class ManualPaymentNotificationRequest(
     @field:NotBlank
     val merchantName: String,
 
+    // Negative amounts are allowed to register card refunds/chargebacks (estorno).
     @field:NotNull
-    @field:DecimalMin("0.01")
     val amount: BigDecimal,
 
     @field:NotNull
@@ -43,4 +43,8 @@ data class ManualPaymentNotificationRequest(
     val currentInstallmentNumber: Int? = null,
 
     val installments: List<InstallmentOverride>? = null,
-)
+) {
+    @get:AssertTrue(message = "amount must not be zero")
+    val amountIsNonZero: Boolean
+        get() = amount.compareTo(BigDecimal.ZERO) != 0
+}

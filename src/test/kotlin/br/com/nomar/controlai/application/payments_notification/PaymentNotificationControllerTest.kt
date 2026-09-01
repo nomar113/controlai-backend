@@ -414,4 +414,45 @@ class PaymentNotificationControllerTest {
         val notificationId = objectMapper.readTree(result.response.contentAsString).get("id").asLong()
         assertEquals(1, countInstallmentsByParent(notificationId))
     }
+
+    @Test
+    fun `POST manual accepts a negative amount to register a card refund (estorno)`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+
+        mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Estorno Apple Store",
+                        "amount": -50.00,
+                        "purchasedAt": "2026-01-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId
+                    }"""
+                )
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.amount").value(-50.00))
+    }
+
+    @Test
+    fun `POST manual rejects a zero amount`() {
+        val holderId = insertHolder()
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+
+        mockMvc.perform(
+            post("/payments/notifications/manual")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{
+                        "merchantName": "Apple Store",
+                        "amount": 0,
+                        "purchasedAt": "2026-01-15T10:00:00",
+                        "paymentMethodId": $paymentMethodId
+                    }"""
+                )
+        )
+            .andExpect(status().isBadRequest)
+    }
 }
