@@ -85,8 +85,8 @@ class MigrationIntegrationTest {
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Aline'", Long::class.java)
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, brand, closing_day, group_id) VALUES (?, ?, ?, ?, ?, 1)",
-            "Smiles Infinite", "CREDIT_CARD", holderId, "Visa", 15
+            "INSERT INTO payment_methods (name, type, holder_id, brand, group_id) VALUES (?, ?, ?, ?, 1)",
+            "Smiles Infinite", "CREDIT_CARD", holderId, "Visa"
         )
 
         val pm = jdbcTemplate.queryForMap("SELECT * FROM payment_methods WHERE name = 'Smiles Infinite'")
@@ -94,7 +94,6 @@ class MigrationIntegrationTest {
         assertEquals("CREDIT_CARD", pm["TYPE"])
         assertEquals(holderId, pm["HOLDER_ID"])
         assertEquals("Visa", pm["BRAND"])
-        assertEquals(15, pm["CLOSING_DAY"])
     }
 
     @Test

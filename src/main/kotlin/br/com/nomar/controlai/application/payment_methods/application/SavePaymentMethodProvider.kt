@@ -49,7 +49,6 @@ class SavePaymentMethodProvider(
                     holderId = pm.holderId,
                     holder = pm.holder,
                     brand = pm.brand,
-                    closingDay = pm.closingDay,
                     subCards = savedSubCards.map { converter.toSubCardEntity(it) },
                     createdAt = pm.createdAt,
                     updatedAt = pm.updatedAt,

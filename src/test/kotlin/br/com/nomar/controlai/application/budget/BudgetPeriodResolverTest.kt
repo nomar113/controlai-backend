@@ -31,26 +31,25 @@ class BudgetPeriodResolverTest {
 
     private val yearMonth = YearMonth.of(2026, 5)
 
-    private fun creditCard(id: Long, closingDay: Int = 10) = PaymentMethodModel(
+    private fun creditCard(id: Long) = PaymentMethodModel(
         id = id,
         groupId = 1L,
         name = "Card $id",
         type = "CREDIT_CARD",
         holderId = 1L,
-        closingDay = closingDay,
     )
 
     @Test
     fun `resolvePeriods computes dates in memory and never persists when no budget exists`() {
         `when`(budgetRepository.findByYearMonthAndGroupId("2026-05", 1L)).thenReturn(Optional.empty())
-        `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 42, closingDay = 10)))
+        `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 42)))
 
         val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertEquals(1, periods.size)
         assertEquals(42L, periods[0].paymentMethodId)
-        assertEquals(LocalDate.of(2026, 4, 11), periods[0].startDate)
-        assertEquals(LocalDate.of(2026, 5, 10), periods[0].endDate)
+        assertEquals(LocalDate.of(2026, 5, 1), periods[0].startDate)
+        assertEquals(LocalDate.of(2026, 5, 31), periods[0].endDate)
         verify(budgetRepository, never()).save(any(BudgetModel::class.java))
     }
 
@@ -71,7 +70,7 @@ class BudgetPeriodResolverTest {
         val periods = resolver.resolvePeriods(yearMonth, 1L)
 
         assertEquals(1, periods.size)
-        // manually-customized dates from the persisted period, NOT recalculated via closingDay
+        // manually-customized dates from the persisted period, NOT recalculated as calendar month
         assertEquals(LocalDate.of(2026, 4, 10), periods[0].startDate)
         assertEquals(LocalDate.of(2026, 5, 9), periods[0].endDate)
     }
@@ -80,7 +79,7 @@ class BudgetPeriodResolverTest {
     fun `resolvePeriods self-heals a missing payment method on an existing budget`() {
         val budget = BudgetModel(id = 1L, groupId = 1L, yearMonth = "2026-05")
         `when`(budgetRepository.findByYearMonthAndGroupId("2026-05", 1L)).thenReturn(Optional.of(budget))
-        `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 99, closingDay = 5)))
+        `when`(paymentMethodRepository.findAllByGroupIdOrderByNameAsc(1L)).thenReturn(listOf(creditCard(id = 99)))
 
         val periods = resolver.resolvePeriods(yearMonth, 1L)
 

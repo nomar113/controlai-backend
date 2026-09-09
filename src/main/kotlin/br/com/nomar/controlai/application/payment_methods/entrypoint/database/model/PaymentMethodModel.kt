@@ -42,9 +42,6 @@ data class PaymentMethodModel(
     @Column(name = "brand", length = 50)
     val brand: String? = null,
 
-    @Column(name = "closing_day")
-    val closingDay: Int? = null,
-
     @OneToMany(mappedBy = "paymentMethodId", fetch = FetchType.EAGER)
     val subCards: List<SubCardModel> = emptyList(),
 

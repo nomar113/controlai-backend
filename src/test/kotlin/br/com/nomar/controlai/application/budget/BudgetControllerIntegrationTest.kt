@@ -151,7 +151,7 @@ class BudgetControllerIntegrationTest {
         val currentBudgetId = createBudgetViaJdbc("2026-05")
         val futureBudgetId = createBudgetViaJdbc("2026-06")
         val cardAId = firstPaymentMethodId()
-        val cardBId = createPaymentMethodViaJdbc("Other Card", 20)
+        val cardBId = createPaymentMethodViaJdbc("Other Card")
 
         insertPeriod(futureBudgetId, cardAId, "2026-05-09", "2026-06-08")
         insertPeriod(futureBudgetId, cardBId, "2026-05-19", "2026-06-18")
@@ -191,7 +191,7 @@ class BudgetControllerIntegrationTest {
     fun `PUT budgets periods updating one card does not affect another card's period`() {
         val budgetId = createBudgetViaJdbc("2026-05")
         val cardAId = firstPaymentMethodId()
-        val cardBId = createPaymentMethodViaJdbc("Other Card", 20)
+        val cardBId = createPaymentMethodViaJdbc("Other Card")
 
         insertPeriod(budgetId, cardAId, "2026-04-10", "2026-05-09")
         insertPeriod(budgetId, cardBId, "2026-04-20", "2026-05-19")
@@ -291,13 +291,13 @@ class BudgetControllerIntegrationTest {
             jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
         }
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?, 1)",
-            holderId, 10
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, 1)",
+            holderId
         )
         return jdbcTemplate.queryForObject("SELECT id FROM payment_methods LIMIT 1", Long::class.java)!!
     }
 
-    private fun createPaymentMethodViaJdbc(name: String, closingDay: Int): Long {
+    private fun createPaymentMethodViaJdbc(name: String): Long {
         val holderId = jdbcTemplate.queryForList(
             "SELECT id FROM holders LIMIT 1"
         ).firstOrNull()?.get("ID") as? Long ?: run {
@@ -305,8 +305,8 @@ class BudgetControllerIntegrationTest {
             jdbcTemplate.queryForObject("SELECT id FROM holders LIMIT 1", Long::class.java)!!
         }
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES (?, 'CREDIT_CARD', ?, ?, 1)",
-            name, holderId, closingDay
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES (?, 'CREDIT_CARD', ?, 1)",
+            name, holderId
         )
         return jdbcTemplate.queryForList(
             "SELECT id FROM payment_methods WHERE name = ?", name

@@ -395,8 +395,8 @@ class PaymentNotificationFilterIntegrationTest {
     }
 
     // Every purchase now needs its own installment (statement) row after Tarefa 4.0's INNER
-    // JOIN — this payment method has no closingDay, so its single installment falls back to the
-    // calendar month/day of purchasedAt, same as BudgetPeriodCalculator.resolveInstallmentDueDate.
+    // JOIN — its single installment uses the calendar month/day of purchasedAt, same as
+    // BudgetPeriodResolver.resolveInstallmentDueDate.
     private fun insertNotification(
         purchasedAt: String,
         merchantName: String,

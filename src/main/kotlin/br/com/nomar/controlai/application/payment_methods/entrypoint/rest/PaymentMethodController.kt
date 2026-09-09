@@ -65,7 +65,6 @@ class PaymentMethodController(
             type = PaymentMethodType.valueOf(request.type),
             holderId = request.holderId,
             brand = request.brand,
-            closingDay = request.closingDay,
             subCards = request.subCards.map { toSubCard(0, it) },
         )
         return PaymentMethodResponse.from(savePaymentMethodUseCase.execute(pm).getOrThrow())
@@ -82,7 +81,6 @@ class PaymentMethodController(
             type = PaymentMethodType.valueOf(request.type),
             holderId = request.holderId,
             brand = request.brand,
-            closingDay = request.closingDay,
         )
         return updatePaymentMethodUseCase.execute(pm)
             .map(PaymentMethodResponse::from)

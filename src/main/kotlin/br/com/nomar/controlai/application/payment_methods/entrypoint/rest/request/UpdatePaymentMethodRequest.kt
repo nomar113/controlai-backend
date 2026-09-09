@@ -11,5 +11,4 @@ data class UpdatePaymentMethodRequest(
     @field:NotNull
     val holderId: Long,
     val brand: String? = null,
-    val closingDay: Int? = null,
 )

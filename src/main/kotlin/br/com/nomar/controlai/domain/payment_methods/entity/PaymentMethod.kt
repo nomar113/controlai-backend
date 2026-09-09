@@ -9,7 +9,6 @@ class PaymentMethod(
     val holderId: Long,
     val holder: Holder? = null,
     val brand: String? = null,
-    val closingDay: Int? = null,
     val subCards: List<SubCard> = emptyList(),
     val deletedAt: LocalDateTime? = null,
     val createdAt: LocalDateTime? = null,

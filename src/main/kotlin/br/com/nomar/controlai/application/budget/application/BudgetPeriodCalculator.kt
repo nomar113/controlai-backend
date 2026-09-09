@@ -18,7 +18,7 @@ class BudgetPeriodCalculator {
         return paymentMethods
             .filter { it.type == "CREDIT_CARD" || it.type == "PIX" || it.type == "CASH" }
             .map { pm ->
-                val (startDate, endDate) = calculateDates(pm.closingDay, pm.type, yearMonth)
+                val (startDate, endDate) = calculateDates(yearMonth)
                 BudgetPaymentPeriodModel(
                     budget = budget,
                     paymentMethodId = pm.id!!,
@@ -28,42 +28,10 @@ class BudgetPeriodCalculator {
             }
     }
 
-    fun calculateDates(closingDay: Int?, type: String, yearMonth: YearMonth): Pair<LocalDate, LocalDate> {
-        return if (type == "CREDIT_CARD" && closingDay != null) {
-            calculateCreditCardDates(closingDay, yearMonth)
-        } else {
-            val startDate = yearMonth.atDay(1)
-            val endDate = yearMonth.atEndOfMonth()
-            Pair(startDate, endDate)
-        }
-    }
-
-    private fun calculateCreditCardDates(closingDay: Int, yearMonth: YearMonth): Pair<LocalDate, LocalDate> {
-        val previousMonth = yearMonth.minusMonths(1)
-        val clampedClosingDayPrev = Math.min(closingDay, previousMonth.lengthOfMonth())
-        val clampedClosingDayCurr = Math.min(closingDay, yearMonth.lengthOfMonth())
-
-        val startDate = previousMonth.atDay(clampedClosingDayPrev).plusDays(1)
-        val endDate = yearMonth.atDay(clampedClosingDayCurr)
-
-        return Pair(startDate, endDate)
-    }
-
-    fun resolveInstallmentDueDate(
-        purchasedAt: LocalDate,
-        closingDay: Int?,
-        type: String,
-        installmentNumber: Int,
-    ): LocalDate {
-        val firstInstallmentCycle = resolveFirstInstallmentCycle(purchasedAt, closingDay, type)
-        val targetCycle = firstInstallmentCycle.plusMonths((installmentNumber - 1).toLong())
-        val dayOfMonth = Math.min(purchasedAt.dayOfMonth, targetCycle.lengthOfMonth())
-        return targetCycle.atDay(dayOfMonth)
-    }
-
-    private fun resolveFirstInstallmentCycle(purchasedAt: LocalDate, closingDay: Int?, type: String): YearMonth {
-        val purchaseMonth = YearMonth.from(purchasedAt)
-        val (_, closingDate) = calculateDates(closingDay, type, purchaseMonth)
-        return if (purchasedAt <= closingDate) purchaseMonth else purchaseMonth.plusMonths(1)
+    // Every payment method uses the plain calendar month. Custom cycles (e.g. a card whose
+    // real statement doesn't line up with the calendar) are set per month via
+    // BudgetPeriodResolver's persisted `budget_payment_periods` override, not computed here.
+    fun calculateDates(yearMonth: YearMonth): Pair<LocalDate, LocalDate> {
+        return Pair(yearMonth.atDay(1), yearMonth.atEndOfMonth())
     }
 }

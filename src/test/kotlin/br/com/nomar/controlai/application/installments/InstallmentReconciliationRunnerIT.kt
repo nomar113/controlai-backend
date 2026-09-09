@@ -48,7 +48,7 @@ class InstallmentReconciliationRunnerIT {
         )!!
 
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, group_id, closing_day) VALUES ('Nubank', 'CREDIT_CARD', ?, 1, 10)",
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, 1)",
             holderId,
         )
         val paymentMethodId = jdbcTemplate.queryForObject(
@@ -72,7 +72,7 @@ class InstallmentReconciliationRunnerIT {
         )!!
 
         // Installment purchase with no rows in `installments` yet (fully pre-migration scenario).
-        // Purchased before the closing day (10th) -> 1st installment falls in January's own cycle.
+        // Falls in the purchase's own calendar month (January).
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
                (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
@@ -83,8 +83,9 @@ class InstallmentReconciliationRunnerIT {
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Missing'", Long::class.java
         )!!
 
-        // Installment purchase with rows already computed by the old rule
-        // (startDate.plusMonths(n-1), ignoring the card's closing day).
+        // Installment purchase with rows already computed by the old closing-day-based rule
+        // (rolled to the next cycle because Jan 15 was after the card's former closing day of
+        // the 10th) — reconciliation must correct these to the plain calendar month.
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
                (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
@@ -95,7 +96,7 @@ class InstallmentReconciliationRunnerIT {
             "SELECT id FROM payment_notifications WHERE merchant_name = 'Loja Existing'", Long::class.java
         )!!
 
-        listOf(1 to "2026-01-15", 2 to "2026-02-15", 3 to "2026-03-15").forEach { (number, dueDate) ->
+        listOf(1 to "2026-02-15", 2 to "2026-03-15", 3 to "2026-04-15").forEach { (number, dueDate) ->
             jdbcTemplate.update(
                 """INSERT INTO installments (group_id, parent_id, installment_number, total_installments, amount, due_date)
                    VALUES (1, ?, ?, 3, 100.00, ?)""",
@@ -126,7 +127,7 @@ class InstallmentReconciliationRunnerIT {
         )!!
 
         // Card purchase paid in full (a vista, number_of_installments = 1), no rows in `installments` yet.
-        // Purchased before the closing day (10th) -> statement falls in January's own cycle.
+        // Falls in the purchase's own calendar month (January).
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
                (purchased_at, amount, merchant_name, number_of_installments, origin, origin_type, group_id, payment_method_id)
@@ -185,7 +186,7 @@ class InstallmentReconciliationRunnerIT {
     }
 
     @Test
-    fun `should create missing installments and recalculate due dates using the closing day cycle`() {
+    fun `should create missing installments and recalculate due dates using the calendar month cycle`() {
         runner.run(DefaultApplicationArguments())
 
         val missing = jdbcTemplate.queryForList(
@@ -203,10 +204,10 @@ class InstallmentReconciliationRunnerIT {
             existingParentId,
         )
         assertEquals(3, existing.size)
-        // Purchase on Jan 15 falls after the closing day (10th) -> cycle advances to February.
-        assertEquals(LocalDate.of(2026, 2, 15), (existing[0]["due_date"] as java.sql.Date).toLocalDate())
-        assertEquals(LocalDate.of(2026, 3, 15), (existing[1]["due_date"] as java.sql.Date).toLocalDate())
-        assertEquals(LocalDate.of(2026, 4, 15), (existing[2]["due_date"] as java.sql.Date).toLocalDate())
+        // Stale dates from the old closing-day rule are corrected back to the calendar month.
+        assertEquals(LocalDate.of(2026, 1, 15), (existing[0]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(LocalDate.of(2026, 2, 15), (existing[1]["due_date"] as java.sql.Date).toLocalDate())
+        assertEquals(LocalDate.of(2026, 3, 15), (existing[2]["due_date"] as java.sql.Date).toLocalDate())
         // Recalculation does not change the installment amount, only the due date.
         existing.forEach { assertEquals(BigDecimal("100.00"), it["amount"]) }
 
@@ -267,7 +268,7 @@ class InstallmentReconciliationRunnerIT {
     fun `should auto-create budgets for every month reached by reconciled installments`() {
         runner.run(DefaultApplicationArguments())
 
-        listOf("2026-01", "2026-02", "2026-03", "2026-04").forEach { referenceMonth ->
+        listOf("2026-01", "2026-02", "2026-03").forEach { referenceMonth ->
             val count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM budgets WHERE group_id = 1 AND reference_month = ?",
                 Int::class.java,

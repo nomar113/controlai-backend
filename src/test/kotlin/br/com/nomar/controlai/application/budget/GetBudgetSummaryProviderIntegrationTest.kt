@@ -61,10 +61,10 @@ class GetBudgetSummaryProviderIntegrationTest {
         jdbcTemplate.update("DELETE FROM holders")
     }
 
-    private fun insertCreditCard(closingDay: Int = 10): Long {
+    private fun insertCreditCard(): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?, ?)",
-            holderId, closingDay, groupId,
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?)",
+            holderId, groupId,
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
@@ -119,7 +119,7 @@ class GetBudgetSummaryProviderIntegrationTest {
 
     @Test
     fun `GET budgets sums only the installment due in that month, not the purchase total`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
+        val paymentMethodId = insertCreditCard()
 
         // 3x purchase on Jan 15 (after the 10th closing day): installments bill Feb/Mar/Apr.
         val parentId = insertNotification("Apple Store", BigDecimal("300.00"), "2026-01-15 10:00:00", 3, paymentMethodId)
@@ -140,7 +140,7 @@ class GetBudgetSummaryProviderIntegrationTest {
 
     @Test
     fun `GET budgets for March counts only the March installment, not a duplicate of February's`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
+        val paymentMethodId = insertCreditCard()
 
         val parentId = insertNotification("Apple Store", BigDecimal("300.00"), "2026-01-15 10:00:00", 3, paymentMethodId)
         insertInstallment(parentId, 1, 3, BigDecimal("100.00"), "2026-02-15")
@@ -158,7 +158,7 @@ class GetBudgetSummaryProviderIntegrationTest {
 
     @Test
     fun `GET budgets sums a cash purchase's single installment, the same statement path as a parceled purchase`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
+        val paymentMethodId = insertCreditCard()
         val parentId = insertNotification("Padaria", BigDecimal("45.00"), "2026-01-20 10:00:00", 1, paymentMethodId)
         insertInstallment(parentId, 1, 1, BigDecimal("45.00"), "2026-02-20")
 
@@ -173,7 +173,7 @@ class GetBudgetSummaryProviderIntegrationTest {
 
     @Test
     fun `GET budgets does not duplicate or drop totals when multiple parceled purchases fan out through the installments JOIN in the same month`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
+        val paymentMethodId = insertCreditCard()
         jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Servicos', ?)", groupId)
         val servicesCategoryId = jdbcTemplate.queryForObject(
             "SELECT id FROM categories WHERE name = 'Servicos'", Long::class.java,

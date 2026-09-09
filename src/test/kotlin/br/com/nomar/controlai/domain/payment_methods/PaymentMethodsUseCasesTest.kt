@@ -254,13 +254,11 @@ class PaymentMethodsUseCasesTest {
             type = PaymentMethodType.CREDIT_CARD,
             holderId = 1,
             brand = "Visa",
-            closingDay = 15,
             subCards = listOf(sampleSubCard()),
         )
         assertEquals("Smiles Infinite", pm.name)
         assertEquals(PaymentMethodType.CREDIT_CARD, pm.type)
         assertEquals("Visa", pm.brand)
-        assertEquals(15, pm.closingDay)
         assertEquals(1, pm.subCards.size)
     }
 
@@ -297,7 +295,6 @@ class PaymentMethodsUseCasesTest {
         type = PaymentMethodType.CREDIT_CARD,
         holderId = 1,
         brand = "Visa",
-        closingDay = 15,
     )
 
     private fun sampleSubCard() = SubCard(

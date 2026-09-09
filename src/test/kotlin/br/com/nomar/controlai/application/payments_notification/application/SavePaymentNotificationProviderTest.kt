@@ -59,10 +59,10 @@ class SavePaymentNotificationProviderTest {
         jdbcTemplate.update("DELETE FROM holders")
     }
 
-    private fun insertCreditCard(closingDay: Int = 10): Long {
+    private fun insertCreditCard(): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?, ?)",
-            holderId, closingDay, groupId,
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Nubank', 'CREDIT_CARD', ?, ?)",
+            holderId, groupId,
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
@@ -78,9 +78,7 @@ class SavePaymentNotificationProviderTest {
 
     @Test
     fun `should create N installments automatically for a simulated SMS notification with no HTTP request bound`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
-        // Purchase on the 15th, after the 10th closing day, so the 1st installment bills in
-        // the next cycle (Feb) instead of the purchase month (Jan).
+        val paymentMethodId = insertCreditCard()
         val notification = PaymentNotification(
             groupId = groupId,
             purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
@@ -103,14 +101,14 @@ class SavePaymentNotificationProviderTest {
             java.sql.Date::class.java, saved.id,
         ).map { it.toLocalDate() }
         assertEquals(
-            listOf(LocalDate.of(2026, 2, 15), LocalDate.of(2026, 3, 15), LocalDate.of(2026, 4, 15)),
+            listOf(LocalDate.of(2026, 1, 15), LocalDate.of(2026, 2, 15), LocalDate.of(2026, 3, 15)),
             dueDates,
         )
     }
 
     @Test
     fun `should create future budgets for every cycle an installment falls into`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
+        val paymentMethodId = insertCreditCard()
         val notification = PaymentNotification(
             groupId = groupId,
             purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
@@ -124,9 +122,9 @@ class SavePaymentNotificationProviderTest {
 
         savePaymentNotificationProvider.execute(notification).getOrThrow()
 
+        assertEquals(1, countBudgetsFor("2026-01"))
         assertEquals(1, countBudgetsFor("2026-02"))
         assertEquals(1, countBudgetsFor("2026-03"))
-        assertEquals(1, countBudgetsFor("2026-04"))
     }
 
     @Test
@@ -176,9 +174,8 @@ class SavePaymentNotificationProviderTest {
     }
 
     @Test
-    fun `should create a single installment for a credit card cash purchase, following the card's billing cycle`() {
-        val paymentMethodId = insertCreditCard(closingDay = 10)
-        // Purchase on the 15th, after the 10th closing day, so it bills in the next cycle (Feb).
+    fun `should create a single installment for a credit card purchase, due on the purchase's calendar month`() {
+        val paymentMethodId = insertCreditCard()
         val notification = PaymentNotification(
             groupId = groupId,
             purchasedAt = LocalDateTime.of(2026, 1, 15, 10, 0).toInstant(ZoneOffset.UTC),
@@ -199,8 +196,8 @@ class SavePaymentNotificationProviderTest {
             "SELECT due_date FROM installments WHERE parent_id = ?",
             java.sql.Date::class.java, saved.id,
         )!!.toLocalDate()
-        assertEquals(LocalDate.of(2026, 2, 15), dueDate)
-        assertEquals(1, countBudgetsFor("2026-02"))
+        assertEquals(LocalDate.of(2026, 1, 15), dueDate)
+        assertEquals(1, countBudgetsFor("2026-01"))
     }
 
     @Test

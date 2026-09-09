@@ -24,7 +24,6 @@ class BudgetPaymentPeriodSummary(
     val paymentMethodName: String,
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val closingDay: Int?,
     val totalAmount: BigDecimal = BigDecimal.ZERO,
 )
 

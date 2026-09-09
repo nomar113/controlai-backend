@@ -60,10 +60,9 @@ class PaymentNotificationControllerTest {
         holderId: Long,
         name: String = "Cartao Teste",
         type: String = "CREDIT",
-        closingDay: Int? = null,
     ): Long {
         jdbcTemplate.update(
-            "INSERT INTO payment_methods (name, type, holder_id, closing_day, group_id) VALUES ('$name', '$type', $holderId, $closingDay, 1)"
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('$name', '$type', $holderId, 1)"
         )
         return jdbcTemplate.queryForObject("SELECT MAX(id) FROM payment_methods", Long::class.java)!!
     }
@@ -333,7 +332,7 @@ class PaymentNotificationControllerTest {
     @Test
     fun `POST manual creates N installments automatically with the default split, without an installments override`() {
         val holderId = insertHolder()
-        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD")
 
         val result = mockMvc.perform(
             post("/payments/notifications/manual")
@@ -359,7 +358,7 @@ class PaymentNotificationControllerTest {
     @Test
     fun `POST manual with installments override adjusts the already-created installments instead of creating a second set`() {
         val holderId = insertHolder()
-        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD")
 
         val result = mockMvc.perform(
             post("/payments/notifications/manual")
@@ -393,7 +392,7 @@ class PaymentNotificationControllerTest {
     @Test
     fun `POST manual creates a single installment for a cash purchase but omits it from the response override list`() {
         val holderId = insertHolder()
-        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD")
 
         val result = mockMvc.perform(
             post("/payments/notifications/manual")
@@ -418,7 +417,7 @@ class PaymentNotificationControllerTest {
     @Test
     fun `POST manual accepts a negative amount to register a card refund (estorno)`() {
         val holderId = insertHolder()
-        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD")
 
         mockMvc.perform(
             post("/payments/notifications/manual")
@@ -439,7 +438,7 @@ class PaymentNotificationControllerTest {
     @Test
     fun `POST manual rejects a zero amount`() {
         val holderId = insertHolder()
-        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD", closingDay = 10)
+        val paymentMethodId = insertPaymentMethod(holderId, type = "CREDIT_CARD")
 
         mockMvc.perform(
             post("/payments/notifications/manual")

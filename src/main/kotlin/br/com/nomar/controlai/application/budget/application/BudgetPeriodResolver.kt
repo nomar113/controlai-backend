@@ -50,7 +50,7 @@ class BudgetPeriodResolver(
         return paymentMethods
             .filter { it.type == "CREDIT_CARD" || it.type == "PIX" || it.type == "CASH" }
             .map { pm ->
-                val (startDate, endDate) = periodCalculator.calculateDates(pm.closingDay, pm.type, yearMonth)
+                val (startDate, endDate) = periodCalculator.calculateDates(yearMonth)
                 ResolvedPeriod(pm.id!!, startDate, endDate)
             }
     }
@@ -58,12 +58,12 @@ class BudgetPeriodResolver(
     /**
      * Determines which invoice month a purchase belongs to and, from there, the due date of one
      * of its installments. Prefers an already-persisted budget_payment_periods row (which may
-     * have been manually edited via UpdateBudgetPeriodsProvider, e.g. to correct a card's real
-     * closing date) over a fresh closingDay-based calculation — so once a month's period is set,
-     * installment placement stays consistent with what "Periodo por meio de pagamento" displays
-     * instead of silently diverging from it. Falls back to the fresh calculation (via
-     * [resolvePeriods]) when no budget/period exists yet for the purchase's own month, and to a
-     * plain calendar month when [paymentMethodId] is null (no card selected).
+     * have been manually edited via UpdateBudgetPeriodsProvider to give a card a custom cycle)
+     * over the plain calendar-month default — so once a month's period is set, installment
+     * placement stays consistent with what "Periodo por meio de pagamento" displays instead of
+     * silently diverging from it. Falls back to the plain calendar month (via [resolvePeriods])
+     * when no budget/period exists yet for the purchase's own month, or when [paymentMethodId]
+     * is null (no card selected).
      */
     @Transactional
     fun resolveInstallmentDueDate(

@@ -11,6 +11,5 @@ data class CreatePaymentMethodRequest(
     @field:NotNull
     val holderId: Long,
     val brand: String? = null,
-    val closingDay: Int? = null,
     val subCards: List<CreateSubCardRequest> = emptyList(),
 )

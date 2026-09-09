@@ -65,7 +65,6 @@ class ControllerIntegrationTest {
                         "type": "CREDIT_CARD",
                         "holderId": $holderId,
                         "brand": "Visa",
-                        "closingDay": 15,
                         "subCards": [
                             {"lastFourDigits": "6668", "type": "PHYSICAL_HOLDER"}
                         ]
@@ -76,7 +75,6 @@ class ControllerIntegrationTest {
             .andExpect(jsonPath("$.name").value("Smiles Infinite"))
             .andExpect(jsonPath("$.type").value("CREDIT_CARD"))
             .andExpect(jsonPath("$.brand").value("Visa"))
-            .andExpect(jsonPath("$.closingDay").value(15))
             .andExpect(jsonPath("$.subCards.length()").value(1))
             .andExpect(jsonPath("$.subCards[0].lastFourDigits").value("6668"))
     }

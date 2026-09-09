@@ -63,7 +63,6 @@ class ProviderIntegrationTest {
             type = PaymentMethodType.CREDIT_CARD,
             holderId = holder.id!!,
             brand = "Visa",
-            closingDay = 15,
             subCards = listOf(
                 SubCard(paymentMethodId = 0, lastFourDigits = "6668", type = SubCardType.PHYSICAL_HOLDER),
             ),

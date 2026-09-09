@@ -58,7 +58,6 @@ class GetBudgetSummaryProviderTest {
                     "name" to "Nubank",
                     "start_date" to Date.valueOf("2026-01-11"),
                     "end_date" to Date.valueOf("2026-02-10"),
-                    "closing_day" to 10,
                 )
             )
         )

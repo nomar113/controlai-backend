@@ -8,7 +8,6 @@ data class PaymentMethodResponse(
     val type: String,
     val holder: HolderResponse?,
     val brand: String?,
-    val closingDay: Int?,
     val subCards: List<SubCardResponse>,
 ) {
     companion object {
@@ -18,7 +17,6 @@ data class PaymentMethodResponse(
             type = pm.type.name,
             holder = pm.holder?.let { HolderResponse.from(it) },
             brand = pm.brand,
-            closingDay = pm.closingDay,
             subCards = pm.subCards.map(SubCardResponse::from),
         )
     }

@@ -31,7 +31,6 @@ class UpdatePaymentMethodProvider(
                 type = paymentMethod.type.name,
                 holder = holder,
                 brand = paymentMethod.brand,
-                closingDay = paymentMethod.closingDay,
             )
 
             val savedModel = paymentMethodRepository.save(updated)

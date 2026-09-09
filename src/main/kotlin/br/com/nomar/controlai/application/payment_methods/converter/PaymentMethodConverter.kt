@@ -28,7 +28,6 @@ class PaymentMethodConverter {
         holderId = model.holderId,
         holder = model.holder?.let { toHolderEntity(it) },
         brand = model.brand,
-        closingDay = model.closingDay,
         subCards = model.subCards.map { toSubCardEntity(it) },
         deletedAt = model.deletedAt,
         createdAt = model.createdAt,
@@ -42,7 +41,6 @@ class PaymentMethodConverter {
         holderId = entity.holderId,
         holder = holder,
         brand = entity.brand,
-        closingDay = entity.closingDay,
         deletedAt = entity.deletedAt,
     )
 

@@ -68,7 +68,6 @@ class GetBudgetSummaryProvider(
                     paymentMethodName = period.paymentMethodName,
                     startDate = period.startDate,
                     endDate = period.endDate,
-                    closingDay = period.closingDay,
                     totalAmount = totalsMap[period.paymentMethodId] ?: BigDecimal.ZERO,
                 )
             }
@@ -150,7 +149,7 @@ class GetBudgetSummaryProvider(
     private fun queryPeriods(budgetId: Long): List<BudgetPaymentPeriodSummary> {
         val rows = jdbcTemplate.queryForList(
             """
-            SELECT bpp.payment_method_id, pm.name, bpp.start_date, bpp.end_date, pm.closing_day
+            SELECT bpp.payment_method_id, pm.name, bpp.start_date, bpp.end_date
             FROM budget_payment_periods bpp
             JOIN payment_methods pm ON bpp.payment_method_id = pm.id
             WHERE bpp.budget_id = ?
@@ -165,7 +164,6 @@ class GetBudgetSummaryProvider(
                 paymentMethodName = it["name"] as String,
                 startDate = (it["start_date"] as java.sql.Date).toLocalDate(),
                 endDate = (it["end_date"] as java.sql.Date).toLocalDate(),
-                closingDay = (it["closing_day"] as Number?)?.toInt(),
             )
         }
     }
