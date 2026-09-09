@@ -88,6 +88,7 @@ class GroupInviteIntegrationTest {
             jdbcTemplate.update("DELETE FROM payment_methods WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", gid)
+            jdbcTemplate.update("DELETE FROM subscriptions WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM `groups` WHERE id = ?", gid)
         }
         userIds.forEach { uid -> jdbcTemplate.update("DELETE FROM users WHERE id = ?", uid) }
@@ -100,6 +101,12 @@ class GroupInviteIntegrationTest {
     private fun createUserAndGroup(name: String, email: String): Pair<Long, Long> {
         jdbcTemplate.update("INSERT INTO `groups` (name) VALUES (?)", name)
         val gid = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
+        // The invite endpoints run behind SubscriptionGuardFilter, so this ad-hoc test group
+        // needs an active subscription to reach them (real groups get this via
+        // grandfathering/purchase).
+        jdbcTemplate.update(
+            "INSERT INTO subscriptions (group_id, plan, status) VALUES (?, 'ANNUAL', 'ACTIVE')", gid,
+        )
         jdbcTemplate.update(
             "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
             name, email, "\$2a\$10\$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy",

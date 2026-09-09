@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.config
 
 import br.com.nomar.controlai.domain.auth.gateway.FindApiKeyByHashGateway
+import br.com.nomar.controlai.domain.billing.gateway.FindActiveSubscriptionByGroupIdGateway
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,6 +18,7 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableWebSecurity
 class SecurityConfig(
     private val findApiKeyByHashGateway: FindApiKeyByHashGateway,
+    private val findActiveSubscriptionByGroupIdGateway: FindActiveSubscriptionByGroupIdGateway,
     private val meterRegistry: MeterRegistry,
 ) {
 
@@ -29,6 +31,12 @@ class SecurityConfig(
             // ApiKeyAuthFilter runs before the JWT filter to handle POST /payments/notification
             .addFilterBefore(
                 ApiKeyAuthFilter(findApiKeyByHashGateway, meterRegistry),
+                BearerTokenAuthenticationFilter::class.java,
+            )
+            // SubscriptionGuardFilter runs after JWT/API key authentication is resolved, so it
+            // can read the authenticated groupId and gate access on subscription status.
+            .addFilterAfter(
+                SubscriptionGuardFilter(findActiveSubscriptionByGroupIdGateway),
                 BearerTokenAuthenticationFilter::class.java,
             )
             .authorizeHttpRequests {

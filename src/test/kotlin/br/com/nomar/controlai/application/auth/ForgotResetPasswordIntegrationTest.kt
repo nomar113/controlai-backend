@@ -50,6 +50,12 @@ class ForgotResetPasswordIntegrationTest {
 
         jdbcTemplate.update("INSERT INTO `groups` (name) VALUES (?)", "TestGroupReset")
         testGroupId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
+        // PUT /me/password is behind SubscriptionGuardFilter, so this ad-hoc test group needs
+        // an active subscription to reach it (real groups get this via grandfathering/purchase).
+        jdbcTemplate.update(
+            "INSERT INTO subscriptions (group_id, plan, status) VALUES (?, 'ANNUAL', 'ACTIVE')",
+            testGroupId,
+        )
 
         jdbcTemplate.update(
             "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
@@ -73,6 +79,7 @@ class ForgotResetPasswordIntegrationTest {
         }
         if (testGroupId > 0) {
             jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", testGroupId)
+            jdbcTemplate.update("DELETE FROM subscriptions WHERE group_id = ?", testGroupId)
         }
         jdbcTemplate.update("DELETE FROM group_members WHERE user_id IN (SELECT id FROM users WHERE email = ?)", testEmail)
         if (testGroupId > 0) {
