@@ -1,5 +1,9 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -85,5 +89,45 @@ class PaymentNotificationTextParserTest {
         val result = parser.parse(text, "bank", "sms")
 
         assertEquals("2026-01-11T03:10:00Z", result.purchasedAt.toString())
+    }
+
+    @Test
+    fun `should parse itau notification format`() {
+        val text = "Compra aprovada de R$ 43,12 em PETSUPERMARK*Or1023799785, 08/09 as 20:24 no seu Latam Itau final 8415."
+
+        val result = parser.parse(text, "ITAU_CARTOES", "sms")
+
+        assertEquals("8415", result.cardLastDigits)
+        assertEquals(0, result.amount.compareTo("43.12".toBigDecimal()))
+        assertEquals("PETSUPERMARK*Or1023799785", result.merchantName)
+        assertEquals(1, result.numberOfInstallments)
+        assertEquals("ITAU_CARTOES", result.origin)
+        assertEquals("SMS", result.originType)
+        assertEquals(expectedItauInstant("08/09", "20:24"), result.purchasedAt)
+    }
+
+    @Test
+    fun `should throw when itau notification text format is invalid`() {
+        val invalidText = "Compra aprovada em formato desconhecido"
+
+        assertFailsWith<PaymentNotificationTextParseException> {
+            parser.parse(invalidText, "ITAU_CARTOES", "sms")
+        }
+    }
+
+    // Itau's SMS has no year, so the parser infers it from "now"; mirror that
+    // inference here (using the real clock) instead of hardcoding a year.
+    private fun expectedItauInstant(dayMonth: String, time: String): java.time.Instant {
+        val saoPauloZone = ZoneId.of("America/Sao_Paulo")
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        val now = ZonedDateTime.now(saoPauloZone)
+        val withCurrentYear = LocalDateTime
+            .parse("$dayMonth/${now.year} $time", formatter)
+            .atZone(saoPauloZone)
+        return if (withCurrentYear.isAfter(now.plusDays(1))) {
+            withCurrentYear.minusYears(1).toInstant()
+        } else {
+            withCurrentYear.toInstant()
+        }
     }
 }
