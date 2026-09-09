@@ -61,6 +61,28 @@ class ResendEmailClient(
         }
     }
 
+    override fun sendWelcomeSetPassword(toEmail: String, toName: String, setPasswordLink: String): Result<Unit> {
+        return runCatching {
+            val html = buildWelcomeSetPasswordHtml(toName, setPasswordLink)
+            val body = mapOf(
+                "from" to fromEmail,
+                "to" to listOf(toEmail),
+                "subject" to "Sua conta ControlAI foi criada — defina sua senha",
+                "html" to html,
+            )
+
+            restClient.post()
+                .uri(RESEND_API_URL)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $apiKey")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity()
+
+            logger.info("Welcome/set-password email sent to {}", toEmail.take(3) + "***")
+        }
+    }
+
     private fun buildGroupInviteHtml(link: String): String {
         return """
             <!DOCTYPE html>
@@ -107,6 +129,34 @@ class ResendEmailClient(
                 </a>
               </div>
               <p>Se você não solicitou a redefinição de senha, ignore este e-mail. Sua senha permanecerá a mesma.</p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+              <p style="font-size: 12px; color: #6b7280;">
+                Se o botão não funcionar, copie e cole este link no seu navegador:<br>
+                <a href="$link" style="color: #1a1a2e;">$link</a>
+              </p>
+            </body>
+            </html>
+        """.trimIndent()
+    }
+
+    private fun buildWelcomeSetPasswordHtml(name: String, link: String): String {
+        return """
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head><meta charset="UTF-8"><title>Bem-vindo ao ControlAI</title></head>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+              <h2 style="color: #1a1a2e;">Sua conta ControlAI foi criada!</h2>
+              <p>Olá, ${name.split(" ").first()}!</p>
+              <p>Recebemos sua compra e sua conta no ControlAI já foi criada. Para começar a usar o app, defina sua senha de acesso.</p>
+              <p>Clique no botão abaixo para criar sua senha. Este link é válido por <strong>72 horas</strong>.</p>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="$link"
+                   style="background-color: #1a1a2e; color: #ffffff; padding: 14px 28px;
+                          text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                  Definir Senha
+                </a>
+              </div>
+              <p>Se você não fez esta compra, entre em contato com nosso suporte.</p>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
               <p style="font-size: 12px; color: #6b7280;">
                 Se o botão não funcionar, copie e cole este link no seu navegador:<br>

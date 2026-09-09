@@ -57,6 +57,7 @@ class PasswordUseCasesTest {
                 return emailResult
             }
             override fun sendGroupInvite(toEmail: String, inviteLink: String) = Result.success(Unit)
+            override fun sendWelcomeSetPassword(toEmail: String, toName: String, setPasswordLink: String) = Result.success(Unit)
         }
         return ForgotPasswordUseCase(
             findUserByEmailGateway = FindUserByEmailGateway { Result.success(user) },

@@ -42,6 +42,7 @@ class GroupInviteUseCasesTest {
     private val fakeEmail = object : EmailGateway {
         override fun sendPasswordReset(toEmail: String, toName: String, resetLink: String) = Result.success(Unit)
         override fun sendGroupInvite(toEmail: String, inviteLink: String) = Result.success(Unit)
+        override fun sendWelcomeSetPassword(toEmail: String, toName: String, setPasswordLink: String) = Result.success(Unit)
     }
 
     // --- InviteToGroupUseCase ---
@@ -59,6 +60,7 @@ class GroupInviteUseCasesTest {
                     emailSent = true
                     return Result.success(Unit)
                 }
+                override fun sendWelcomeSetPassword(toEmail: String, toName: String, setPasswordLink: String) = Result.success(Unit)
             },
             appWebUrl = "https://app.controlai.com",
         )
@@ -115,6 +117,7 @@ class GroupInviteUseCasesTest {
                 override fun sendPasswordReset(toEmail: String, toName: String, resetLink: String) = Result.success(Unit)
                 override fun sendGroupInvite(toEmail: String, inviteLink: String): Result<Unit> =
                     Result.failure(RuntimeException("Resend down"))
+                override fun sendWelcomeSetPassword(toEmail: String, toName: String, setPasswordLink: String) = Result.success(Unit)
             },
             appWebUrl = "https://app.controlai.com",
         )
