@@ -5,17 +5,14 @@ import br.com.nomar.controlai.application.auth.entrypoint.rest.request.GoogleLog
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LoginRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LogoutRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.RefreshRequest
-import br.com.nomar.controlai.application.auth.entrypoint.rest.request.RegisterRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.ResetPasswordRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.response.AuthResponse
-import br.com.nomar.controlai.domain.auth.exception.EmailAlreadyUsedException
 import br.com.nomar.controlai.domain.auth.exception.InvalidResetTokenException
 import br.com.nomar.controlai.domain.auth.usecase.ForgotPasswordUseCase
 import br.com.nomar.controlai.domain.auth.usecase.GoogleLoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.LoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.LogoutUseCase
 import br.com.nomar.controlai.domain.auth.usecase.RefreshSessionUseCase
-import br.com.nomar.controlai.domain.auth.usecase.RegisterUserUseCase
 import br.com.nomar.controlai.domain.auth.usecase.ResetPasswordUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
@@ -29,7 +26,6 @@ import org.springframework.web.server.ResponseStatusException
 @RestController
 @RequestMapping("/auth")
 class AuthController(
-    private val registerUserUseCase: RegisterUserUseCase,
     private val loginUseCase: LoginUseCase,
     private val googleLoginUseCase: GoogleLoginUseCase,
     private val refreshSessionUseCase: RefreshSessionUseCase,
@@ -38,18 +34,16 @@ class AuthController(
     private val resetPasswordUseCase: ResetPasswordUseCase,
 ) {
 
+    // Public registration was retired: every new account now comes from an approved Kiwify
+    // purchase (HandleKiwifyWebhookUseCase) or already existed before the commercial launch
+    // (grandfathered). Kept mapped (instead of deleted) so old app builds get an explicit,
+    // explanatory response instead of a bare 404.
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun register(@Validated @RequestBody request: RegisterRequest): AuthResponse =
-        registerUserUseCase.execute(request.name, request.email, request.password)
-            .map(AuthResponse::from)
-            .getOrElse {
-                when (it) {
-                    is EmailAlreadyUsedException -> throw ResponseStatusException(HttpStatus.CONFLICT, it.message)
-                    is IllegalArgumentException -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.message)
-                    else -> throw it
-                }
-            }
+    fun register(): Nothing =
+        throw ResponseStatusException(
+            HttpStatus.GONE,
+            "Cadastro publico foi descontinuado. Sua conta no ControlAI agora e criada automaticamente ao assinar o plano.",
+        )
 
     @PostMapping("/google")
     fun googleLogin(@Validated @RequestBody request: GoogleLoginRequest): AuthResponse =

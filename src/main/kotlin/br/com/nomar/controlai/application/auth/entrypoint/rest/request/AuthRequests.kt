@@ -4,19 +4,6 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 
-data class RegisterRequest(
-    @field:NotBlank(message = "Nome e obrigatorio")
-    val name: String = "",
-
-    @field:NotBlank(message = "E-mail e obrigatorio")
-    @field:Email(message = "E-mail invalido")
-    val email: String = "",
-
-    @field:NotBlank(message = "Senha e obrigatoria")
-    @field:Size(min = 8, message = "A senha deve ter no minimo 8 caracteres")
-    val password: String = "",
-)
-
 data class LoginRequest(
     @field:NotBlank(message = "E-mail e obrigatorio")
     val email: String = "",
