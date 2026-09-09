@@ -36,6 +36,7 @@ class SecurityConfig(
                     // Logout revokes the device's refresh token, so it requires a valid session
                     .requestMatchers("/auth/logout").authenticated()
                     .requestMatchers("/auth/**", "/actuator/health", "/health").permitAll()
+                    .requestMatchers("/webhooks/kiwify").permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt(Customizer.withDefaults()) }
