@@ -39,6 +39,17 @@ class CorsConfigIntegrationTest {
     }
 
     @Test
+    fun `preflight from the Vercel production origin is accepted`() {
+        mockMvc.perform(
+            options("/health")
+                .header(HttpHeaders.ORIGIN, "https://controlai-web-sepia.vercel.app")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://controlai-web-sepia.vercel.app"))
+    }
+
+    @Test
     fun `preflight from a Vercel preview origin matching the wildcard pattern is accepted`() {
         val previewOrigin = "https://controlai-abc123-ramon-mesquitas-projects.vercel.app"
 
