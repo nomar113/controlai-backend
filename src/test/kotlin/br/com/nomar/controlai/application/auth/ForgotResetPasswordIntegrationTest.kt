@@ -79,6 +79,7 @@ class ForgotResetPasswordIntegrationTest {
         }
         if (testGroupId > 0) {
             jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", testGroupId)
+            jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", testGroupId)
             jdbcTemplate.update("DELETE FROM subscriptions WHERE group_id = ?", testGroupId)
         }
         jdbcTemplate.update("DELETE FROM group_members WHERE user_id IN (SELECT id FROM users WHERE email = ?)", testEmail)

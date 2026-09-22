@@ -10,6 +10,7 @@ import br.com.nomar.controlai.domain.auth.entity.User
 import br.com.nomar.controlai.domain.auth.exception.EmailAlreadyUsedException
 import br.com.nomar.controlai.domain.auth.gateway.CreateUserWithPersonalGroupGateway
 import br.com.nomar.controlai.domain.auth.gateway.SeedDefaultCategoriesGateway
+import br.com.nomar.controlai.domain.payment_methods.gateway.SeedDefaultHolderGateway
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
@@ -22,6 +23,7 @@ class CreateUserWithPersonalGroupProvider(
     private val userConverter: UserConverter,
     private val transactionTemplate: TransactionTemplate,
     private val seedDefaultCategoriesGateway: SeedDefaultCategoriesGateway,
+    private val seedDefaultHolderGateway: SeedDefaultHolderGateway,
 ) : CreateUserWithPersonalGroupGateway {
 
     override fun execute(user: User): Result<User> {
@@ -32,6 +34,7 @@ class CreateUserWithPersonalGroupProvider(
                     val group = groupRepository.save(GroupModel(name = savedUser.name))
                     groupMemberRepository.save(GroupMemberModel(groupId = group.id!!, userId = savedUser.id!!))
                     seedDefaultCategoriesGateway.execute(group.id!!)
+                    seedDefaultHolderGateway.execute(group.id!!, savedUser.name)
                     userConverter.toEntity(savedUser)
                 }!!
             } catch (e: DataIntegrityViolationException) {

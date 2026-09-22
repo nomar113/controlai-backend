@@ -97,6 +97,7 @@ class KiwifyWebhookControllerIntegrationTest {
                 jdbcTemplate.update("DELETE FROM subscriptions WHERE group_id = ?", groupId)
                 // SeedDefaultCategoriesGateway seeds categories for every newly created group.
                 jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", groupId)
+                jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", groupId)
                 jdbcTemplate.update("DELETE FROM `groups` WHERE id = ?", groupId)
             }
         }
@@ -362,6 +363,13 @@ class KiwifyWebhookControllerIntegrationTest {
         ).firstOrNull() ?: error("subscription was not created for the new customer")
         assertEquals("ANNUAL", subscriptionRow["plan"])
         assertEquals("ACTIVE", subscriptionRow["status"])
+
+        val holderNames = jdbcTemplate.queryForList(
+            "SELECT name FROM holders WHERE group_id = ?",
+            String::class.java,
+            groupId,
+        )
+        assertEquals(listOf("New Customer"), holderNames)
 
         val tokenCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = ?",

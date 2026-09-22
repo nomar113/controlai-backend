@@ -88,6 +88,7 @@ class GroupInviteIntegrationTest {
             jdbcTemplate.update("DELETE FROM payment_methods WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM categories WHERE group_id = ?", gid)
+            jdbcTemplate.update("DELETE FROM holders WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM subscriptions WHERE group_id = ?", gid)
             jdbcTemplate.update("DELETE FROM `groups` WHERE id = ?", gid)
         }

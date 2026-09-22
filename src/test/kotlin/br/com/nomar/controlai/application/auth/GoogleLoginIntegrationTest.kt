@@ -51,6 +51,7 @@ class GoogleLoginIntegrationTest {
         if (groupIds.isNotEmpty()) {
             val placeholders = groupIds.joinToString(",") { "?" }
             jdbcTemplate.update("DELETE FROM categories WHERE group_id IN ($placeholders)", *groupIds.toTypedArray())
+            jdbcTemplate.update("DELETE FROM holders WHERE group_id IN ($placeholders)", *groupIds.toTypedArray())
         }
         jdbcTemplate.update("DELETE FROM group_members WHERE user_id IN (SELECT id FROM users WHERE email = ?)", testEmail)
         if (groupIds.isNotEmpty()) {
