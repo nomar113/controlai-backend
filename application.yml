@@ -8,6 +8,13 @@ spring:
   jackson:
     time-zone: UTC
 
+  # One thread per @Scheduled job (the two SQS pollers and the account purge), so a long purge
+  # never pauses the queues
+  task:
+    scheduling:
+      pool:
+        size: 3
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -34,6 +41,12 @@ aws:
     account-id: ${AWS_ACCOUNT_ID:000000000000}
     payments-notifications-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/payments-notifications
     purchases-invoices-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/purchases-invoices
+
+account-deletion:
+  # Daily purge of the accounts whose 30-day grace period is over, in Brasília time
+  # (AccountPurgeScheduler). "-" as the cron keeps the bean but never runs it.
+  purge-cron: ${ACCOUNT_DELETION_PURGE_CRON:0 0 4 * * *}
+  purge-enabled: ${ACCOUNT_DELETION_PURGE_ENABLED:true}
 
 app:
   cors:

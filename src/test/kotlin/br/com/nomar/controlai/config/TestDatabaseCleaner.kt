@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.config
 
+import br.com.nomar.controlai.application.account_deletion.application.AccountPurgeProvider
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 
@@ -18,22 +19,9 @@ class TestDatabaseCleaner(private val jdbcTemplate: JdbcTemplate) {
     }
 
     companion object {
-        // Children before parents, so no FK (all RESTRICT) blocks a delete. Same order as the
-        // account purge in the tech spec ("Modelos de Dados > Ordem da purga", Tarefa 5.0).
-        val FINANCIAL_TABLES_IN_FK_ORDER = listOf(
-            "installments",
-            "payment_notifications",
-            "purchase_payments",
-            "purchase_items",
-            "purchase_invoices",
-            "budget_payment_periods",
-            "budget_items",
-            "budget_incomes",
-            "budgets",
-            "sub_cards",
-            "payment_methods",
-            "holders",
-            "categories",
-        )
+        // Children before parents, so no FK (all RESTRICT) blocks a delete: the same list and
+        // order the account purge uses (Tarefa 5.0), so both stay in sync with the schema
+        val FINANCIAL_TABLES_IN_FK_ORDER: List<String> =
+            AccountPurgeProvider.GROUP_FINANCIAL_DATA_IN_FK_ORDER.map { it.name }
     }
 }

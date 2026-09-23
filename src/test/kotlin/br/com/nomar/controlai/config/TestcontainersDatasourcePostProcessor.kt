@@ -21,6 +21,9 @@ class TestcontainersDatasourcePostProcessor : EnvironmentPostProcessor, Ordered 
                 mapOf(
                     "spring.datasource.url" to DATASOURCE_URL,
                     "spring.datasource.driver-class-name" to "org.testcontainers.jdbc.ContainerDatabaseDriver",
+                    // Here and not in application.properties for the same precedence reason: the
+                    // purge job must never run on its own during tests; they call the use case
+                    "account-deletion.purge-enabled" to "false",
                 ),
             ),
         )

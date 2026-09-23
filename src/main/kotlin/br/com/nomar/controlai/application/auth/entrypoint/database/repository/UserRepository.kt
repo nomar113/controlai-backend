@@ -23,6 +23,12 @@ interface UserRepository : JpaRepository<UserModel, Long> {
     )
     fun findDeletionScheduledForByGroupId(@Param("groupId") groupId: Long): List<Instant?>
 
+    // Accounts the purge job must delete, oldest deadline first (idx_users_deletion_scheduled_for)
+    @Query(
+        "SELECT u.id FROM UserModel u WHERE u.deletionScheduledFor <= :now ORDER BY u.deletionScheduledFor, u.id",
+    )
+    fun findIdsWithDeletionDueBy(@Param("now") now: Instant): List<Long>
+
     // Conditional updates: the affected row count tells whether the state actually changed,
     // so concurrent requests cannot both succeed
     @Modifying
