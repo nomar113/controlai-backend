@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,17 +19,12 @@ class PaymentNotificationFilterIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
     private var paymentMethodId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         val holderId = createHolder()
         paymentMethodId = createPaymentMethod(holderId)

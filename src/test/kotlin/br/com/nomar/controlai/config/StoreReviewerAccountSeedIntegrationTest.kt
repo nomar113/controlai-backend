@@ -25,11 +25,10 @@ import kotlin.test.assertTrue
 // is disabled. The real password is never asserted here (it lives out-of-band, not in the
 // repo) — this only checks the seed produced a usable, unblocked account.
 //
-// Only assertions on `groups`/`users`/`group_members`/`subscriptions` are made here: several
-// other integration tests in this suite do an unscoped `DELETE FROM categories/holders/
-// payment_methods/payment_notifications` in their own setup/teardown (pre-existing convention,
-// e.g. PurchaseCategoryIntegrationTest), so the reviewer's example card/purchases are not a
-// stable invariant across the full suite. Their presence is covered by manual verification
+// Only assertions on `groups`/`users`/`group_members`/`subscriptions` are made here: most
+// integration tests wipe every group's financial data in their setup (TestDatabaseCleaner),
+// which includes the reviewer's example cards/purchases (V42), so those are not a stable
+// invariant across the full suite. Their presence is covered by manual verification
 // (Tarefa 1.0, subtarefa 1.4) against a real environment instead.
 @SpringBootTest
 @AutoConfigureMockMvc

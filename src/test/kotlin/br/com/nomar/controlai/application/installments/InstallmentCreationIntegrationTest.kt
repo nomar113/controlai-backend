@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.installments
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -20,23 +21,14 @@ class InstallmentCreationIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var paymentMethodId: Long = 0
     private var categoryId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM categories")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Test Holder', 1)")
         val holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Test Holder'", Long::class.java)!!
@@ -53,10 +45,7 @@ class InstallmentCreationIntegrationTest {
         // POST /notifications/manual with numberOfInstallments > 1 now auto-creates budgets via
         // EnsureFutureBudgetProvider (Task 3.0); without this, orphaned budget_payment_periods
         // rows referencing this suite's payment_methods break other suites' cleanup by FK.
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

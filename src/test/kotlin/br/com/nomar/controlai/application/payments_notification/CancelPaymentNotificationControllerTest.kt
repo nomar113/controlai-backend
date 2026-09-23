@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,11 +17,11 @@ class CancelPaymentNotificationControllerTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertNotification(cancelledAt: String? = null): Long {

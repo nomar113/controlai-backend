@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payment_methods
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,13 +20,11 @@ class ControllerIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

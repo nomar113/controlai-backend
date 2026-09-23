@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import br.com.nomar.controlai.domain.budget.gateway.EnsureFutureBudgetGateway
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +26,7 @@ class SavePaymentNotificationProviderRollbackTest {
 
     @Autowired private lateinit var savePaymentNotificationProvider: SavePaymentNotificationProvider
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @MockitoBean private lateinit var ensureFutureBudgetGateway: EnsureFutureBudgetGateway
 
@@ -32,15 +34,12 @@ class SavePaymentNotificationProviderRollbackTest {
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
     }
 
     @AfterEach
     fun tearDown() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun countNotificationsByMerchant(merchantName: String): Int =

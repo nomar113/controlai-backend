@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payment_methods
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,19 +16,17 @@ class MigrationIntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
-        jdbcTemplate.update("DELETE FROM payment_notifications WHERE card_last_digits IN ('9999', '8888')")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test
     fun `should create holders table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'HOLDERS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'HOLDERS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -36,7 +35,7 @@ class MigrationIntegrationTest {
     @Test
     fun `should create payment_methods table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'PAYMENT_METHODS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PAYMENT_METHODS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -45,7 +44,7 @@ class MigrationIntegrationTest {
     @Test
     fun `should create sub_cards table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'SUB_CARDS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'SUB_CARDS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -54,7 +53,7 @@ class MigrationIntegrationTest {
     @Test
     fun `should have payment_method_id and sub_card_id columns in payment_notifications`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT column_name FROM information_schema.columns WHERE UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) IN ('PAYMENT_METHOD_ID', 'SUB_CARD_ID')",
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) IN ('PAYMENT_METHOD_ID', 'SUB_CARD_ID')",
         )
         assertEquals(2, columns.size)
     }

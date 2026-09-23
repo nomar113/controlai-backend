@@ -12,8 +12,11 @@ Controlaí is a payment notification and purchase invoice management backend bui
 # Build
 ./gradlew build
 
-# Run tests
+# Run tests (only needs Docker running; no docker-compose services required)
 ./gradlew test
+
+# Run tests with the class order reversed (detects order-dependent tests)
+./gradlew test -PtestClassOrder=br.com.nomar.controlai.config.ReverseClassNameOrderer
 
 # Run a single test class
 ./gradlew test --tests "br.com.nomar.controlai.SomeTestClass"
@@ -66,11 +69,17 @@ Environment variables have sensible defaults for local development in `applicati
 
 ## Database
 
-Flyway migrations live in `src/main/resources/db/migration/`. Tables: `payment_notifications`, `purchase_invoices`, `purchase_payments`, `purchase_items`. Tests use H2 in-memory database.
+Flyway migrations live in `src/main/resources/db/migration/`. Tables: `payment_notifications`, `purchase_invoices`, `purchase_payments`, `purchase_items`.
 
 ## Testing
 
-Tests use **JUnit 5** + **Kotlin Test** + **Mockito**. H2 in-memory database for integration tests. For unit tests, gateways are mocked via lambda `fun interface` syntax (`ListPurchasesGateway { Result.success(data) }`). Mockito is used only for infrastructure components (e.g., `SqsClient`).
+Tests use **JUnit 5** + **Kotlin Test** + **Mockito**. For unit tests, gateways are mocked via lambda `fun interface` syntax (`ListPurchasesGateway { Result.success(data) }`). Mockito is used only for infrastructure components (e.g., `SqsClient`).
+
+Integration tests run against a disposable MySQL 8.0 started by **Testcontainers** (JDBC URL `jdbc:tc:mysql:8.0:///controlai`), created on each `./gradlew test` run with only the Flyway migrations applied. They only need Docker running: they do **not** use the docker-compose MySQL, and never touch the local `controlai` database. The datasource is set by `TestcontainersDatasourcePostProcessor` (test-only `EnvironmentPostProcessor`, registered in `src/test/resources/META-INF/spring.factories`) as the highest-precedence property source, because `./application.yml` and a `DB_URL` env var outrank `src/test/resources/application.properties`. It applies to any runner (Gradle or IDE).
+
+- **Cleanup:** wipe business data with `TestDatabaseCleaner.deleteFinancialData()` (deletes in FK order). Never write an unscoped `DELETE FROM <table>` in a test class; a test may only delete its own rows directly (filtered by `group_id`, e-mail, id...).
+- **No ambient data:** create the rows a test needs in its own setup; don't rely on rows left by migrations or by other test classes (the suite must pass in any class order).
+- **Migration tests:** filter `information_schema` queries by `table_schema = DATABASE()`.
 
 ## Language
 

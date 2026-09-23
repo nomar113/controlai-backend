@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.budget
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -28,6 +29,7 @@ class GetBudgetSummaryProviderIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
     @Autowired private lateinit var objectMapper: ObjectMapper
 
     private val groupId = 1L
@@ -49,16 +51,7 @@ class GetBudgetSummaryProviderIntegrationTest {
     }
 
     private fun cleanAll() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM categories")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertCreditCard(): Long {

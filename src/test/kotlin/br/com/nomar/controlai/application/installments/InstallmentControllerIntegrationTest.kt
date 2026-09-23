@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.installments
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,14 +24,13 @@ class InstallmentControllerIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var parentId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications
@@ -274,14 +274,9 @@ class InstallmentControllerIntegrationTest {
             // Recalculation spans August-October and auto-creates budgets for months that didn't
             // exist yet (EnsureFutureBudgetProvider). A leftover budget for this payment method's
             // charge months would let a later test's ensurePaymentPeriodsSynced self-heal a period
-            // into it for an unrelated payment method, so wipe budgets entirely here rather than
-            // scoping the cleanup — same approach as InstallmentReconciliationRunnerIT's tearDown.
-            jdbcTemplate.update("DELETE FROM installments WHERE parent_id = ?", purchaseId)
-            jdbcTemplate.update("DELETE FROM payment_notifications WHERE id = ?", purchaseId)
-            jdbcTemplate.update("DELETE FROM budget_payment_periods")
-            jdbcTemplate.update("DELETE FROM budgets")
-            jdbcTemplate.update("DELETE FROM payment_methods WHERE id = ?", paymentMethodId)
-            jdbcTemplate.update("DELETE FROM holders WHERE id = ?", holderId)
+            // into it for an unrelated payment method, so wipe the financial data entirely here
+            // rather than scoping the cleanup.
+            databaseCleaner.deleteFinancialData()
         }
     }
 }

@@ -44,6 +44,9 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:mysql")
+	testImplementation("org.testcontainers:junit-jupiter")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -61,4 +64,9 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// Optional JUnit class order, to check the suite does not depend on the order classes run in,
+	// e.g. -PtestClassOrder=br.com.nomar.controlai.config.ReverseClassNameOrderer
+	providers.gradleProperty("testClassOrder").orNull?.let {
+		systemProperty("junit.jupiter.testclass.order.default", it)
+	}
 }

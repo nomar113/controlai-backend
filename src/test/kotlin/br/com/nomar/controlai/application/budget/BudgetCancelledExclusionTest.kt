@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.budget
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,19 +18,11 @@ class BudgetCancelledExclusionTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

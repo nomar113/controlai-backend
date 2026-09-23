@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.installments
 
 import br.com.nomar.controlai.application.installments.application.InstallmentReconciliationRunner
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -19,6 +20,7 @@ class InstallmentReconciliationRunnerIT {
 
     @Autowired private lateinit var runner: InstallmentReconciliationRunner
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var missingParentId: Long = 0
     private var existingParentId: Long = 0
@@ -31,16 +33,7 @@ class InstallmentReconciliationRunnerIT {
 
     @BeforeEach
     fun setUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Reconciliation Holder', 1)")
         val holderId = jdbcTemplate.queryForObject(
@@ -179,10 +172,7 @@ class InstallmentReconciliationRunnerIT {
 
     @AfterEach
     fun tearDown() {
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

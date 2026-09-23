@@ -16,7 +16,7 @@ class CancelledAtMigrationIntegrationTest {
     @Test
     fun `should have cancelled_at column in payment_notifications`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.columns WHERE UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CANCELLED_AT'",
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CANCELLED_AT'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -25,7 +25,7 @@ class CancelledAtMigrationIntegrationTest {
     @Test
     fun `should have cancelled_at column in purchase_invoices`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.columns WHERE UPPER(table_name) = 'PURCHASE_INVOICES' AND UPPER(column_name) = 'CANCELLED_AT'",
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PURCHASE_INVOICES' AND UPPER(column_name) = 'CANCELLED_AT'",
             Int::class.java
         )
         assertEquals(1, count)

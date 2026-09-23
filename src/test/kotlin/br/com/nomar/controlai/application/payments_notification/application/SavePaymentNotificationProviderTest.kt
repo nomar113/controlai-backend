@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification.application
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,21 +24,14 @@ class SavePaymentNotificationProviderTest {
 
     @Autowired private lateinit var savePaymentNotificationProvider: SavePaymentNotificationProvider
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private val groupId = 1L
     private var holderId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Titular Teste', ?)", groupId)
         holderId = jdbcTemplate.queryForObject("SELECT id FROM holders WHERE name = 'Titular Teste'", Long::class.java)!!
@@ -49,14 +43,7 @@ class SavePaymentNotificationProviderTest {
         // EnsureFutureBudgetProvider, which reads ambient payment_methods for the group; leaving
         // those rows behind breaks other suites' cleanup by FK, same lesson as
         // EnsureFutureBudgetProviderTest.
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertCreditCard(): Long {

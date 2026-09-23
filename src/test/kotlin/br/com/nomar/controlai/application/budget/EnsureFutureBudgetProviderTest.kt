@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.budget
 
 import br.com.nomar.controlai.application.budget.application.EnsureFutureBudgetProvider
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -16,17 +17,14 @@ class EnsureFutureBudgetProviderTest {
 
     @Autowired private lateinit var ensureFutureBudgetProvider: EnsureFutureBudgetProvider
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private val groupId = 1L
     private var categoryId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
         jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Test Category', ?)", groupId)
         categoryId = jdbcTemplate.queryForObject("SELECT id FROM categories WHERE name = 'Test Category'", Long::class.java)!!
     }
@@ -36,11 +34,7 @@ class EnsureFutureBudgetProviderTest {
         // EnsureFutureBudgetProvider.execute reads ambient payment_methods for the group and
         // links them via budget_payment_periods; without this, orphaned rows referencing those
         // shared-DB payment_methods break other test classes' cleanup (FK violation) by run order.
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertBudget(yearMonth: String): Long {

@@ -3,6 +3,7 @@ package br.com.nomar.controlai.application.installments
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,14 +21,13 @@ class InstallmentRepositoryIntegrationTest {
 
     @Autowired private lateinit var installmentRepository: InstallmentRepository
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var parentId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications

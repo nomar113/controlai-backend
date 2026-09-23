@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.suggestion
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,17 +18,13 @@ class SuggestionControllerIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var invoiceId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM purchase_payments")
-        jdbcTemplate.update("DELETE FROM purchase_items")
-        jdbcTemplate.update("DELETE FROM purchase_invoices")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertInvoice(date: String, total: Double, merchantName: String = "Test Store"): Long {

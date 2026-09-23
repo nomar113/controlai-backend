@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.categories
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,16 +16,17 @@ class CategoryFkMigrationIntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
-        jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test
     fun `should have category_id column in payment_notifications`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CATEGORY_ID'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CATEGORY_ID'",
         )
         assertEquals(1, columns.size)
     }
@@ -32,7 +34,7 @@ class CategoryFkMigrationIntegrationTest {
     @Test
     fun `should have category_id column in purchase_invoices`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'PURCHASE_INVOICES' AND UPPER(column_name) = 'CATEGORY_ID'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PURCHASE_INVOICES' AND UPPER(column_name) = 'CATEGORY_ID'",
         )
         assertEquals(1, columns.size)
     }
@@ -82,7 +84,7 @@ class CategoryFkMigrationIntegrationTest {
     @Test
     fun `should not have legacy category text column in payment_notifications`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CATEGORY'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'PAYMENT_NOTIFICATIONS' AND UPPER(column_name) = 'CATEGORY'",
         )
         assertEquals(0, columns.size)
     }

@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,22 +24,12 @@ class PaymentNotificationControllerTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
     @Autowired private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM purchase_payments")
-        jdbcTemplate.update("DELETE FROM purchase_items")
-        jdbcTemplate.update("DELETE FROM purchase_invoices")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
     }
 
     @AfterEach
@@ -47,10 +38,7 @@ class PaymentNotificationControllerTest {
         // EnsureFutureBudgetProvider, which links budget_payment_periods to this suite's
         // payment_methods; without this cleanup those rows outlive the test and break other
         // suites' payment_methods/categories cleanup by FK (see EnsureFutureBudgetProviderTest).
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertHolder(name: String = "Titular Teste"): Long {

@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.budget
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,19 +16,18 @@ class BudgetMigrationIntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
         jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES ('Test Category', 1)")
     }
 
     @Test
     fun `should create budgets table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'BUDGETS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'BUDGETS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -36,7 +36,7 @@ class BudgetMigrationIntegrationTest {
     @Test
     fun `should create budget_items table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'BUDGET_ITEMS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'BUDGET_ITEMS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -45,7 +45,7 @@ class BudgetMigrationIntegrationTest {
     @Test
     fun `should create budget_incomes table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'BUDGET_INCOMES'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'BUDGET_INCOMES'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -160,7 +160,7 @@ class BudgetMigrationIntegrationTest {
 
         for (table in tables) {
             val columns = jdbcTemplate.queryForList(
-                "SELECT UPPER(column_name) AS col FROM information_schema.columns WHERE UPPER(table_name) = ? AND UPPER(column_name) IN ('CREATED_AT', 'UPDATED_AT')",
+                "SELECT UPPER(column_name) AS col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = ? AND UPPER(column_name) IN ('CREATED_AT', 'UPDATED_AT')",
                 table
             ).map { it["COL"] as String }
 

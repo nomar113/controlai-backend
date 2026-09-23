@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payment_methods
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import br.com.nomar.controlai.config.TestSecurityContext
 import br.com.nomar.controlai.domain.payment_methods.entity.*
 import br.com.nomar.controlai.domain.payment_methods.gateway.*
@@ -17,6 +18,8 @@ import kotlin.test.assertTrue
 class ProviderIntegrationTest {
 
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     @Autowired private lateinit var saveHolderGateway: SaveHolderGateway
     @Autowired private lateinit var listHoldersGateway: ListHoldersGateway
     @Autowired private lateinit var savePaymentMethodGateway: SavePaymentMethodGateway
@@ -31,10 +34,7 @@ class ProviderIntegrationTest {
     @BeforeEach
     fun cleanUp() {
         TestSecurityContext.authenticateAsGroup()
-        jdbcTemplate.update("UPDATE payment_notifications SET payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
     }
 
     @AfterEach

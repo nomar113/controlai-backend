@@ -2,6 +2,7 @@ package br.com.nomar.controlai.application.installments
 
 import br.com.nomar.controlai.application.installments.application.CreateInstallmentsProvider
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import br.com.nomar.controlai.config.TestSecurityContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,22 +20,14 @@ class CreateInstallmentsProviderTest {
     @Autowired private lateinit var createInstallmentsProvider: CreateInstallmentsProvider
     @Autowired private lateinit var installmentRepository: InstallmentRepository
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var parentId: Long = 0
 
     @BeforeEach
     fun cleanUp() {
         TestSecurityContext.authenticateAsGroup()
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("DELETE FROM sub_cards")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         jdbcTemplate.update(
             """INSERT INTO payment_notifications

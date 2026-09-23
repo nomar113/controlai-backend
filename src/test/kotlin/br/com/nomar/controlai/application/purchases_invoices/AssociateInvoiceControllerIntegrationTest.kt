@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.purchases_invoices
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,6 +23,7 @@ class AssociateInvoiceControllerIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
@@ -34,12 +36,7 @@ class AssociateInvoiceControllerIntegrationTest {
     }
 
     private fun clearTables() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL, purchase_invoice_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM purchase_payments")
-        jdbcTemplate.update("DELETE FROM purchase_items")
-        jdbcTemplate.update("DELETE FROM purchase_invoices")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertInvoice(

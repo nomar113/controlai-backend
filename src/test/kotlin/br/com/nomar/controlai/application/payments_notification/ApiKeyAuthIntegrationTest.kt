@@ -28,7 +28,7 @@ class ApiKeyAuthIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        jdbcTemplate.update("DELETE FROM api_keys")
+        jdbcTemplate.update("DELETE FROM api_keys WHERE key_hash = ?", keyHash)
         // Insert a valid (non-revoked) API key for group 1
         jdbcTemplate.update(
             "INSERT INTO api_keys (group_id, key_hash, label) VALUES (1, ?, 'Test Key')",
@@ -38,7 +38,7 @@ class ApiKeyAuthIntegrationTest {
 
     @AfterEach
     fun tearDown() {
-        jdbcTemplate.update("DELETE FROM api_keys")
+        jdbcTemplate.update("DELETE FROM api_keys WHERE key_hash = ?", keyHash)
     }
 
     @Test

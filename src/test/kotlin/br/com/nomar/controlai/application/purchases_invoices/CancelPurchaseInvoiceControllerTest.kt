@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.purchases_invoices
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,13 +17,11 @@ class CancelPurchaseInvoiceControllerTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("UPDATE payment_notifications SET purchase_invoice_id = NULL WHERE purchase_invoice_id IS NOT NULL")
-        jdbcTemplate.update("DELETE FROM purchase_payments")
-        jdbcTemplate.update("DELETE FROM purchase_items")
-        jdbcTemplate.update("DELETE FROM purchase_invoices")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun insertInvoice(cancelledAt: String? = null): Long {

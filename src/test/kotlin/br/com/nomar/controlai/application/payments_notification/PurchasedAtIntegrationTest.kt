@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.payments_notification
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.PurchasedAtDeserializer
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -33,15 +34,13 @@ class PurchasedAtIntegrationTest {
 
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private lateinit var appender: ListAppender<ILoggingEvent>
 
     @BeforeEach
     fun setUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
-        jdbcTemplate.update("DELETE FROM payment_methods")
-        jdbcTemplate.update("DELETE FROM holders")
+        databaseCleaner.deleteFinancialData()
 
         appender = ListAppender()
         appender.start()

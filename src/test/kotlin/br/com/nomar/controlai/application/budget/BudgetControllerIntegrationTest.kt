@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.budget
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,16 +21,11 @@ class BudgetControllerIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
-        jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

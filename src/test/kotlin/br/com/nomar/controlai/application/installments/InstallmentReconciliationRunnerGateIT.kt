@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.installments
 
 import br.com.nomar.controlai.application.installments.application.InstallmentReconciliationRunner
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -21,14 +22,13 @@ class InstallmentReconciliationRunnerGateIT {
 
     @Autowired private lateinit var context: ApplicationContext
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     private var missingParentId: Long = 0
 
     @BeforeEach
     fun setUp() {
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL, payment_method_id = NULL, sub_card_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
 
         // Purchase without any statement, exactly what the backfill would pick up if it ran.
         jdbcTemplate.update(
@@ -43,7 +43,7 @@ class InstallmentReconciliationRunnerGateIT {
 
     @AfterEach
     fun tearDown() {
-        jdbcTemplate.update("DELETE FROM payment_notifications")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

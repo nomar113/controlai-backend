@@ -21,7 +21,7 @@ class BillingMigrationIntegrationTest {
     @Test
     fun `should create subscriptions table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'SUBSCRIPTIONS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'SUBSCRIPTIONS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -30,7 +30,7 @@ class BillingMigrationIntegrationTest {
     @Test
     fun `should create kiwify_webhook_events table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'KIWIFY_WEBHOOK_EVENTS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'KIWIFY_WEBHOOK_EVENTS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -39,7 +39,7 @@ class BillingMigrationIntegrationTest {
     @Test
     fun `should have correct columns in subscriptions table`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'SUBSCRIPTIONS'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'SUBSCRIPTIONS'",
         ).map { it["COL"] as String }
 
         listOf(
@@ -51,7 +51,7 @@ class BillingMigrationIntegrationTest {
     @Test
     fun `should have correct columns in kiwify_webhook_events table`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'KIWIFY_WEBHOOK_EVENTS'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'KIWIFY_WEBHOOK_EVENTS'",
         ).map { it["COL"] as String }
 
         listOf("ID", "KIWIFY_EVENT_ID", "ORDER_STATUS", "RAW_PAYLOAD", "PROCESSED_AT").forEach {

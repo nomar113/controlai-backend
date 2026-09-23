@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.budget
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,12 +15,11 @@ class BudgetPaymentPeriodIntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
+        databaseCleaner.deleteFinancialData()
     }
 
     private fun createBudget(yearMonth: String): Long {
@@ -29,16 +29,24 @@ class BudgetPaymentPeriodIntegrationTest {
         )!!
     }
 
-    private fun getPaymentMethodId(): Long {
+    private fun createPaymentMethod(): Long {
+        jdbcTemplate.update("INSERT INTO holders (name, group_id) VALUES ('Titular Periodo', 1)")
+        val holderId = jdbcTemplate.queryForObject(
+            "SELECT id FROM holders WHERE name = 'Titular Periodo'", Long::class.java
+        )!!
+        jdbcTemplate.update(
+            "INSERT INTO payment_methods (name, type, holder_id, group_id) VALUES ('Cartao Periodo', 'CREDIT_CARD', ?, 1)",
+            holderId,
+        )
         return jdbcTemplate.queryForObject(
-            "SELECT id FROM payment_methods LIMIT 1", Long::class.java
+            "SELECT id FROM payment_methods WHERE name = 'Cartao Periodo'", Long::class.java
         )!!
     }
 
     @Test
     fun `should create budget_payment_periods table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'BUDGET_PAYMENT_PERIODS'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'BUDGET_PAYMENT_PERIODS'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -47,7 +55,7 @@ class BudgetPaymentPeriodIntegrationTest {
     @Test
     fun `should save and retrieve budget payment period`() {
         val budgetId = createBudget("2026-05")
-        val paymentMethodId = getPaymentMethodId()
+        val paymentMethodId = createPaymentMethod()
 
         jdbcTemplate.update(
             "INSERT INTO budget_payment_periods (budget_id, payment_method_id, start_date, end_date) VALUES (?, ?, ?, ?)",
@@ -66,7 +74,7 @@ class BudgetPaymentPeriodIntegrationTest {
     @Test
     fun `should enforce unique constraint on budget_id and payment_method_id`() {
         val budgetId = createBudget("2026-06")
-        val paymentMethodId = getPaymentMethodId()
+        val paymentMethodId = createPaymentMethod()
 
         jdbcTemplate.update(
             "INSERT INTO budget_payment_periods (budget_id, payment_method_id, start_date, end_date) VALUES (?, ?, ?, ?)",
@@ -85,7 +93,7 @@ class BudgetPaymentPeriodIntegrationTest {
     @Test
     fun `should cascade delete payment periods when budget is deleted`() {
         val budgetId = createBudget("2026-07")
-        val paymentMethodId = getPaymentMethodId()
+        val paymentMethodId = createPaymentMethod()
 
         jdbcTemplate.update(
             "INSERT INTO budget_payment_periods (budget_id, payment_method_id, start_date, end_date) VALUES (?, ?, ?, ?)",
@@ -108,7 +116,7 @@ class BudgetPaymentPeriodIntegrationTest {
     @Test
     fun `should have created_at and updated_at columns`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) AS col FROM information_schema.columns WHERE UPPER(table_name) = 'BUDGET_PAYMENT_PERIODS' AND UPPER(column_name) IN ('CREATED_AT', 'UPDATED_AT')"
+            "SELECT UPPER(column_name) AS col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'BUDGET_PAYMENT_PERIODS' AND UPPER(column_name) IN ('CREATED_AT', 'UPDATED_AT')"
         ).map { it["COL"] as String }
 
         assertTrue(columns.contains("CREATED_AT"), "should have created_at")

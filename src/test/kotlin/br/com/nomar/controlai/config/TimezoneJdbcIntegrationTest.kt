@@ -26,10 +26,10 @@ class TimezoneJdbcIntegrationTest {
 
     @BeforeEach
     fun setUp() {
+        jdbcTemplate.execute("DROP TABLE IF EXISTS timezone_probe")
         jdbcTemplate.execute(
-            "CREATE TABLE IF NOT EXISTS timezone_probe (id BIGINT AUTO_INCREMENT PRIMARY KEY, ts TIMESTAMP(3) NOT NULL)"
+            "CREATE TABLE timezone_probe (id BIGINT AUTO_INCREMENT PRIMARY KEY, ts TIMESTAMP(3) NOT NULL)"
         )
-        jdbcTemplate.update("DELETE FROM timezone_probe")
     }
 
     @AfterEach

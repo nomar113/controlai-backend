@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.categories
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,12 +20,11 @@ class CategoryControllerIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
-        jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
-        jdbcTemplate.update("DELETE FROM categories")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test

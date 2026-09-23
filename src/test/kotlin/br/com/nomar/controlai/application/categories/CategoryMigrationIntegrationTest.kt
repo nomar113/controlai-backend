@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.categories
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,6 +16,8 @@ class CategoryMigrationIntegrationTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
+
     private val seedCategories = listOf(
         "Gastos Gerais", "Mercado", "Veiculos", "Pets", "Moradia",
         "Remedios", "Medicos", "Transporte", "Viagens", "Assinaturas",
@@ -23,20 +26,17 @@ class CategoryMigrationIntegrationTest {
 
     @BeforeEach
     fun ensureSeedData() {
-        // Re-insert seed data if deleted by other tests
-        val count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM categories", Int::class.java) ?: 0
-        if (count < 15) {
-            jdbcTemplate.update("DELETE FROM categories")
-            seedCategories.forEach { name ->
-                jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", name)
-            }
+        // Start from exactly the default categories, whatever other test classes left behind
+        databaseCleaner.deleteFinancialData()
+        seedCategories.forEach { name ->
+            jdbcTemplate.update("INSERT INTO categories (name, group_id) VALUES (?, 1)", name)
         }
     }
 
     @Test
     fun `should create categories table`() {
         val count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.tables WHERE UPPER(table_name) = 'CATEGORIES'",
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND UPPER(table_name) = 'CATEGORIES'",
             Int::class.java
         )
         assertEquals(1, count)
@@ -45,7 +45,7 @@ class CategoryMigrationIntegrationTest {
     @Test
     fun `should have correct columns in categories table`() {
         val columns = jdbcTemplate.queryForList(
-            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE UPPER(table_name) = 'CATEGORIES'",
+            "SELECT UPPER(column_name) as col FROM information_schema.columns WHERE table_schema = DATABASE() AND UPPER(table_name) = 'CATEGORIES'",
         ).map { it["COL"] as String }
 
         assertTrue(columns.contains("ID"))

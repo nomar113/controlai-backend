@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.payments_notification
 
+import br.com.nomar.controlai.config.TestDatabaseCleaner
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,22 +20,11 @@ class PaymentNotificationCategoryIntegrationTest {
     @Autowired private lateinit var mockMvc: MockMvc
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var databaseCleaner: TestDatabaseCleaner
 
     @BeforeEach
     fun cleanUp() {
-        // Every payment_notifications row now gets an installment (Task 1.0) and a budget via
-        // EnsureFutureBudgetProvider, so both must be purged before the FK-scoped deletes below.
-        jdbcTemplate.update("DELETE FROM installments")
-        jdbcTemplate.update("DELETE FROM budget_payment_periods")
-        jdbcTemplate.update("DELETE FROM budget_incomes")
-        jdbcTemplate.update("DELETE FROM budget_items")
-        jdbcTemplate.update("DELETE FROM budgets")
-        jdbcTemplate.update("UPDATE payment_notifications SET category_id = NULL")
-        jdbcTemplate.update("DELETE FROM payment_notifications WHERE merchant_name IN ('Test Store Category', 'Supermercado Teste')")
-        jdbcTemplate.update("UPDATE purchase_invoices SET category_id = NULL")
-        jdbcTemplate.update("DELETE FROM categories")
-        jdbcTemplate.update("DELETE FROM payment_methods WHERE name = 'Cartao Teste Categoria'")
-        jdbcTemplate.update("DELETE FROM holders WHERE name = 'Titular Teste Categoria'")
+        databaseCleaner.deleteFinancialData()
     }
 
     @Test
