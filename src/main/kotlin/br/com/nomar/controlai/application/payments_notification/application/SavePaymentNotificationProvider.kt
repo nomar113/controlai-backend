@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.domain.budget.gateway.EnsureFutureBudgetGateway
 import br.com.nomar.controlai.domain.payments_notifications.gateway.SavePaymentNotificationGateway
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.interceptor.TransactionAspectSupport
@@ -18,6 +19,7 @@ class SavePaymentNotificationProvider(
     private val subCardRepository: SubCardRepository,
     private val createInstallmentsProvider: CreateInstallmentsProvider,
     private val ensureFutureBudgetGateway: EnsureFutureBudgetGateway,
+    private val meterRegistry: MeterRegistry,
 ): SavePaymentNotificationGateway {
 
     @Transactional
@@ -73,12 +75,34 @@ class SavePaymentNotificationProvider(
             return paymentNotification
         }
 
-        val subCard = subCardRepository.findByLastFourDigits(digits) ?: return paymentNotification
+        // Only the purchase's own group is searched; with several same-digit sub-cards in the
+        // group the purchase stays without a card, for the user to pick instead of a wrong guess.
+        val candidates = subCardRepository.findActiveByLastFourDigitsAndGroupId(digits, paymentNotification.groupId)
+        recordSubCardMatch(SubCardMatch.of(candidates.size))
+        val subCard = candidates.singleOrNull() ?: return paymentNotification
 
         return paymentNotification.copy(
             paymentMethodId = subCard.paymentMethodId,
             subCardId = subCard.id,
         )
+    }
+
+    private fun recordSubCardMatch(match: SubCardMatch) {
+        meterRegistry.counter("payment_notification.subcard.match", "result", match.tag).increment()
+    }
+
+    private enum class SubCardMatch(val tag: String) {
+        NONE("none"),
+        MATCHED("matched"),
+        AMBIGUOUS("ambiguous");
+
+        companion object {
+            fun of(candidateCount: Int): SubCardMatch = when (candidateCount) {
+                0 -> NONE
+                1 -> MATCHED
+                else -> AMBIGUOUS
+            }
+        }
     }
 
     private fun createInstallments(notification: PaymentNotification) {
