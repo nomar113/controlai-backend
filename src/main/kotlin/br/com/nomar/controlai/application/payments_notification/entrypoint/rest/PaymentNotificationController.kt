@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.categories.entrypoint.database.reposit
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.installments.entrypoint.database.repository.InstallmentRepository
 import br.com.nomar.controlai.application.installments.entrypoint.rest.response.InstallmentResponse
+import br.com.nomar.controlai.application.payment_methods.entrypoint.database.repository.PaymentMethodRepository
 import br.com.nomar.controlai.application.payments_notification.application.AssociateNotificationProvider
 import br.com.nomar.controlai.application.payments_notification.application.FindNotificationInvoiceSuggestionsProvider
 import br.com.nomar.controlai.application.payments_notification.application.PaymentNotificationPeriodQueryProvider
@@ -59,6 +60,7 @@ class PaymentNotificationController(
     private val paymentNotificationRepository: PaymentNotificationRepository,
     private val installmentRepository: InstallmentRepository,
     private val categoryRepository: CategoryRepository,
+    private val paymentMethodRepository: PaymentMethodRepository,
     private val budgetPeriodResolver: BudgetPeriodResolver,
     private val paymentNotificationPeriodQueryProvider: PaymentNotificationPeriodQueryProvider,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
@@ -76,6 +78,20 @@ class PaymentNotificationController(
         if (categoryId == null) return null
         return categoryRepository.findByIdAndGroupId(categoryId, groupId)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found")
+    }
+
+    // Same ownership rule as PATCH /notifications/{id}/payment-method: the card must belong to
+    // the caller's group and the sub-card to that card, so a purchase never gets another group's card.
+    private fun requireCardOwnedByGroup(paymentMethodId: Long?, subCardId: Long?, groupId: Long) {
+        if (paymentMethodId == null) {
+            if (subCardId != null) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "subCardId requires paymentMethodId")
+            return
+        }
+        val paymentMethod = paymentMethodRepository.findByIdAndGroupId(paymentMethodId, groupId)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment method not found")
+        if (subCardId != null && paymentMethod.subCards.none { it.id == subCardId }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Sub-card not found")
+        }
     }
 
     @GetMapping("/notifications")
@@ -298,6 +314,7 @@ class PaymentNotificationController(
     @Transactional
     fun createManualNotification(@Validated @RequestBody request: ManualPaymentNotificationRequest): PaymentNotificationResponse {
         val category = resolveCategory(request.categoryId, requestContext.groupId)
+        requireCardOwnedByGroup(request.paymentMethodId, request.subCardId, requestContext.groupId)
         val paymentNotification = PaymentNotification(
             groupId = requestContext.groupId,
             cardLastDigits = request.cardLastDigits,

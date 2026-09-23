@@ -30,7 +30,8 @@ class SavePaymentNotificationProvider(
 
             val existingCount = if (digits != null) {
                 paymentNotificationRepository
-                    .countByCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                    .countByGroupIdAndCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                        groupId = enriched.groupId,
                         cardLastDigits = digits,
                         purchasedAt = enriched.purchasedAt,
                         amount = enriched.amount,
@@ -40,7 +41,8 @@ class SavePaymentNotificationProvider(
                     )
             } else {
                 paymentNotificationRepository
-                    .countByPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                    .countByGroupIdAndPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+                        groupId = enriched.groupId,
                         paymentMethodId = enriched.paymentMethodId,
                         purchasedAt = enriched.purchasedAt,
                         amount = enriched.amount,

@@ -10,7 +10,8 @@ import java.time.Instant
 
 @Repository
 interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Long> {
-    fun countByCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+    fun countByGroupIdAndCardLastDigitsAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+        groupId: Long,
         cardLastDigits: String,
         purchasedAt: Instant,
         amount: BigDecimal,
@@ -19,7 +20,8 @@ interface PaymentNotificationRepository : JpaRepository<PaymentNotification, Lon
         origin: String,
     ): Long
 
-    fun countByPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+    fun countByGroupIdAndPaymentMethodIdAndPurchasedAtAndAmountAndMerchantNameAndNumberOfInstallmentsAndOrigin(
+        groupId: Long,
         paymentMethodId: Long?,
         purchasedAt: Instant,
         amount: BigDecimal,
