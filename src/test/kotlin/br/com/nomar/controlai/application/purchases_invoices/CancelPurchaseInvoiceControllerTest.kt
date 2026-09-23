@@ -19,6 +19,9 @@ class CancelPurchaseInvoiceControllerTest {
 
     @BeforeEach
     fun cleanUp() {
+        jdbcTemplate.update("UPDATE payment_notifications SET purchase_invoice_id = NULL WHERE purchase_invoice_id IS NOT NULL")
+        jdbcTemplate.update("DELETE FROM purchase_payments")
+        jdbcTemplate.update("DELETE FROM purchase_items")
         jdbcTemplate.update("DELETE FROM purchase_invoices")
     }
 

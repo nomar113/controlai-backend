@@ -29,6 +29,8 @@ class PaymentNotificationControllerTest {
     fun cleanUp() {
         jdbcTemplate.update("DELETE FROM installments")
         jdbcTemplate.update("DELETE FROM payment_notifications")
+        jdbcTemplate.update("DELETE FROM purchase_payments")
+        jdbcTemplate.update("DELETE FROM purchase_items")
         jdbcTemplate.update("DELETE FROM purchase_invoices")
         jdbcTemplate.update("DELETE FROM sub_cards")
         jdbcTemplate.update("DELETE FROM budget_payment_periods")
