@@ -1,5 +1,7 @@
 package br.com.nomar.controlai.config
 
+import br.com.nomar.controlai.domain.account_deletion.usecase.ResolveGroupDeletionBlockUseCase
+import br.com.nomar.controlai.domain.account_deletion.usecase.ResolveUserDeletionBlockUseCase
 import br.com.nomar.controlai.domain.auth.gateway.FindApiKeyByHashGateway
 import br.com.nomar.controlai.domain.billing.gateway.FindActiveSubscriptionByGroupIdGateway
 import io.micrometer.core.instrument.MeterRegistry
@@ -19,6 +21,8 @@ import org.springframework.security.web.SecurityFilterChain
 class SecurityConfig(
     private val findApiKeyByHashGateway: FindApiKeyByHashGateway,
     private val findActiveSubscriptionByGroupIdGateway: FindActiveSubscriptionByGroupIdGateway,
+    private val resolveUserDeletionBlockUseCase: ResolveUserDeletionBlockUseCase,
+    private val resolveGroupDeletionBlockUseCase: ResolveGroupDeletionBlockUseCase,
     private val meterRegistry: MeterRegistry,
 ) {
 
@@ -33,11 +37,17 @@ class SecurityConfig(
                 ApiKeyAuthFilter(findApiKeyByHashGateway, meterRegistry),
                 BearerTokenAuthenticationFilter::class.java,
             )
-            // SubscriptionGuardFilter runs after JWT/API key authentication is resolved, so it
-            // can read the authenticated groupId and gate access on subscription status.
+            // Both guards run after JWT/API key authentication is resolved, so they can read the
+            // authenticated user and group. The deletion guard comes first: an account being
+            // deleted gets 423, not 402. Anchoring the subscription guard on the deletion guard
+            // (instead of both on the JWT filter) makes that order explicit.
+            .addFilterAfter(
+                AccountDeletionGuardFilter(resolveUserDeletionBlockUseCase, resolveGroupDeletionBlockUseCase, meterRegistry),
+                BearerTokenAuthenticationFilter::class.java,
+            )
             .addFilterAfter(
                 SubscriptionGuardFilter(findActiveSubscriptionByGroupIdGateway),
-                BearerTokenAuthenticationFilter::class.java,
+                AccountDeletionGuardFilter::class.java,
             )
             .authorizeHttpRequests {
                 it

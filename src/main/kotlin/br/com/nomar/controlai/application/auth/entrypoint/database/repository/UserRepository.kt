@@ -12,6 +12,17 @@ interface UserRepository : JpaRepository<UserModel, Long> {
     fun findByEmail(email: String): UserModel?
     fun findByGoogleSub(googleSub: String): UserModel?
 
+    // Single-column lookups for the per-request deletion guard: primary key, and
+    // group_members.group_id joined to the users primary key
+    @Query("SELECT u.deletionScheduledFor FROM UserModel u WHERE u.id = :userId")
+    fun findDeletionScheduledForById(@Param("userId") userId: Long): Instant?
+
+    @Query(
+        "SELECT u.deletionScheduledFor FROM UserModel u, GroupMemberModel gm " +
+            "WHERE gm.userId = u.id AND gm.groupId = :groupId",
+    )
+    fun findDeletionScheduledForByGroupId(@Param("groupId") groupId: Long): List<Instant?>
+
     // Conditional updates: the affected row count tells whether the state actually changed,
     // so concurrent requests cannot both succeed
     @Modifying
