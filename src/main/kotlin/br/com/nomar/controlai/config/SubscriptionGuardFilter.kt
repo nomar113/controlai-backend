@@ -23,8 +23,12 @@ class SubscriptionGuardFilter(
     // Same public routes as the permitAll list in SecurityConfig: no subscription to check there.
     private val publicPatterns = listOf("/auth/**", "/webhooks/**", "/health", "/actuator/health")
 
+    // Account deletion must work without a subscription too (App Store 5.1.1(v), Google Play):
+    // e.g. an account created by Google login that never bought a plan.
+    private val subscriptionExemptPatterns = listOf("/me/deletion")
+
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        publicPatterns.any { pathMatcher.match(it, request.requestURI) }
+        (publicPatterns + subscriptionExemptPatterns).any { pathMatcher.match(it, request.requestURI) }
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val groupId = resolveGroupId(SecurityContextHolder.getContext().authentication)

@@ -145,4 +145,22 @@ class SubscriptionGuardFilterTest {
             assertEquals(200, response.status)
         }
     }
+
+    @Test
+    fun `bypasses account deletion routes so accounts without subscription can still be deleted`() {
+        val groupId = 7L
+        authenticateAsGroup(groupId)
+        val filter = buildFilter(mapOf(groupId to null))
+
+        listOf("GET", "POST", "DELETE").forEach { method ->
+            chainCalled = false
+            val request = MockHttpServletRequest(method, "/me/deletion")
+            val response = MockHttpServletResponse()
+
+            filter.doFilter(request, response, chain)
+
+            assertTrue(chainCalled, "expected $method /me/deletion to bypass the subscription check")
+            assertEquals(200, response.status)
+        }
+    }
 }

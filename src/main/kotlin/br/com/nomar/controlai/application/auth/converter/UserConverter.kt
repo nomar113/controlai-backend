@@ -13,6 +13,8 @@ class UserConverter {
         email = model.email,
         passwordHash = model.passwordHash,
         googleSub = model.googleSub,
+        deletionRequestedAt = model.deletionRequestedAt,
+        deletionScheduledFor = model.deletionScheduledFor,
     )
 
     fun toModel(entity: User) = UserModel(
@@ -21,5 +23,7 @@ class UserConverter {
         email = entity.email,
         passwordHash = entity.passwordHash,
         googleSub = entity.googleSub,
+        deletionRequestedAt = entity.deletionRequestedAt,
+        deletionScheduledFor = entity.deletionScheduledFor,
     )
 }

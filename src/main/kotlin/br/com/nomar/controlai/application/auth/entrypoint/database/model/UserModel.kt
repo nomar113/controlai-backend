@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
+import java.time.Instant
 import java.time.LocalDateTime
 
 @Entity
@@ -28,6 +29,12 @@ data class UserModel(
 
     @Column(name = "google_sub", unique = true)
     val googleSub: String? = null,
+
+    @Column(name = "deletion_requested_at")
+    val deletionRequestedAt: Instant? = null,
+
+    @Column(name = "deletion_scheduled_for")
+    val deletionScheduledFor: Instant? = null,
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
