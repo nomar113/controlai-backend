@@ -51,6 +51,10 @@ class HandleKiwifyWebhookUseCase(
     @Value("\${app.web-url}") private val appWebUrl: String,
 ) {
 
+    // The Kiwify account also sells other products (e.g. Relatório da Sorte) and the webhook is
+    // registered for "all products", so events for any other product id must never touch ControlAI.
+    private val controlAiProductIds = setOf(annualProductId, lifetimeProductId).filter { it.isNotBlank() }.toSet()
+
     fun execute(event: ParsedKiwifyWebhookEvent): Result<Unit> {
         return runCatching {
             if (findKiwifyWebhookEventByIdGateway.execute(event.eventId).getOrThrow() != null) {
@@ -67,6 +71,12 @@ class HandleKiwifyWebhookUseCase(
                     processedAt = Instant.now(),
                 ),
             ).getOrThrow()
+
+            if (event.productId != null && event.productId !in controlAiProductIds) {
+                log.info("Kiwify webhook {}: product '{}' is not a ControlAI product; ignoring", event.eventId, event.productId)
+                recordMetric(event.orderStatus, "foreign_product")
+                return@runCatching
+            }
 
             val email = event.customerEmail?.trim()?.lowercase()
             if (email.isNullOrBlank()) {
@@ -126,15 +136,8 @@ class HandleKiwifyWebhookUseCase(
     }
 
     private fun activateSubscription(groupId: Long, email: String, productId: String?) {
-        val plan = when (productId) {
-            lifetimeProductId -> SubscriptionPlan.LIFETIME
-            else -> {
-                if (productId != null && productId != annualProductId) {
-                    log.warn("Unknown Kiwify product id '{}' for group {}; defaulting to ANNUAL", productId, groupId)
-                }
-                SubscriptionPlan.ANNUAL
-            }
-        }
+        // Foreign product ids are filtered out in execute(); a missing product id keeps ANNUAL.
+        val plan = if (productId == lifetimeProductId) SubscriptionPlan.LIFETIME else SubscriptionPlan.ANNUAL
 
         upsertSubscriptionGateway.execute(
             Subscription(groupId = groupId, plan = plan, status = SubscriptionStatus.ACTIVE),

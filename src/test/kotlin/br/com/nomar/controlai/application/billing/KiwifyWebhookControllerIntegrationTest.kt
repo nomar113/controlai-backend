@@ -331,6 +331,29 @@ class KiwifyWebhookControllerIntegrationTest {
     }
 
     @Test
+    fun `compra_aprovada for another product of the Kiwify account records the event but creates no account`() {
+        val foreignPayload = """
+            {"order_id":"order-foreign-1","order_status":"compra_aprovada","customer":{"email":"$newCustomerEmail","full_name":"New Customer"},"product":{"product_id":"other-product-id"}}
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/webhooks/kiwify")
+                .param("token", validToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(foreignPayload),
+        ).andExpect(status().isOk)
+
+        val eventCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM kiwify_webhook_events WHERE raw_payload LIKE ?",
+            Int::class.java,
+            "%order-foreign-1%",
+        )
+        assertEquals(1, eventCount)
+        val userCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?", Int::class.java, newCustomerEmail)
+        assertEquals(0, userCount)
+    }
+
+    @Test
     fun `compra_aprovada for a brand-new email creates the account, activates the subscription and sends the set-password email`() {
         val newCustomerPayload = """
             {"order_id":"order-new-customer-1","order_status":"compra_aprovada","customer":{"email":"$newCustomerEmail","full_name":"New Customer"},"product":{"product_id":"$annualProductId"}}

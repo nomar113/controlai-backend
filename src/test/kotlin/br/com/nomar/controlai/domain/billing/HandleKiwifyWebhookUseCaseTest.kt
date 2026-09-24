@@ -151,15 +151,46 @@ class HandleKiwifyWebhookUseCaseTest {
     }
 
     @Test
-    fun `compra_aprovada with unknown product id defaults to ANNUAL`() {
+    fun `compra_aprovada without a product id defaults to ANNUAL`() {
         val useCase = buildUseCase()
 
         val result = useCase.execute(
-            event(eventId = "evt-2b", orderStatus = "compra_aprovada", customerEmail = existingEmail, productId = "some-other-product-id"),
+            event(eventId = "evt-2b", orderStatus = "compra_aprovada", customerEmail = existingEmail, productId = null),
         )
 
         assertTrue(result.isSuccess)
         assertEquals(SubscriptionPlan.ANNUAL, upsertedSubscriptions[0].plan)
+    }
+
+    @Test
+    fun `compra_aprovada for another product of the account neither creates an account nor a subscription`() {
+        val useCase = buildUseCase()
+        val newEmail = "outro-produto@controlai.test"
+
+        val result = useCase.execute(
+            event(eventId = "evt-foreign-1", orderStatus = "compra_aprovada", customerEmail = newEmail, productId = "other-product-id"),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, savedEvents.size)
+        assertNull(usersByEmail[newEmail])
+        assertTrue(upsertedSubscriptions.isEmpty())
+        assertTrue(welcomeEmailsSent.isEmpty())
+    }
+
+    @Test
+    fun `refund of another product of the account keeps the ControlAI subscription active`() {
+        activeSubscriptionByGroup[existingGroupId] =
+            Subscription(id = 1, groupId = existingGroupId, plan = SubscriptionPlan.ANNUAL, status = SubscriptionStatus.ACTIVE)
+        val useCase = buildUseCase()
+
+        val result = useCase.execute(
+            event(eventId = "evt-foreign-2", orderStatus = "compra_reembolsada", customerEmail = existingEmail, productId = "other-product-id"),
+        )
+
+        assertTrue(result.isSuccess)
+        assertTrue(upsertedSubscriptions.isEmpty())
+        assertEquals(SubscriptionStatus.ACTIVE, activeSubscriptionByGroup[existingGroupId]?.status)
     }
 
     @Test
