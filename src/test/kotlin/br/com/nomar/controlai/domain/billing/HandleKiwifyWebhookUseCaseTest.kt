@@ -48,7 +48,10 @@ class HandleKiwifyWebhookUseCaseTest {
     // for the same new email winning the race and creating the account first.
     private var simulateConcurrentAccountCreationFor: String? = null
 
-    private fun buildUseCase() = HandleKiwifyWebhookUseCase(
+    private fun buildUseCase(
+        annualProductId: String = this.annualProductId,
+        lifetimeProductId: String = this.lifetimeProductId,
+    ) = HandleKiwifyWebhookUseCase(
         findKiwifyWebhookEventByIdGateway = { id ->
             Result.success(if (existingEventIds.contains(id)) KiwifyWebhookEvent(kiwifyEventId = id, orderStatus = "x", rawPayload = "{}") else null)
         },
@@ -176,6 +179,19 @@ class HandleKiwifyWebhookUseCaseTest {
         assertNull(usersByEmail[newEmail])
         assertTrue(upsertedSubscriptions.isEmpty())
         assertTrue(welcomeEmailsSent.isEmpty())
+    }
+
+    @Test
+    fun `without the product ids configured every event that names a product is ignored`() {
+        val useCase = buildUseCase(annualProductId = "", lifetimeProductId = "")
+
+        val result = useCase.execute(
+            event(eventId = "evt-unconfigured", orderStatus = "compra_aprovada", customerEmail = existingEmail, productId = "any-product-id"),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, savedEvents.size)
+        assertTrue(upsertedSubscriptions.isEmpty())
     }
 
     @Test
