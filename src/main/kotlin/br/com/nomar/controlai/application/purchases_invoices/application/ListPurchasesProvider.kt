@@ -2,6 +2,7 @@ package br.com.nomar.controlai.application.purchases_invoices.application
 
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
 import br.com.nomar.controlai.domain.auth.RequestContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchasesGateway
 import org.springframework.stereotype.Component
@@ -24,6 +25,7 @@ class ListPurchasesProvider(
                     description = projection.getDescription(),
                     categoryName = projection.getCategoryName(),
                     cancelledAt = projection.getCancelledAt(),
+                    status = InvoiceStatus.valueOf(projection.getStatus()),
                 )
             }
         }

@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -30,6 +31,7 @@ class PurchaseInvoiceRepositoryTest {
         total: BigDecimal = BigDecimal("100.00"),
         date: Instant = Instant.now(),
         cancelledAt: LocalDateTime? = null,
+        status: InvoiceStatus = InvoiceStatus.PROCESSED,
     ): PurchaseInvoiceModel {
         return invoiceRepository.save(
             PurchaseInvoiceModel(
@@ -46,6 +48,7 @@ class PurchaseInvoiceRepositoryTest {
                 taxes = BigDecimal.ZERO,
                 discount = BigDecimal.ZERO,
                 cancelledAt = cancelledAt,
+                status = status,
             )
         )
     }
@@ -164,5 +167,20 @@ class PurchaseInvoiceRepositoryTest {
         ).filter { it.merchantName == "Loja Teste Repository" }
 
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `should exclude pending invoice even when its total matches`() {
+        // PENDING invoices have no total yet; a stray value must still never be suggested
+        createInvoice(total = BigDecimal("42.00"), status = InvoiceStatus.PENDING)
+        val processed = createInvoice(total = BigDecimal("42.00"))
+
+        val result = invoiceRepository.findByTotalAndNotAssociated(
+            amount = BigDecimal("42.00"),
+            purchasedAt = Instant.now(),
+            groupId = 1L,
+        ).filter { it.merchantName == "Loja Teste Repository" }
+
+        assertEquals(listOf(processed.id), result.map { it.id })
     }
 }

@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
 import br.com.nomar.controlai.domain.auth.RequestContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -30,6 +31,10 @@ class SearchNotificationsProvider(
 
             if (invoice.deletedAt != null) {
                 throw NoSuchElementException("PurchaseInvoice is deleted: $invoiceId")
+            }
+
+            if (invoice.status == InvoiceStatus.PENDING) {
+                throw IllegalStateException("PurchaseInvoice is pending: $invoiceId")
             }
 
             if (invoice.cancelledAt != null) {

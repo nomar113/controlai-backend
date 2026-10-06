@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.response.PaymentNotificationResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.domain.auth.RequestContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -31,6 +32,10 @@ class AssociateNotificationProvider(
 
             val invoice = purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, groupId)
                 ?: throw NoSuchElementException("PurchaseInvoice not found: $purchaseInvoiceId")
+
+            if (invoice.status == InvoiceStatus.PENDING) {
+                throw IllegalStateException("PurchaseInvoice is pending: $purchaseInvoiceId")
+            }
 
             if (invoice.cancelledAt != null) {
                 throw NoSuchElementException("PurchaseInvoice is cancelled: $purchaseInvoiceId")

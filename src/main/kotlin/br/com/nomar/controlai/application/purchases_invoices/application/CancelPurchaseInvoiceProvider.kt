@@ -2,6 +2,7 @@ package br.com.nomar.controlai.application.purchases_invoices.application
 
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.domain.auth.RequestContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.CancelPurchaseInvoiceGateway
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -19,6 +20,10 @@ class CancelPurchaseInvoiceProvider(
         return runCatching {
             val model = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
                 ?: throw NoSuchElementException("PurchaseInvoice not found: $id")
+
+            if (model.status == InvoiceStatus.PENDING) {
+                throw IllegalStateException("PurchaseInvoice is pending: $id")
+            }
 
             if (model.cancelledAt != null) {
                 throw IllegalStateException("PurchaseInvoice already cancelled: $id")

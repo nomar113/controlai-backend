@@ -1,7 +1,10 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model
 
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -39,7 +42,7 @@ data class PurchaseInvoiceModel (
     @Column(name = "total_items")
     val totalItems: Int?,
 
-    @Column(name = "invoice_url")
+    @Column(name = "invoice_url", length = 1024)
     val invoiceUrl: String?,
 
     @Column(name = "access_key", length = 44)
@@ -68,6 +71,12 @@ data class PurchaseInvoiceModel (
 
     @Column(name = "deleted_at")
     val deletedAt: LocalDateTime? = null,
+
+    // For a PENDING invoice, date is the scan time and the merchant/value columns stay null.
+    // The generated column active_access_key (V44) is intentionally not mapped: MySQL computes it.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    val status: InvoiceStatus = InvoiceStatus.PROCESSED,
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

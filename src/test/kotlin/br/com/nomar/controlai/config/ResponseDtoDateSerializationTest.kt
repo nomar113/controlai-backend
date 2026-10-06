@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.AssociateInvoiceResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -52,6 +53,7 @@ class ResponseDtoDateSerializationTest {
             totalItems = 3,
             total = BigDecimal("50.00"),
             cancelledAt = instant,
+            status = InvoiceStatus.PROCESSED,
         )
 
         val json = objectMapper.writeValueAsString(response)
@@ -77,6 +79,7 @@ class ResponseDtoDateSerializationTest {
             discount = BigDecimal.ZERO,
             description = null,
             cancelledAt = instant,
+            status = InvoiceStatus.PROCESSED,
             items = emptyList(),
             payments = emptyList(),
             associatedPayment = null,

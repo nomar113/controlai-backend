@@ -13,4 +13,5 @@ interface PurchaseProjection {
     fun getCategoryName(): String?
     fun getCategoryId(): Long?
     fun getCancelledAt(): LocalDateTime?
+    fun getStatus(): String
 }

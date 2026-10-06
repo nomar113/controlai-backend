@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.payments_notification.entrypoint.datab
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.AssociateInvoiceResponse
 import br.com.nomar.controlai.domain.auth.RequestContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.AssociateInvoiceGateway
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -22,6 +23,10 @@ class AssociateInvoiceProvider(
             val groupId = requestContext.groupId
             val invoice = purchaseInvoiceRepository.findByIdAndGroupId(invoiceId, groupId)
                 ?: throw NoSuchElementException("PurchaseInvoice not found: $invoiceId")
+
+            if (invoice.status == InvoiceStatus.PENDING) {
+                throw IllegalStateException("PurchaseInvoice is pending: $invoiceId")
+            }
 
             if (invoice.cancelledAt != null) {
                 throw NoSuchElementException("PurchaseInvoice is cancelled: $invoiceId")

@@ -7,21 +7,26 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.AssociateInvoiceRequest
-import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.PurchaseInvoiceRequest
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.request.RegisterPendingInvoiceRequest
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.AssociateInvoiceResponse
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.ErrorMessageResponse
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PendingInvoiceResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseInvoiceDetailResponse
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response.PurchaseResponse
 import br.com.nomar.controlai.application.suggestion.entrypoint.rest.response.SuggestionResponse
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
+import br.com.nomar.controlai.domain.purchases_invoices.exception.DuplicateInvoiceException
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
-import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterPendingInvoiceUseCase
 import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -44,7 +49,7 @@ import java.time.ZoneOffset
 @RestController
 @RequestMapping("/purchases")
 class PurchaseInvoiceController(
-    private val notifyPurchaseInvoiceQueueUseCase: NotifyPurchaseInvoiceQueueUseCase,
+    private val registerPendingInvoiceUseCase: RegisterPendingInvoiceUseCase,
     private val cancelPurchaseInvoiceUseCase: CancelPurchaseInvoiceUseCase,
     private val deactivatePurchaseInvoiceUseCase: DeactivatePurchaseInvoiceUseCase,
     private val listPurchasesUseCase: ListPurchasesUseCase,
@@ -88,6 +93,7 @@ class PurchaseInvoiceController(
                         categoryName = projection.getCategoryName(),
                         categoryId = projection.getCategoryId(),
                         cancelledAt = projection.getCancelledAt(),
+                        status = InvoiceStatus.valueOf(projection.getStatus()),
                     )
                 )
             }
@@ -169,12 +175,24 @@ class PurchaseInvoiceController(
             .getOrElse { throw ResponseStatusException(HttpStatus.NOT_FOUND, it.message) }
     }
 
-    @PostMapping("/invoice")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun enqueuePurchaseInvoice(@Validated @RequestBody request: PurchaseInvoiceRequest): PurchaseInvoiceRequest {
-        notifyPurchaseInvoiceQueueUseCase.execute(request).getOrThrow()
-        return request
+    // Errors carry a {message} body built here, because ResponseStatusException reasons are not
+    // exposed (server.error.include-message=never) and the app shows these messages to the user
+    @PostMapping("/invoices/pending")
+    fun registerPendingInvoice(@Validated @RequestBody request: RegisterPendingInvoiceRequest): ResponseEntity<Any> {
+        return registerPendingInvoiceUseCase.execute(request.qrCodeContent).fold(
+            onSuccess = { ResponseEntity.status(HttpStatus.CREATED).body(PendingInvoiceResponse.from(it)) },
+            onFailure = { ex ->
+                when (ex) {
+                    is DuplicateInvoiceException -> errorBody(HttpStatus.CONFLICT, ex.message)
+                    is IllegalArgumentException -> errorBody(HttpStatus.BAD_REQUEST, ex.message)
+                    else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+                }
+            },
+        )
     }
+
+    private fun errorBody(status: HttpStatus, message: String?): ResponseEntity<Any> =
+        ResponseEntity.status(status).body(ErrorMessageResponse(message))
 
     @PatchMapping("/invoices/{invoiceId}/associate")
     fun associateInvoice(

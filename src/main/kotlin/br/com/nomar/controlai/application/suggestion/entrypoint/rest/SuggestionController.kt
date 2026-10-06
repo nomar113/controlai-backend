@@ -20,6 +20,7 @@ class SuggestionController(
         val result = findInvoiceSuggestionsUseCase.execute(id).getOrElse { ex ->
             when (ex) {
                 is NoSuchElementException -> throw ResponseStatusException(HttpStatus.NOT_FOUND, ex.message)
+                is IllegalStateException -> throw ResponseStatusException(HttpStatus.CONFLICT, ex.message)
                 else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
             }
         }

@@ -5,13 +5,14 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseItemRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseRepository
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.AssociateInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.CancelPurchaseInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.DeactivatePurchaseInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.DisassociateInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.ListPurchasesGateway
-import br.com.nomar.controlai.domain.purchases_invoices.gateway.NotifyPurchaseInvoiceQueueGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.RegisterPendingInvoiceGateway
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.SearchNotificationsGateway
 import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
@@ -19,12 +20,14 @@ import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseIn
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
-import br.com.nomar.controlai.domain.purchases_invoices.usecase.NotifyPurchaseInvoiceQueueUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterPendingInvoiceUseCase
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.LocalDateTime
 
 @Suppress("UNCHECKED_CAST")
@@ -44,6 +47,7 @@ class PurchaseInvoiceControllerTest {
                 merchantName = "Mercado A",
                 totalItems = 2,
                 total = BigDecimal("100.00"),
+                status = InvoiceStatus.PROCESSED,
             ),
             Purchase(
                 id = 2L,
@@ -51,14 +55,12 @@ class PurchaseInvoiceControllerTest {
                 merchantName = "Mercado B",
                 totalItems = null,
                 total = BigDecimal("50.00"),
+                status = InvoiceStatus.PROCESSED,
             ),
         )
 
         val listPurchasesUseCase = ListPurchasesUseCase(
             ListPurchasesGateway { Result.success(purchases) }
-        )
-        val notifyPurchaseInvoiceQueueUseCase = NotifyPurchaseInvoiceQueueUseCase(
-            NotifyPurchaseInvoiceQueueGateway { Result.success(Unit) }
         )
         val deactivatePurchaseInvoiceUseCase = DeactivatePurchaseInvoiceUseCase(
             DeactivatePurchaseInvoiceGateway { Result.success(Unit) }
@@ -75,8 +77,11 @@ class PurchaseInvoiceControllerTest {
         val searchNotificationsUseCase = SearchNotificationsUseCase(
             SearchNotificationsGateway { _, _, _, _ -> Result.success(emptyList()) }
         )
+        val requestContext = object : RequestContext { override val userId = 1L; override val groupId = 1L; override val email = "test@example.com" }
         val controller = PurchaseInvoiceController(
-            notifyPurchaseInvoiceQueueUseCase = notifyPurchaseInvoiceQueueUseCase,
+            registerPendingInvoiceUseCase = RegisterPendingInvoiceUseCase(
+                stubOf(RegisterPendingInvoiceGateway::class.java), requestContext, SimpleMeterRegistry(), Clock.systemUTC(),
+            ),
             cancelPurchaseInvoiceUseCase = cancelPurchaseInvoiceUseCase,
             deactivatePurchaseInvoiceUseCase = deactivatePurchaseInvoiceUseCase,
             listPurchasesUseCase = listPurchasesUseCase,
@@ -88,7 +93,7 @@ class PurchaseInvoiceControllerTest {
             purchaseItemRepository = stubOf(PurchaseItemRepository::class.java),
             purchasePaymentRepository = stubOf(PurchasePaymentRepository::class.java),
             paymentNotificationRepository = stubOf(PaymentNotificationRepository::class.java),
-            requestContext = object : RequestContext { override val userId = 1L; override val groupId = 1L; override val email = "test@example.com" },
+            requestContext = requestContext,
         )
 
         val result = controller.listPurchases()

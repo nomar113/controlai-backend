@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.purchases_invoices.application.SearchN
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.config.TestSecurityContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -56,6 +57,7 @@ class SearchNotificationsProviderTest {
     private fun createInvoice(
         cancelledAt: LocalDateTime? = null,
         deletedAt: LocalDateTime? = null,
+        status: InvoiceStatus = InvoiceStatus.PROCESSED,
     ): PurchaseInvoiceModel {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
@@ -72,6 +74,7 @@ class SearchNotificationsProviderTest {
                 taxes = BigDecimal.ZERO,
                 discount = BigDecimal.ZERO,
                 cancelledAt = cancelledAt,
+                status = status,
             )
         )
         createdInvoiceIds.add(invoice.id!!)
@@ -320,5 +323,15 @@ class SearchNotificationsProviderTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is NoSuchElementException)
+    }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice is pending`() {
+        val invoice = createInvoice(status = InvoiceStatus.PENDING)
+
+        val result = provider.execute(invoice.id!!, null, null, null)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
     }
 }

@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.purchases_invoices.application.Disasso
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.config.TestSecurityContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
+import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -52,7 +54,10 @@ class DisassociateInvoiceProviderTest {
         TestSecurityContext.clear()
     }
 
-    private fun createInvoice(cancelledAt: LocalDateTime? = null): PurchaseInvoiceModel {
+    private fun createInvoice(
+        cancelledAt: LocalDateTime? = null,
+        status: InvoiceStatus = InvoiceStatus.PROCESSED,
+    ): PurchaseInvoiceModel {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
@@ -68,6 +73,7 @@ class DisassociateInvoiceProviderTest {
                 taxes = BigDecimal.ZERO,
                 discount = BigDecimal.ZERO,
                 cancelledAt = cancelledAt,
+                status = status,
             )
         )
         createdInvoiceIds.add(invoice.id!!)
@@ -126,5 +132,17 @@ class DisassociateInvoiceProviderTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is NoSuchElementException)
+    }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice is pending`() {
+        val invoice = createInvoice(status = InvoiceStatus.PENDING)
+        val notification = createNotification(purchaseInvoiceId = invoice.id)
+
+        val result = provider.execute(invoice.id!!)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertEquals(invoice.id, notificationRepository.findById(notification.id).get().purchaseInvoiceId)
     }
 }

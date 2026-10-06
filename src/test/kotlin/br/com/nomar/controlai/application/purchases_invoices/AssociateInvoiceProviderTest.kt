@@ -6,6 +6,7 @@ import br.com.nomar.controlai.application.purchases_invoices.application.Associa
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.config.TestSecurityContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -54,7 +55,10 @@ class AssociateInvoiceProviderTest {
         TestSecurityContext.clear()
     }
 
-    private fun createInvoice(cancelledAt: LocalDateTime? = null): PurchaseInvoiceModel {
+    private fun createInvoice(
+        cancelledAt: LocalDateTime? = null,
+        status: InvoiceStatus = InvoiceStatus.PROCESSED,
+    ): PurchaseInvoiceModel {
         val invoice = invoiceRepository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
@@ -70,6 +74,7 @@ class AssociateInvoiceProviderTest {
                 taxes = BigDecimal.ZERO,
                 discount = BigDecimal.ZERO,
                 cancelledAt = cancelledAt,
+                status = status,
             )
         )
         createdInvoiceIds.add(invoice.id!!)
@@ -193,5 +198,17 @@ class AssociateInvoiceProviderTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is NoSuchElementException)
+    }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice is pending`() {
+        val invoice = createInvoice(status = InvoiceStatus.PENDING)
+        val notification = createNotification()
+
+        val result = provider.execute(invoice.id!!, notification.id)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertNull(notificationRepository.findById(notification.id).get().purchaseInvoiceId)
     }
 }

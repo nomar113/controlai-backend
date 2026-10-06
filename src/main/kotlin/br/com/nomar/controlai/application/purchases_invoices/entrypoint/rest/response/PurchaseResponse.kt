@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest.response
 
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import br.com.nomar.controlai.domain.purchases_invoices.entity.Purchase
 import java.math.BigDecimal
 import java.time.Instant
@@ -15,6 +16,7 @@ data class PurchaseResponse(
     val categoryName: String? = null,
     val categoryId: Long? = null,
     val cancelledAt: Instant? = null,
+    val status: InvoiceStatus,
 ) {
     companion object {
         // Purchase.date/cancelledAt are still LocalDateTime (task 2.0 didn't cover this projection),
@@ -31,6 +33,7 @@ data class PurchaseResponse(
             categoryName = purchase.categoryName,
             categoryId = purchase.categoryId,
             cancelledAt = purchase.cancelledAt?.atZone(ZoneOffset.UTC)?.toInstant(),
+            status = purchase.status,
         )
     }
 }

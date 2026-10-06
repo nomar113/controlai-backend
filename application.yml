@@ -40,7 +40,6 @@ aws:
     endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
     account-id: ${AWS_ACCOUNT_ID:000000000000}
     payments-notifications-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/payments-notifications
-    purchases-invoices-queue-url: ${aws.sqs.endpoint}/${aws.sqs.account-id}/purchases-invoices
 
 account-deletion:
   # Daily purge of the accounts whose 30-day grace period is over, in Brasília time

@@ -7,9 +7,7 @@ import br.com.nomar.controlai.application.groups.entrypoint.database.model.Group
 import br.com.nomar.controlai.application.installments.entrypoint.database.model.Installment
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.model.PaymentNotification
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
-import br.com.nomar.controlai.domain.purchases_invoices.entity.PurchaseInvoice
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -61,32 +59,6 @@ class EntityDateSerializationTest {
 
         assertTrue(json.contains("\"dueDate\":\"2026-01-15\""))
         assertTrue(json.contains("\"cancelledAt\":\"2026-01-15T13:00:00Z\""))
-    }
-
-    @Test
-    fun `PurchaseInvoice date deserializes the NFC-e producer offset format into the correct UTC instant`() {
-        // Formato real enviado pelo producer externo de NFC-e via fila SQS
-        // (@JsonFormat(pattern = "dd/MM/yyyy HH:mm:ssXXX") em PurchaseInvoice.date), sempre com
-        // o offset correto de America/Sao_Paulo. Ver PurchaseInvoiceQueueListener.
-        val json = """
-            {
-              "date": "15/01/2026 10:00:00-03:00",
-              "merchantName": "Mercado",
-              "merchantAddress": "Rua A",
-              "cnpj": "12.345.678/0001-90",
-              "totalItems": 1,
-              "invoiceUrl": "https://example.com/invoice",
-              "accessKey": "12345678901234567890123456789012345678901234",
-              "subtotal": 10.00,
-              "total": 10.00,
-              "taxes": 0.00,
-              "discount": 0.00
-            }
-        """.trimIndent()
-
-        val invoice = objectMapper.readValue(json, PurchaseInvoice::class.java)
-
-        assertEquals(Instant.parse("2026-01-15T13:00:00Z"), invoice.date)
     }
 
     @Test

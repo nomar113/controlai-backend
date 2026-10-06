@@ -4,6 +4,7 @@ import br.com.nomar.controlai.application.purchases_invoices.application.CancelP
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.config.TestSecurityContext
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,6 +15,7 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -34,7 +36,10 @@ class CancelPurchaseInvoiceProviderTest {
     @AfterEach
     fun clearAuth() = TestSecurityContext.clear()
 
-    private fun createInvoice(cancelledAt: LocalDateTime? = null): PurchaseInvoiceModel {
+    private fun createInvoice(
+        cancelledAt: LocalDateTime? = null,
+        status: InvoiceStatus = InvoiceStatus.PROCESSED,
+    ): PurchaseInvoiceModel {
         return repository.save(
             PurchaseInvoiceModel(
                 groupId = 1L,
@@ -50,6 +55,7 @@ class CancelPurchaseInvoiceProviderTest {
                 taxes = BigDecimal.ZERO,
                 discount = BigDecimal.ZERO,
                 cancelledAt = cancelledAt,
+                status = status,
             )
         )
     }
@@ -84,6 +90,20 @@ class CancelPurchaseInvoiceProviderTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IllegalStateException)
+
+        // Cleanup
+        jdbcTemplate.update("DELETE FROM purchase_invoices WHERE id = ?", invoice.id)
+    }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice is pending`() {
+        val invoice = createInvoice(status = InvoiceStatus.PENDING)
+
+        val result = provider.execute(invoice.id!!)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertNull(repository.findById(invoice.id!!).get().cancelledAt)
 
         // Cleanup
         jdbcTemplate.update("DELETE FROM purchase_invoices WHERE id = ?", invoice.id)

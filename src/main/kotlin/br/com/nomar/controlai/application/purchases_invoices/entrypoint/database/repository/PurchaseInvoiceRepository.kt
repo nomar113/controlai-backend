@@ -11,7 +11,8 @@ import java.time.Instant
 @Repository
 interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
-    fun countByAccessKey(accessKey: String): Long
+    // Soft deleted invoices are excluded by the entity's @SQLRestriction, matching the unique index
+    fun existsByGroupIdAndAccessKey(groupId: Long, accessKey: String): Boolean
 
     fun findAllByOrderByDateDesc(): List<PurchaseInvoiceModel>
 
@@ -23,6 +24,7 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
             WHERE pi.total = :amount
               AND pi.deleted_at IS NULL
               AND pi.cancelled_at IS NULL
+              AND pi.status = 'PROCESSED'
               AND pi.group_id = :groupId
               AND pi.id NOT IN (
                   SELECT purchase_invoice_id FROM payment_notifications
