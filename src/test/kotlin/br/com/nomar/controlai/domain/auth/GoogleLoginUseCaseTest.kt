@@ -2,7 +2,9 @@ package br.com.nomar.controlai.domain.auth
 
 import br.com.nomar.controlai.domain.auth.entity.AuthSession
 import br.com.nomar.controlai.domain.auth.entity.GoogleUserInfo
+import br.com.nomar.controlai.domain.auth.entity.IdentityProvider
 import br.com.nomar.controlai.domain.auth.entity.User
+import br.com.nomar.controlai.domain.auth.entity.UserIdentity
 import br.com.nomar.controlai.domain.auth.exception.InvalidGoogleTokenException
 import br.com.nomar.controlai.domain.auth.usecase.GoogleLoginUseCase
 import kotlin.test.Test
@@ -24,71 +26,74 @@ class GoogleLoginUseCaseTest {
 
     private fun useCase(
         verifyResult: Result<GoogleUserInfo> = Result.success(fakeGoogleUser),
-        byGoogleSub: User? = null,
+        byIdentity: User? = null,
         byEmail: User? = null,
-        linkedUser: User = existingUser,
         createdUser: User = existingUser,
+        onLink: (UserIdentity) -> Unit = {},
     ) = GoogleLoginUseCase(
         googleTokenVerifierGateway = { Result.success(verifyResult.getOrThrow()) },
-        findUserByGoogleSubGateway = { Result.success(byGoogleSub) },
+        findUserByIdentityGateway = { provider, subject ->
+            assertEquals(IdentityProvider.GOOGLE, provider)
+            assertEquals("google-sub-123", subject)
+            Result.success(byIdentity)
+        },
         findUserByEmailGateway = { Result.success(byEmail) },
-        linkGoogleSubToUserGateway = { _, _ -> Result.success(linkedUser) },
-        createUserWithPersonalGroupGateway = { Result.success(createdUser) },
+        linkIdentityGateway = { identity ->
+            onLink(identity)
+            Result.success(Unit)
+        },
+        createUserWithIdentityGateway = { _, _, _ -> Result.success(createdUser) },
         issueTokensGateway = { user -> Result.success(sessionFor(user)) },
     )
 
-    // --- Path 1: user already has google_sub ---
+    // --- Path 1: user already has a GOOGLE identity ---
 
     @Test
-    fun `should return session immediately when google_sub is already linked`() {
-        val linkedUser = User(id = 10, name = "Linked", email = "user@gmail.com", googleSub = "google-sub-123")
-        val uc = useCase(byGoogleSub = linkedUser)
+    fun `should return session immediately when google identity is already linked`() {
+        val linkedUser = User(id = 10, name = "Linked", email = "user@gmail.com")
+        var linked = false
+        val uc = useCase(byIdentity = linkedUser, onLink = { linked = true })
 
         val result = uc.execute("valid-id-token")
 
         assertTrue(result.isSuccess)
         assertEquals("access-token", result.getOrNull()?.accessToken)
         assertEquals(linkedUser, result.getOrNull()?.user)
+        assertTrue(!linked, "must not link again when the identity already exists")
     }
 
     // --- Path 2: same email with password account (RF-1.5) ---
 
     @Test
-    fun `should link google_sub to existing email-password account (RF-1-5)`() {
-        var linkedUserId: Long? = null
-        var linkedSub: String? = null
-        val uc = GoogleLoginUseCase(
-            googleTokenVerifierGateway = { Result.success(fakeGoogleUser) },
-            findUserByGoogleSubGateway = { Result.success(null) },
-            findUserByEmailGateway = { Result.success(existingUser) },
-            linkGoogleSubToUserGateway = { uid, sub ->
-                linkedUserId = uid
-                linkedSub = sub
-                Result.success(User(id = existingUser.id, name = existingUser.name, email = existingUser.email, googleSub = sub))
-            },
-            createUserWithPersonalGroupGateway = { Result.success(it) },
-            issueTokensGateway = { user -> Result.success(sessionFor(user)) },
-        )
+    fun `should link google identity to existing email-password account (RF-1-5)`() {
+        var linkedIdentity: UserIdentity? = null
+        val uc = useCase(byEmail = existingUser, onLink = { linkedIdentity = it })
 
         val result = uc.execute("valid-id-token")
 
         assertTrue(result.isSuccess)
-        assertEquals(42L, linkedUserId)
-        assertEquals("google-sub-123", linkedSub)
+        assertEquals(existingUser, result.getOrNull()?.user)
+        assertEquals(42L, linkedIdentity?.userId)
+        assertEquals(IdentityProvider.GOOGLE, linkedIdentity?.provider)
+        assertEquals("google-sub-123", linkedIdentity?.subject)
     }
 
     // --- Path 3: brand new account ---
 
     @Test
-    fun `should create new google-only account when no existing user found`() {
+    fun `should create new google-only account with its identity and google_sub`() {
         var createdUser: User? = null
+        var identityProvider: IdentityProvider? = null
+        var identitySubject: String? = null
         val uc = GoogleLoginUseCase(
             googleTokenVerifierGateway = { Result.success(fakeGoogleUser) },
-            findUserByGoogleSubGateway = { Result.success(null) },
+            findUserByIdentityGateway = { _, _ -> Result.success(null) },
             findUserByEmailGateway = { Result.success(null) },
-            linkGoogleSubToUserGateway = { _, _ -> error("should not link") },
-            createUserWithPersonalGroupGateway = { user ->
+            linkIdentityGateway = { error("should not link on the new-account path") },
+            createUserWithIdentityGateway = { user, provider, subject ->
                 createdUser = user
+                identityProvider = provider
+                identitySubject = subject
                 Result.success(User(id = 99, name = user.name, email = user.email, googleSub = user.googleSub))
             },
             issueTokensGateway = { user -> Result.success(sessionFor(user)) },
@@ -100,6 +105,8 @@ class GoogleLoginUseCaseTest {
         assertEquals("user@gmail.com", createdUser?.email)
         assertEquals("google-sub-123", createdUser?.googleSub)
         assertEquals(null, createdUser?.passwordHash, "Google-only account must have no password")
+        assertEquals(IdentityProvider.GOOGLE, identityProvider)
+        assertEquals("google-sub-123", identitySubject)
     }
 
     @Test
@@ -108,10 +115,10 @@ class GoogleLoginUseCaseTest {
         var createdUser: User? = null
         val uc = GoogleLoginUseCase(
             googleTokenVerifierGateway = { Result.success(mixedCaseGoogleUser) },
-            findUserByGoogleSubGateway = { Result.success(null) },
+            findUserByIdentityGateway = { _, _ -> Result.success(null) },
             findUserByEmailGateway = { Result.success(null) },
-            linkGoogleSubToUserGateway = { _, _ -> error("should not link") },
-            createUserWithPersonalGroupGateway = { user ->
+            linkIdentityGateway = { Result.success(Unit) },
+            createUserWithIdentityGateway = { user, _, _ ->
                 createdUser = user
                 Result.success(User(id = 1, name = user.name, email = user.email, googleSub = user.googleSub))
             },
@@ -129,10 +136,10 @@ class GoogleLoginUseCaseTest {
     fun `should fail with InvalidGoogleTokenException when token is invalid`() {
         val uc = GoogleLoginUseCase(
             googleTokenVerifierGateway = { Result.failure(InvalidGoogleTokenException()) },
-            findUserByGoogleSubGateway = { Result.success(null) },
-            findUserByEmailGateway = { Result.success(null) },
-            linkGoogleSubToUserGateway = { _, _ -> error("should not reach") },
-            createUserWithPersonalGroupGateway = { error("should not reach") },
+            findUserByIdentityGateway = { _, _ -> error("should not reach") },
+            findUserByEmailGateway = { error("should not reach") },
+            linkIdentityGateway = { error("should not reach") },
+            createUserWithIdentityGateway = { _, _, _ -> error("should not reach") },
             issueTokensGateway = { error("should not reach") },
         )
 

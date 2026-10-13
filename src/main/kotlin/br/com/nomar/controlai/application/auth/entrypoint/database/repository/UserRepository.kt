@@ -10,7 +10,6 @@ import java.time.Instant
 
 interface UserRepository : JpaRepository<UserModel, Long> {
     fun findByEmail(email: String): UserModel?
-    fun findByGoogleSub(googleSub: String): UserModel?
 
     // Single-column lookups for the per-request deletion guard: primary key, and
     // group_members.group_id joined to the users primary key

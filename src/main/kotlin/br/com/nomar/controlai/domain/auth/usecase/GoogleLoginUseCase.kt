@@ -1,23 +1,25 @@
 package br.com.nomar.controlai.domain.auth.usecase
 
 import br.com.nomar.controlai.domain.auth.entity.AuthSession
+import br.com.nomar.controlai.domain.auth.entity.IdentityProvider
 import br.com.nomar.controlai.domain.auth.entity.User
-import br.com.nomar.controlai.domain.auth.gateway.CreateUserWithPersonalGroupGateway
+import br.com.nomar.controlai.domain.auth.entity.UserIdentity
+import br.com.nomar.controlai.domain.auth.gateway.CreateUserWithIdentityGateway
 import br.com.nomar.controlai.domain.auth.gateway.FindUserByEmailGateway
-import br.com.nomar.controlai.domain.auth.gateway.FindUserByGoogleSubGateway
+import br.com.nomar.controlai.domain.auth.gateway.FindUserByIdentityGateway
 import br.com.nomar.controlai.domain.auth.gateway.GoogleTokenVerifierGateway
 import br.com.nomar.controlai.domain.auth.gateway.IssueTokensGateway
-import br.com.nomar.controlai.domain.auth.gateway.LinkGoogleSubToUserGateway
+import br.com.nomar.controlai.domain.auth.gateway.LinkIdentityGateway
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
 class GoogleLoginUseCase(
     private val googleTokenVerifierGateway: GoogleTokenVerifierGateway,
-    private val findUserByGoogleSubGateway: FindUserByGoogleSubGateway,
+    private val findUserByIdentityGateway: FindUserByIdentityGateway,
     private val findUserByEmailGateway: FindUserByEmailGateway,
-    private val linkGoogleSubToUserGateway: LinkGoogleSubToUserGateway,
-    private val createUserWithPersonalGroupGateway: CreateUserWithPersonalGroupGateway,
+    private val linkIdentityGateway: LinkIdentityGateway,
+    private val createUserWithIdentityGateway: CreateUserWithIdentityGateway,
     private val issueTokensGateway: IssueTokensGateway,
 ) {
 
@@ -25,28 +27,32 @@ class GoogleLoginUseCase(
         return runCatching {
             val googleUser = googleTokenVerifierGateway.verify(idToken).getOrThrow()
 
-            // 1. Already linked to this google_sub — fastest path
-            val byGoogleSub = findUserByGoogleSubGateway.execute(googleUser.sub).getOrThrow()
-            if (byGoogleSub != null) {
-                logger.info("Google login via existing google_sub for user {}", byGoogleSub.id)
-                return@runCatching issueTokensGateway.execute(byGoogleSub).getOrThrow()
+            // 1. Already linked to this Google account — fastest path
+            val byIdentity = findUserByIdentityGateway.execute(IdentityProvider.GOOGLE, googleUser.sub).getOrThrow()
+            if (byIdentity != null) {
+                logger.info("Google login via existing identity for user {}", byIdentity.id)
+                return@runCatching issueTokensGateway.execute(byIdentity).getOrThrow()
             }
 
-            // 2. Same email exists with password login (RF-1.5) — link google_sub
+            // 2. Same email exists with password login (RF-1.5) — link the Google identity
             val byEmail = findUserByEmailGateway.execute(googleUser.email.trim().lowercase()).getOrThrow()
             if (byEmail != null) {
-                val linked = linkGoogleSubToUserGateway.execute(byEmail.id!!, googleUser.sub).getOrThrow()
-                logger.info("Google linked to existing email-password account for user {}", linked.id)
-                return@runCatching issueTokensGateway.execute(linked).getOrThrow()
+                linkIdentityGateway.execute(
+                    UserIdentity(userId = byEmail.id!!, provider = IdentityProvider.GOOGLE, subject = googleUser.sub),
+                ).getOrThrow()
+                logger.info("Google linked to existing email-password account for user {}", byEmail.id)
+                return@runCatching issueTokensGateway.execute(byEmail).getOrThrow()
             }
 
-            // 3. New account — create with google_sub, no password
-            val newUser = createUserWithPersonalGroupGateway.execute(
+            // 3. New account — create without password, with its Google identity in the same transaction
+            val newUser = createUserWithIdentityGateway.execute(
                 User(
                     name = googleUser.name,
                     email = googleUser.email.trim().lowercase(),
                     googleSub = googleUser.sub,
                 ),
+                IdentityProvider.GOOGLE,
+                googleUser.sub,
             ).getOrThrow()
             logger.info("New account created via Google for user {}", newUser.id)
             issueTokensGateway.execute(newUser).getOrThrow()

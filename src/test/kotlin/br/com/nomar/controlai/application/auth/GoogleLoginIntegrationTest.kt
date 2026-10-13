@@ -58,6 +58,7 @@ class GoogleLoginIntegrationTest {
             val placeholders = groupIds.joinToString(",") { "?" }
             jdbcTemplate.update("DELETE FROM `groups` WHERE id IN ($placeholders)", *groupIds.toTypedArray())
         }
+        jdbcTemplate.update("DELETE FROM user_identities WHERE user_id IN (SELECT id FROM users WHERE email = ?)", testEmail)
         jdbcTemplate.update("DELETE FROM users WHERE email = ?", testEmail)
     }
 
@@ -125,6 +126,32 @@ class GoogleLoginIntegrationTest {
             testEmail,
         )
         assertEquals("google-sub-integration-123", googleSub)
+    }
+
+    @Test
+    fun `login finds the account through user_identities without reading google_sub`() {
+        jdbcTemplate.update("INSERT INTO `groups` (name) VALUES (?)", "TestGroupForIdentity")
+        val groupId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
+        jdbcTemplate.update("INSERT INTO users (name, email) VALUES (?, ?)", "Integration User", testEmail)
+        val userId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long::class.java)!!
+        jdbcTemplate.update("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)", groupId, userId)
+        jdbcTemplate.update(
+            "INSERT INTO user_identities (user_id, provider, subject) VALUES (?, 'GOOGLE', ?)",
+            userId, "google-sub-integration-123",
+        )
+
+        `when`(googleTokenVerifierGateway.verify(anyString())).thenReturn(Result.success(validGoogleUser))
+
+        mockMvc.perform(
+            post("/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"idToken":"valid-google-id-token"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.user.id").value(userId))
+
+        val count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?", Int::class.java, testEmail)
+        assertEquals(1, count)
     }
 
     @Test
