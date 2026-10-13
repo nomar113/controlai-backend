@@ -155,6 +155,21 @@ class AccountPurgeIntegrationTest {
         assertEquals(1, count("SELECT COUNT(*) FROM purchase_items WHERE purchase_invoice_id IN (SELECT id FROM purchase_invoices WHERE group_id = ?)", otherGroupId))
     }
 
+    @Test
+    fun `purging an account also deletes its external identities before the user row`() {
+        val groupId = insertGroup("Purge Identity Group")
+        val userId = insertUser("Identity Member", soleEmail, groupId, due)
+        jdbcTemplate.update(
+            "INSERT INTO user_identities (user_id, provider, subject) VALUES (?, 'GOOGLE', ?)",
+            userId, "purge-google-sub-$userId",
+        )
+
+        purgeDueAccountsUseCase.execute().getOrThrow()
+
+        assertEquals(0, count("SELECT COUNT(*) FROM user_identities WHERE user_id = ?", userId))
+        assertEquals(0, count("SELECT COUNT(*) FROM users WHERE id = ?", userId))
+    }
+
     // ---- Shared group ----
 
     @Test
