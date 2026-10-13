@@ -41,3 +41,6 @@ out/
 
 ### Local backups (contains real financial data, never commit) ###
 backups/
+
+# Script operacional de produção com dados pessoais de testers
+scripts/grant-tester-access.sql
