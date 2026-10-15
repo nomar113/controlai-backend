@@ -15,6 +15,7 @@ import java.time.temporal.ChronoUnit
 class RequestAccountDeletionUseCase(
     private val findAccountDeletionGateway: FindAccountDeletionGateway,
     private val scheduleAccountDeletionGateway: ScheduleAccountDeletionGateway,
+    private val revokeAppleAccessUseCase: RevokeAppleAccessUseCase,
     private val meterRegistry: MeterRegistry,
     private val clock: Clock,
 ) {
@@ -29,6 +30,8 @@ class RequestAccountDeletionUseCase(
             val requestedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS)
             val deletion = AccountDeletion(requestedAt = requestedAt, scheduledFor = requestedAt.plus(GRACE_PERIOD))
             scheduleAccountDeletionGateway.execute(userId, deletion).getOrThrow()
+            // Apple asks for the revocation when the user deletes the account; a failure never blocks the deletion
+            revokeAppleAccessUseCase.revokeOnDeletionRequest(userId)
             meterRegistry.counter("account.deletion.requested").increment()
             // Only the id: never log e-mail or name of someone asking to be forgotten
             logger.info("Account deletion requested for user {}, scheduled for {}", userId, deletion.scheduledFor)

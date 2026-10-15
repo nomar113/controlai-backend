@@ -8,4 +8,8 @@ class InvalidRefreshTokenException(message: String = "Sessao invalida ou expirad
 
 class InvalidGoogleTokenException(message: String = "Token Google invalido") : RuntimeException(message)
 
+class InvalidAppleTokenException(message: String = "Token Apple invalido") : RuntimeException(message)
+
+class AppleKeysUnavailableException(cause: Throwable) : RuntimeException("Chaves da Apple indisponiveis", cause)
+
 class InvalidResetTokenException(message: String = "Token de redefinicao invalido ou expirado") : RuntimeException(message)

@@ -1,5 +1,6 @@
 package br.com.nomar.controlai.application.auth.entrypoint.rest
 
+import br.com.nomar.controlai.application.auth.entrypoint.rest.request.AppleLoginRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.ForgotPasswordRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.GoogleLoginRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LoginRequest
@@ -7,7 +8,10 @@ import br.com.nomar.controlai.application.auth.entrypoint.rest.request.LogoutReq
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.RefreshRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.ResetPasswordRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.response.AuthResponse
+import br.com.nomar.controlai.domain.auth.entity.AppleLoginCommand
+import br.com.nomar.controlai.domain.auth.exception.AppleKeysUnavailableException
 import br.com.nomar.controlai.domain.auth.exception.InvalidResetTokenException
+import br.com.nomar.controlai.domain.auth.usecase.AppleLoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.ForgotPasswordUseCase
 import br.com.nomar.controlai.domain.auth.usecase.GoogleLoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.LoginUseCase
@@ -28,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException
 class AuthController(
     private val loginUseCase: LoginUseCase,
     private val googleLoginUseCase: GoogleLoginUseCase,
+    private val appleLoginUseCase: AppleLoginUseCase,
     private val refreshSessionUseCase: RefreshSessionUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
@@ -50,6 +55,26 @@ class AuthController(
         googleLoginUseCase.execute(request.idToken)
             .map(AuthResponse::from)
             .getOrElse { throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido ou expirado") }
+
+    @PostMapping("/apple")
+    fun appleLogin(@Validated @RequestBody request: AppleLoginRequest): AuthResponse =
+        appleLoginUseCase.execute(
+            AppleLoginCommand(
+                identityToken = request.identityToken,
+                authorizationCode = request.authorizationCode,
+                nonce = request.nonce,
+                fullName = request.fullName,
+            ),
+        )
+            .map(AuthResponse::from)
+            .getOrElse { ex ->
+                when (ex) {
+                    // Apple's keys being unreachable is a server-side outage, not a bad token
+                    is AppleKeysUnavailableException ->
+                        throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Login com a Apple indisponivel no momento")
+                    else -> throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Nao foi possivel entrar com a Apple")
+                }
+            }
 
     // Generic 401 on any failure so the response never reveals whether the email exists
     @PostMapping("/login")

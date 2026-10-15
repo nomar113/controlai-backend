@@ -14,6 +14,7 @@ import java.time.Duration
 class PurgeDueAccountsUseCase(
     private val findDueAccountDeletionsGateway: FindDueAccountDeletionsGateway,
     private val purgeAccountGateway: PurgeAccountGateway,
+    private val revokeAppleAccessUseCase: RevokeAppleAccessUseCase,
     private val meterRegistry: MeterRegistry,
     private val clock: Clock,
 ) {
@@ -45,8 +46,13 @@ class PurgeDueAccountsUseCase(
 
     // Null when the purge failed
     private fun purge(userId: Long): PurgeOutcome? {
+        // Read before the purge deletes the user_identities rows, revoked only once it has committed
+        val appleCredential = revokeAppleAccessUseCase.findCredential(userId)
         return purgeAccountGateway.execute(userId)
-            .onSuccess { outcome -> recordOutcome(userId, outcome) }
+            .onSuccess { outcome ->
+                recordOutcome(userId, outcome)
+                if (outcome in PURGED_OUTCOMES) revokeAppleAccessUseCase.revoke(userId, appleCredential)
+            }
             .onFailure { error ->
                 meterRegistry.counter("account.deletion.purge.failure").increment()
                 // Only the id: never log e-mail or name of someone asking to be forgotten

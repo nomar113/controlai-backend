@@ -5,6 +5,9 @@ import br.com.nomar.controlai.domain.account_deletion.entity.PurgeSummary
 import br.com.nomar.controlai.domain.account_deletion.gateway.FindDueAccountDeletionsGateway
 import br.com.nomar.controlai.domain.account_deletion.gateway.PurgeAccountGateway
 import br.com.nomar.controlai.domain.account_deletion.usecase.PurgeDueAccountsUseCase
+import br.com.nomar.controlai.domain.account_deletion.usecase.RevokeAppleAccessUseCase
+import br.com.nomar.controlai.domain.auth.gateway.AppleTokenExchangeGateway
+import br.com.nomar.controlai.domain.auth.gateway.TokenCipherGateway
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.Clock
 import java.time.Instant
@@ -32,8 +35,29 @@ class PurgeDueAccountsUseCaseTest {
         Result.success(schedules.filterValues { !it.isAfter(at) }.keys.sorted())
     }
 
+    // Apple credentials per user, stored as the login writes them (the cipher is a passthrough here)
+    private val appleCredentials = mutableMapOf<Long, String>()
+    private val revocations = mutableListOf<Pair<String, String>>() // clientId to refresh token
+    private var revokeResult: Result<Unit> = Result.success(Unit)
+
+    private val appleAccess = RevokeAppleAccessUseCase(
+        findAppleRefreshCredentialGateway = { userId -> Result.success(appleCredentials[userId]) },
+        updateAppleRefreshCredentialGateway = { _, _ -> Result.success(Unit) },
+        tokenCipherGateway = object : TokenCipherGateway {
+            override fun encrypt(plainText: String) = plainText
+            override fun decrypt(cipherText: String) = cipherText
+        },
+        appleTokenExchangeGateway = object : AppleTokenExchangeGateway {
+            override fun exchangeAuthorizationCode(authorizationCode: String, clientId: String) = error("not used")
+            override fun revoke(refreshToken: String, clientId: String): Result<Unit> {
+                revocations.add(clientId to refreshToken)
+                return revokeResult
+            }
+        },
+    )
+
     private fun useCase(purge: PurgeAccountGateway) =
-        PurgeDueAccountsUseCase(findDue, purge, meterRegistry, fixedClock)
+        PurgeDueAccountsUseCase(findDue, purge, appleAccess, meterRegistry, fixedClock)
 
     private fun purgedCount(outcome: String) = meterRegistry.counter("account.deletion.purged", "outcome", outcome).count()
 
@@ -89,6 +113,7 @@ class PurgeDueAccountsUseCaseTest {
         val useCase = PurgeDueAccountsUseCase(
             findDueAccountDeletionsGateway = { Result.success(emptyList()) },
             purgeAccountGateway = { error("must not be called") },
+            revokeAppleAccessUseCase = appleAccess,
             meterRegistry = meterRegistry,
             clock = fixedClock,
         )
@@ -105,11 +130,57 @@ class PurgeDueAccountsUseCaseTest {
                 attempted.add(userId)
                 Result.success(PurgeOutcome.MEMBER_REMOVED)
             },
+            revokeAppleAccessUseCase = appleAccess,
             meterRegistry = meterRegistry,
             clock = fixedClock,
         )
 
         assertIs<IllegalStateException>(useCase.execute().exceptionOrNull())
         assertTrue(attempted.isEmpty())
+    }
+
+    @Test
+    fun `revokes the Apple access once, with the client_id that issued the token, after the purge`() {
+        appleCredentials[1L] = "com.example.app\nrt-1"
+
+        useCase { Result.success(PurgeOutcome.MEMBER_REMOVED) }.execute().getOrThrow()
+
+        assertEquals(listOf("com.example.app" to "rt-1"), revocations)
+    }
+
+    @Test
+    fun `does not revoke when the purge fails, so a live account keeps its Apple access`() {
+        appleCredentials[1L] = "com.example.app\nrt-1"
+
+        useCase { Result.failure(IllegalStateException("FK violation")) }.execute().getOrThrow()
+
+        assertTrue(revocations.isEmpty())
+    }
+
+    @Test
+    fun `does not revoke for a deletion cancelled after the job listed the account`() {
+        appleCredentials[4L] = "com.example.app\nrt-4"
+
+        useCase { Result.success(PurgeOutcome.NO_LONGER_DUE) }.execute().getOrThrow()
+
+        assertTrue(revocations.isEmpty())
+    }
+
+    @Test
+    fun `a failed Apple revocation does not stop the purge`() {
+        appleCredentials[1L] = "com.example.app\nrt-1"
+        revokeResult = Result.failure(IllegalStateException("invalid_grant"))
+
+        val summary = useCase { Result.success(PurgeOutcome.MEMBER_REMOVED) }.execute().getOrThrow()
+
+        assertEquals(PurgeSummary(due = 3, purged = 3, skipped = 0, failed = 0), summary)
+        assertEquals(listOf("com.example.app" to "rt-1"), revocations)
+    }
+
+    @Test
+    fun `an account without an Apple identity never reaches Apple`() {
+        useCase { Result.success(PurgeOutcome.MEMBER_REMOVED) }.execute().getOrThrow()
+
+        assertTrue(revocations.isEmpty())
     }
 }

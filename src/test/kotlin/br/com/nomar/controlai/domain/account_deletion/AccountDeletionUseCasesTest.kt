@@ -9,6 +9,9 @@ import br.com.nomar.controlai.domain.account_deletion.gateway.ScheduleAccountDel
 import br.com.nomar.controlai.domain.account_deletion.usecase.CancelAccountDeletionUseCase
 import br.com.nomar.controlai.domain.account_deletion.usecase.GetAccountDeletionUseCase
 import br.com.nomar.controlai.domain.account_deletion.usecase.RequestAccountDeletionUseCase
+import br.com.nomar.controlai.domain.account_deletion.usecase.RevokeAppleAccessUseCase
+import br.com.nomar.controlai.domain.auth.gateway.AppleTokenExchangeGateway
+import br.com.nomar.controlai.domain.auth.gateway.TokenCipherGateway
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.Clock
 import java.time.Instant
@@ -28,18 +31,46 @@ class AccountDeletionUseCasesTest {
 
     // ---- RequestAccountDeletionUseCase ----
 
+    // Apple revocation whose stored credential is reported as read for each user (no token is ever revoked here)
+    private fun appleAccess(revocations: MutableList<Long> = mutableListOf()) = RevokeAppleAccessUseCase(
+        findAppleRefreshCredentialGateway = { userId ->
+            revocations.add(userId)
+            Result.success(null)
+        },
+        updateAppleRefreshCredentialGateway = { _, _ -> Result.success(Unit) },
+        tokenCipherGateway = object : TokenCipherGateway {
+            override fun encrypt(plainText: String) = plainText
+            override fun decrypt(cipherText: String) = cipherText
+        },
+        appleTokenExchangeGateway = object : AppleTokenExchangeGateway {
+            override fun exchangeAuthorizationCode(authorizationCode: String, clientId: String) = error("not used")
+            override fun revoke(refreshToken: String, clientId: String) = error("not used")
+        },
+    )
+
     private fun requestUseCase(
         existing: AccountDeletion? = null,
         saved: MutableList<Pair<Long, AccountDeletion>> = mutableListOf(),
+        appleRevocations: MutableList<Long> = mutableListOf(),
     ) = RequestAccountDeletionUseCase(
         findAccountDeletionGateway = FindAccountDeletionGateway { Result.success(existing) },
         scheduleAccountDeletionGateway = ScheduleAccountDeletionGateway { userId, deletion ->
             saved.add(userId to deletion)
             Result.success(Unit)
         },
+        revokeAppleAccessUseCase = appleAccess(appleRevocations),
         meterRegistry = meterRegistry,
         clock = fixedClock,
     )
+
+    @Test
+    fun `RequestAccountDeletionUseCase asks for the Apple revocation of the user`() {
+        val revoked = mutableListOf<Long>()
+
+        requestUseCase(appleRevocations = revoked).execute(42L).getOrThrow()
+
+        assertEquals(listOf(42L), revoked)
+    }
 
     @Test
     fun `RequestAccountDeletionUseCase schedules the deletion 30 days after now`() {
@@ -58,6 +89,7 @@ class AccountDeletionUseCasesTest {
         val useCase = RequestAccountDeletionUseCase(
             findAccountDeletionGateway = { Result.success(null) },
             scheduleAccountDeletionGateway = { _, _ -> Result.success(Unit) },
+            revokeAppleAccessUseCase = appleAccess(),
             meterRegistry = meterRegistry,
             clock = Clock.fixed(now.plusMillis(700), ZoneOffset.UTC),
         )
@@ -84,6 +116,7 @@ class AccountDeletionUseCasesTest {
         val useCase = RequestAccountDeletionUseCase(
             findAccountDeletionGateway = { Result.success(null) },
             scheduleAccountDeletionGateway = { _, _ -> Result.failure(IllegalStateException("db down")) },
+            revokeAppleAccessUseCase = appleAccess(),
             meterRegistry = meterRegistry,
             clock = fixedClock,
         )

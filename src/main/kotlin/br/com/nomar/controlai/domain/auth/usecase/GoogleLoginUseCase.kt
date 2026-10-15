@@ -2,6 +2,7 @@ package br.com.nomar.controlai.domain.auth.usecase
 
 import br.com.nomar.controlai.domain.auth.entity.AuthSession
 import br.com.nomar.controlai.domain.auth.entity.IdentityProvider
+import br.com.nomar.controlai.domain.auth.entity.NewIdentity
 import br.com.nomar.controlai.domain.auth.entity.User
 import br.com.nomar.controlai.domain.auth.entity.UserIdentity
 import br.com.nomar.controlai.domain.auth.gateway.CreateUserWithIdentityGateway
@@ -51,8 +52,7 @@ class GoogleLoginUseCase(
                     email = googleUser.email.trim().lowercase(),
                     googleSub = googleUser.sub,
                 ),
-                IdentityProvider.GOOGLE,
-                googleUser.sub,
+                NewIdentity(provider = IdentityProvider.GOOGLE, subject = googleUser.sub),
             ).getOrThrow()
             logger.info("New account created via Google for user {}", newUser.id)
             issueTokensGateway.execute(newUser).getOrThrow()

@@ -42,7 +42,7 @@ class GoogleLoginUseCaseTest {
             onLink(identity)
             Result.success(Unit)
         },
-        createUserWithIdentityGateway = { _, _, _ -> Result.success(createdUser) },
+        createUserWithIdentityGateway = { _, _ -> Result.success(createdUser) },
         issueTokensGateway = { user -> Result.success(sessionFor(user)) },
     )
 
@@ -90,10 +90,10 @@ class GoogleLoginUseCaseTest {
             findUserByIdentityGateway = { _, _ -> Result.success(null) },
             findUserByEmailGateway = { Result.success(null) },
             linkIdentityGateway = { error("should not link on the new-account path") },
-            createUserWithIdentityGateway = { user, provider, subject ->
+            createUserWithIdentityGateway = { user, identity ->
                 createdUser = user
-                identityProvider = provider
-                identitySubject = subject
+                identityProvider = identity.provider
+                identitySubject = identity.subject
                 Result.success(User(id = 99, name = user.name, email = user.email, googleSub = user.googleSub))
             },
             issueTokensGateway = { user -> Result.success(sessionFor(user)) },
@@ -118,7 +118,7 @@ class GoogleLoginUseCaseTest {
             findUserByIdentityGateway = { _, _ -> Result.success(null) },
             findUserByEmailGateway = { Result.success(null) },
             linkIdentityGateway = { Result.success(Unit) },
-            createUserWithIdentityGateway = { user, _, _ ->
+            createUserWithIdentityGateway = { user, _ ->
                 createdUser = user
                 Result.success(User(id = 1, name = user.name, email = user.email, googleSub = user.googleSub))
             },
@@ -139,7 +139,7 @@ class GoogleLoginUseCaseTest {
             findUserByIdentityGateway = { _, _ -> error("should not reach") },
             findUserByEmailGateway = { error("should not reach") },
             linkIdentityGateway = { error("should not reach") },
-            createUserWithIdentityGateway = { _, _, _ -> error("should not reach") },
+            createUserWithIdentityGateway = { _, _ ->error("should not reach") },
             issueTokensGateway = { error("should not reach") },
         )
 
