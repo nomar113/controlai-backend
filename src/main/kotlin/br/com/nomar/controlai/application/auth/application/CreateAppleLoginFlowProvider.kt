@@ -13,12 +13,13 @@ class CreateAppleLoginFlowProvider(
     private val appleLoginFlowRepository: AppleLoginFlowRepository,
 ) : CreateAppleLoginFlowGateway {
 
-    override fun execute(nonce: String, platform: AppleLoginPlatform, expiresAt: Instant): Result<Unit> {
+    override fun execute(nonce: String, state: String, platform: AppleLoginPlatform, expiresAt: Instant): Result<Unit> {
         return runCatching {
             appleLoginFlowRepository.save(
                 AppleLoginFlowModel(
                     nonce = nonce,
                     nonceDigest = TokenHasher.sha256(nonce),
+                    state = state,
                     platform = platform,
                     expiresAt = expiresAt,
                 ),

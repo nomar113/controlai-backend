@@ -8,6 +8,7 @@ enum class AppleLoginPlatform { ANDROID, WEB }
 class AppleLoginFlow(
     val id: Long,
     val nonce: String,
+    val state: String?,
     val platform: AppleLoginPlatform,
     val expiresAt: Instant,
     val consumedAt: Instant?,

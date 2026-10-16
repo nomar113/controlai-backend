@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
 
-// Runs when Apple posts the callback. The nonce claim in the identity token finds the flow, the token is then
-// fully verified against that flow's nonce, and the browser is redirected to the app with a one-time handoff code.
+// Runs when Apple posts the callback. The nonce claim in the identity token finds the flow; the state Apple
+// returns must match the one stored for that flow; the token is then verified against the flow's nonce, and the
+// browser is redirected to the app with a one-time handoff code and the state, so the app can check it too.
 @Component
 class CompleteAppleLoginUseCase(
     private val readUnverifiedNonceClaimGateway: ReadUnverifiedNonceClaimGateway,
@@ -27,9 +28,9 @@ class CompleteAppleLoginUseCase(
     @Value("\${app.web-url}") private val appWebUrl: String,
 ) {
 
-    // Always returns a redirect target: the handoff code on success, or an error code. The user is never
-    // left on a bare error page, and the error text never reaches the URL.
-    fun execute(authorizationCode: String?, identityToken: String?, fullName: String?): String {
+    // Always returns a redirect target. On success it carries the handoff code; on failure an error code.
+    // The state is echoed in both, so the app can refuse a return it did not start.
+    fun execute(authorizationCode: String?, identityToken: String?, fullName: String?, state: String?): String {
         val flow = identityToken?.let(::findFlowFor)
         val returnUri = returnUriFor(flow?.platform)
 
@@ -39,6 +40,7 @@ class CompleteAppleLoginUseCase(
             val openFlow = flow ?: throw InvalidAppleLoginFlowException()
             val now = Instant.now()
             if (!openFlow.isOpenForCallback(now)) throw InvalidAppleLoginFlowException()
+            if (!stateMatches(openFlow, state)) throw InvalidAppleLoginFlowException()
 
             val user = appleLoginUseCase.resolveUser(
                 AppleLoginCommand(
@@ -58,19 +60,23 @@ class CompleteAppleLoginUseCase(
             ).getOrThrow()
             if (!saved) throw InvalidAppleLoginFlowException()
 
-            handoffCode
-        }.fold(
-            onSuccess = { "$returnUri?code=$it" },
-            onFailure = {
-                logger.warn("Apple callback failed: {}", it::class.simpleName)
-                "$returnUri?error=apple_login_failed"
-            },
-        )
+            "$returnUri?code=$handoffCode&state=${openFlow.state}"
+        }.getOrElse {
+            logger.warn("Apple callback failed: {}", it::class.simpleName)
+            "$returnUri?error=apple_login_failed&state=${state.orEmpty()}"
+        }
     }
 
     private fun findFlowFor(identityToken: String): AppleLoginFlow? =
         readUnverifiedNonceClaimGateway.execute(identityToken).getOrNull()
             ?.let { findAppleLoginFlowByNonceDigestGateway.execute(it).getOrNull() }
+
+    // Constant-time comparison: the state is a secret tied to this browser's login attempt
+    private fun stateMatches(flow: AppleLoginFlow, returnedState: String?): Boolean {
+        val expected = flow.state ?: return false
+        val returned = returnedState ?: return false
+        return java.security.MessageDigest.isEqual(expected.toByteArray(), returned.toByteArray())
+    }
 
     private fun returnUriFor(platform: AppleLoginPlatform?): String = when (platform) {
         AppleLoginPlatform.ANDROID -> androidReturnUri

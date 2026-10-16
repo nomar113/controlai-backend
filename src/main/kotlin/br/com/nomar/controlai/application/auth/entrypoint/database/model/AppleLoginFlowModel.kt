@@ -25,6 +25,9 @@ data class AppleLoginFlowModel(
     @Column(name = "nonce_digest", length = 64, nullable = false, unique = true)
     val nonceDigest: String = "",
 
+    @Column(name = "state", length = 64)
+    val state: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "platform", length = 10, nullable = false)
     val platform: AppleLoginPlatform = AppleLoginPlatform.WEB,

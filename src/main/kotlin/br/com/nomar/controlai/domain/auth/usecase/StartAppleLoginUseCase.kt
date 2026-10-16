@@ -7,21 +7,25 @@ import org.springframework.stereotype.Component
 import java.time.Duration
 import java.time.Instant
 
-// The app asks for a nonce before opening Apple's sheet; the nonce is stored here and checked on the callback
+// Before opening Apple's page the app asks for a nonce and a state. Both are stored here: the nonce is
+// checked against the identity token, and the state against the callback and the redirect back to the app.
 @Component
 class StartAppleLoginUseCase(
     private val createAppleLoginFlowGateway: CreateAppleLoginFlowGateway,
 ) {
 
-    fun execute(platform: AppleLoginPlatform): Result<String> {
+    fun execute(platform: AppleLoginPlatform): Result<AppleLoginStart> {
         return runCatching {
-            val nonce = OpaqueTokens.hex()
-            createAppleLoginFlowGateway.execute(nonce, platform, Instant.now().plus(NONCE_TTL)).getOrThrow()
-            nonce
+            val start = AppleLoginStart(nonce = OpaqueTokens.hex(), state = OpaqueTokens.hex())
+            createAppleLoginFlowGateway.execute(start.nonce, start.state, platform, Instant.now().plus(FLOW_TTL))
+                .getOrThrow()
+            start
         }
     }
 
     companion object {
-        private val NONCE_TTL: Duration = Duration.ofMinutes(10)
+        private val FLOW_TTL: Duration = Duration.ofMinutes(10)
     }
 }
+
+data class AppleLoginStart(val nonce: String, val state: String)

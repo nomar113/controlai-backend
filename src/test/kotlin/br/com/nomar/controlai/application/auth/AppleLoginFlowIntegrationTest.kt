@@ -58,12 +58,12 @@ class AppleLoginFlowIntegrationTest {
 
     @Test
     fun `web - callback redireciona com codigo de uso unico e a troca gera a sessao uma vez`() {
-        val nonce = startNonce("WEB")
+        val start = start("WEB")
         verifiedIdentity(newEmail)
         `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
             .thenReturn(Result.success("apple-refresh-token"))
 
-        val location = callback(nonce, fullName = "Maria Souza").andExpect(status().isSeeOther)
+        val location = callback(start, fullName = "Maria Souza").andExpect(status().isSeeOther)
             .andReturn().response.getHeader("Location")
         val code = codeFrom(location.orEmpty())
         assertTrue(location.orEmpty().contains("/login?code="))
@@ -79,30 +79,30 @@ class AppleLoginFlowIntegrationTest {
 
     @Test
     fun `android - o callback redireciona para o deep link configurado`() {
-        val nonce = startNonce("ANDROID")
+        val start = start("ANDROID")
         verifiedIdentity(newEmail)
         `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
             .thenReturn(Result.success("apple-refresh-token"))
 
-        callback(nonce, fullName = null)
+        callback(start, fullName = null)
             .andExpect(status().isSeeOther)
             .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("auth/apple-login?code=")))
     }
 
     @Test
     fun `o nonce vai para o verificador e o codigo entregue fica so como hash no banco`() {
-        val nonce = startNonce("WEB")
+        val start = start("WEB")
         verifiedIdentity(newEmail)
         `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
             .thenReturn(Result.success("apple-refresh-token"))
 
-        val code = codeFrom(callback(nonce, fullName = null).andReturn().response.getHeader("Location").orEmpty())
+        val code = codeFrom(callback(start, fullName = null).andReturn().response.getHeader("Location").orEmpty())
 
-        verify(appleIdentityVerifierGateway).verify(anyString(), eq(nonce))
+        verify(appleIdentityVerifierGateway).verify(anyString(), eq(start.nonce))
         val storedHash = jdbcTemplate.queryForObject(
             "SELECT handoff_code_hash FROM apple_login_flows WHERE nonce = ?",
             String::class.java,
-            nonce,
+            start.nonce,
         )
         assertEquals(TokenHasher.sha256(code), storedHash)
         assertNotNull(storedHash)
@@ -111,13 +111,13 @@ class AppleLoginFlowIntegrationTest {
 
     @Test
     fun `replay do callback com o mesmo id_token nao gera segundo codigo`() {
-        val nonce = startNonce("WEB")
+        val start = start("WEB")
         verifiedIdentity(newEmail)
         `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
             .thenReturn(Result.success("apple-refresh-token"))
 
-        callback(nonce, fullName = null).andExpect(status().isSeeOther)
-        callback(nonce, fullName = null)
+        callback(start, fullName = null).andExpect(status().isSeeOther)
+        callback(start, fullName = null)
             .andExpect(status().isSeeOther)
             .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(errorRedirect)))
 
@@ -128,7 +128,7 @@ class AppleLoginFlowIntegrationTest {
     fun `nonce desconhecido redireciona com erro e nao cria conta`() {
         verifiedIdentity(newEmail)
 
-        callback("nonce-that-was-never-issued", fullName = null)
+        callback(Start(nonce = "nonce-that-was-never-issued", state = "state-x"), fullName = null)
             .andExpect(status().isSeeOther)
             .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(errorRedirect)))
 
@@ -137,11 +137,11 @@ class AppleLoginFlowIntegrationTest {
 
     @Test
     fun `codigo de uso unico expirado nao gera sessao`() {
-        val nonce = startNonce("WEB")
+        val start = start("WEB")
         verifiedIdentity(newEmail)
         `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
             .thenReturn(Result.success("apple-refresh-token"))
-        val code = codeFrom(callback(nonce, fullName = null).andReturn().response.getHeader("Location").orEmpty())
+        val code = codeFrom(callback(start, fullName = null).andReturn().response.getHeader("Location").orEmpty())
 
         jdbcTemplate.update(
             "UPDATE apple_login_flows SET handoff_expires_at = NOW() - INTERVAL 1 MINUTE WHERE handoff_code_hash = ?",
@@ -156,22 +156,66 @@ class AppleLoginFlowIntegrationTest {
         session("codigo-inventado").andExpect(status().isUnauthorized)
     }
 
-    private fun startNonce(platform: String): String {
+    @Test
+    fun `o redirect de sucesso devolve o state do fluxo para o app conferir`() {
+        val start = start("WEB")
+        verifiedIdentity(newEmail)
+        `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
+            .thenReturn(Result.success("apple-refresh-token"))
+
+        val location = callback(start, fullName = null).andReturn().response.getHeader("Location").orEmpty()
+
+        assertTrue(location.endsWith("&state=${start.state}"), location)
+    }
+
+    @Test
+    fun `state divergente nao gera codigo e nao cria conta`() {
+        val start = start("WEB")
+        verifiedIdentity(newEmail)
+
+        callback(start, fullName = null, state = "state-do-atacante")
+            .andExpect(status().isSeeOther)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(errorRedirect)))
+
+        assertEquals(0, countUsers(newEmail))
+        verify(appleTokenExchangeGateway, org.mockito.Mockito.never()).exchangeAuthorizationCode(anyString(), anyString())
+    }
+
+    @Test
+    fun `callback sem state nao gera codigo`() {
+        val start = start("WEB")
+        verifiedIdentity(newEmail)
+
+        callback(start, fullName = null, state = null)
+            .andExpect(status().isSeeOther)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(errorRedirect)))
+
+        assertEquals(0, countUsers(newEmail))
+    }
+
+    private data class Start(val nonce: String, val state: String)
+
+    private fun start(platform: String): Start {
         val result = mockMvc.perform(
             post("/auth/apple/start")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"platform":"$platform"}"""),
         ).andExpect(status().isOk).andReturn()
-        return Regex("\"nonce\":\"([0-9a-f]+)\"").find(result.response.contentAsString)!!.groupValues[1]
+        val body = result.response.contentAsString
+        return Start(
+            nonce = Regex("\"nonce\":\"([0-9a-f]+)\"").find(body)!!.groupValues[1],
+            state = Regex("\"state\":\"([0-9a-f]+)\"").find(body)!!.groupValues[1],
+        )
     }
 
-    private fun callback(nonce: String, fullName: String?): ResultActions {
+    private fun callback(start: Start, fullName: String?, state: String? = start.state): ResultActions {
+        val nonce = start.nonce
         val user = fullName?.let { """{"name":{"firstName":"${it.substringBefore(' ')}","lastName":"${it.substringAfter(' ')}"}}""" }
         var request = post("/auth/apple/callback")
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("code", "apple-auth-code")
             .param("id_token", unsignedIdToken(TokenHasher.sha256(nonce)))
-            .param("state", "apple-generated-state")
+        if (state != null) request = request.param("state", state)
         if (user != null) request = request.param("user", user)
         return mockMvc.perform(request)
     }

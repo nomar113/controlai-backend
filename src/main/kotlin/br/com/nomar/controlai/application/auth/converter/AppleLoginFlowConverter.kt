@@ -6,6 +6,7 @@ import br.com.nomar.controlai.domain.auth.entity.AppleLoginFlow
 fun AppleLoginFlowModel.toDomain(): AppleLoginFlow = AppleLoginFlow(
     id = id!!,
     nonce = nonce,
+    state = state,
     platform = platform,
     expiresAt = expiresAt,
     consumedAt = consumedAt,

@@ -34,7 +34,7 @@ class AppleLoginFlowController(
     fun start(@Validated @RequestBody request: AppleLoginStartRequest): AppleLoginStartResponse {
         val platform = requireNotNull(request.platform)
         return startAppleLoginUseCase.execute(platform)
-            .map { AppleLoginStartResponse(nonce = it) }
+            .map { AppleLoginStartResponse(nonce = it.nonce, state = it.state) }
             .getOrElse { throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Nao foi possivel iniciar o login") }
     }
 
@@ -44,9 +44,10 @@ class AppleLoginFlowController(
         @RequestParam(name = "code", required = false) code: String?,
         @RequestParam(name = "id_token", required = false) idToken: String?,
         @RequestParam(name = "user", required = false) user: String?,
+        @RequestParam(name = "state", required = false) state: String?,
     ): ResponseEntity<Void> {
         val fullName = appleUserFieldParser.parse(user)?.fullName
-        val location = completeAppleLoginUseCase.execute(code, idToken, fullName)
+        val location = completeAppleLoginUseCase.execute(code, idToken, fullName, state)
         return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(location)).build()
     }
 
