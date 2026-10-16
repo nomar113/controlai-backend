@@ -1,7 +1,9 @@
 package br.com.nomar.controlai.application.auth.entrypoint.rest.request
 
+import br.com.nomar.controlai.domain.auth.entity.AppleLoginPlatform
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 
 data class LoginRequest(
@@ -69,4 +71,15 @@ data class ChangePasswordRequest(
     @field:NotBlank(message = "Nova senha e obrigatoria")
     @field:Size(min = 8, message = "A senha deve ter no minimo 8 caracteres")
     val newPassword: String = "",
+)
+
+data class AppleLoginStartRequest(
+    @field:NotNull(message = "Plataforma e obrigatoria")
+    val platform: AppleLoginPlatform? = null,
+)
+
+data class AppleSessionRequest(
+    @field:NotBlank(message = "Codigo e obrigatorio")
+    @field:Size(max = 128, message = "Codigo invalido")
+    val code: String = "",
 )

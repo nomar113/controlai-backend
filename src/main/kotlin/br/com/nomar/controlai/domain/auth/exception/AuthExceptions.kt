@@ -13,3 +13,5 @@ class InvalidAppleTokenException(message: String = "Token Apple invalido") : Run
 class AppleKeysUnavailableException(cause: Throwable) : RuntimeException("Chaves da Apple indisponiveis", cause)
 
 class InvalidResetTokenException(message: String = "Token de redefinicao invalido ou expirado") : RuntimeException(message)
+
+class InvalidAppleLoginFlowException(message: String = "Login com a Apple expirado ou ja utilizado") : RuntimeException(message)

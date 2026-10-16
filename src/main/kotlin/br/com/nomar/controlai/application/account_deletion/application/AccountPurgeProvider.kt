@@ -148,12 +148,13 @@ class AccountPurgeProvider(
         )
 
         // password_reset_tokens already cascades from users; deleting it here keeps the purge
-        // independent of that FK option. user_identities has a RESTRICT FK, so it must go before users.
+        // independent of that FK option. user_identities and apple_login_flows have RESTRICT FKs, so they must go before users.
         val PERSONAL_DATA_IN_FK_ORDER: List<PurgeTable> = listOf(
             PurgeTable("group_members", BY_USER_ID),
             PurgeTable("refresh_tokens", BY_USER_ID),
             PurgeTable("password_reset_tokens", BY_USER_ID),
             PurgeTable("user_identities", BY_USER_ID),
+            PurgeTable("apple_login_flows", BY_USER_ID),
             PurgeTable("users", "id = ?"),
         )
 

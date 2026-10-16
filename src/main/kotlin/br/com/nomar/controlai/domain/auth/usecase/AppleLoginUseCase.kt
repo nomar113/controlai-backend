@@ -35,6 +35,14 @@ class AppleLoginUseCase(
 ) {
 
     fun execute(command: AppleLoginCommand): Result<AuthSession> {
+        return resolveUser(command)
+            .mapCatching { issueTokensGateway.execute(it).getOrThrow() }
+            .onFailure { logger.warn("Apple login failed: {}", it::class.simpleName) }
+    }
+
+    // Finds or creates the account behind an Apple login, without issuing tokens. The web and Android
+    // callback uses it so the session is only issued when the app exchanges its handoff code.
+    fun resolveUser(command: AppleLoginCommand): Result<User> {
         return runCatching {
             val apple = appleIdentityVerifierGateway.verify(command.identityToken, command.nonce).getOrThrow()
 
@@ -44,7 +52,7 @@ class AppleLoginUseCase(
             if (byIdentity != null) {
                 logger.info("Apple login via existing identity for user {}", byIdentity.id)
                 replaceCredential(byIdentity.id!!, command, apple)
-                return@runCatching issueTokensGateway.execute(byIdentity).getOrThrow()
+                return@runCatching byIdentity
             }
 
             val email = apple.email?.trim()?.lowercase()?.takeIf(String::isNotEmpty) ?: throw InvalidAppleTokenException()
@@ -62,7 +70,7 @@ class AppleLoginUseCase(
                     ),
                 ).getOrThrow()
                 logger.info("Apple linked to existing account for user {}", byEmail.id)
-                return@runCatching issueTokensGateway.execute(byEmail).getOrThrow()
+                return@runCatching byEmail
             }
 
             // E-mail in use but not verified: refuse rather than link or create a duplicate account
@@ -82,8 +90,8 @@ class AppleLoginUseCase(
                 ),
             ).getOrThrow()
             logger.info("New account created via Apple for user {}", newUser.id)
-            issueTokensGateway.execute(newUser).getOrThrow()
-        }.onFailure { logger.warn("Apple login failed: {}", it::class.simpleName) }
+            newUser
+        }
     }
 
     // Best effort: the login already proved the identity with Apple's token, so a failed exchange keeps the stored one

@@ -75,3 +75,7 @@ data class ApiKeyResponse(
         )
     }
 }
+
+data class AppleLoginStartResponse(
+    val nonce: String,
+)
