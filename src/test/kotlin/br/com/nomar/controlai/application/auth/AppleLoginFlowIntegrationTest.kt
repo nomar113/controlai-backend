@@ -193,6 +193,48 @@ class AppleLoginFlowIntegrationTest {
         assertEquals(0, countUsers(newEmail))
     }
 
+    @Test
+    fun `segundo login sem user nao apaga o nome salvo no primeiro`() {
+        verifiedIdentity(newEmail)
+        `when`(appleTokenExchangeGateway.exchangeAuthorizationCode(anyString(), anyString()))
+            .thenReturn(Result.success("apple-refresh-token"))
+
+        val first = start("WEB")
+        val firstCode = codeFrom(callback(first, fullName = "Maria Souza").andReturn().response.getHeader("Location").orEmpty())
+        session(firstCode).andExpect(status().isOk)
+
+        val second = start("WEB")
+        val secondCode = codeFrom(callback(second, fullName = null).andReturn().response.getHeader("Location").orEmpty())
+        session(secondCode)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.user.name").value("Maria Souza"))
+    }
+
+    @Test
+    fun `android - cancelamento sem id_token volta ao deep link com erro e o state do fluxo`() {
+        val start = start("ANDROID")
+
+        mockMvc.perform(
+            post("/auth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("error", "user_cancelled_authorize")
+                .param("state", start.state),
+        )
+            .andExpect(status().isSeeOther)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("auth/apple-login?error=apple_login_failed&state=${start.state}")))
+    }
+
+    @Test
+    fun `state com parametros injetados nao chega ao redirect de erro`() {
+        val start = start("WEB")
+        verifiedIdentity(newEmail)
+
+        callback(start, fullName = null, state = "x&code=injetado y")
+            .andExpect(status().isSeeOther)
+            .andExpect(header().string("Location", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("injetado"))))
+            .andExpect(header().string("Location", org.hamcrest.Matchers.containsString(errorRedirect)))
+    }
+
     private data class Start(val nonce: String, val state: String)
 
     private fun start(platform: String): Start {

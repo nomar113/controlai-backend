@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.auth.entrypoint.database.repository
 
 import br.com.nomar.controlai.application.auth.entrypoint.database.model.AppleLoginFlowModel
+import br.com.nomar.controlai.domain.auth.entity.AppleLoginHandoff
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -11,6 +12,8 @@ import java.time.Instant
 interface AppleLoginFlowRepository : JpaRepository<AppleLoginFlowModel, Long> {
     fun findByNonceDigest(nonceDigest: String): AppleLoginFlowModel?
 
+    fun findFirstByState(state: String): AppleLoginFlowModel?
+
     fun findByHandoffCodeHash(handoffCodeHash: String): AppleLoginFlowModel?
 
     // Single use enforced in SQL: the nonce is consumed and the handoff code saved in one step, and only
@@ -18,17 +21,11 @@ interface AppleLoginFlowRepository : JpaRepository<AppleLoginFlowModel, Long> {
     @Modifying
     @Transactional
     @Query(
-        "UPDATE AppleLoginFlowModel m SET m.consumedAt = :now, m.handoffCodeHash = :handoffCodeHash, " +
-            "m.userId = :userId, m.handoffExpiresAt = :handoffExpiresAt " +
-            "WHERE m.id = :id AND m.consumedAt IS NULL",
+        "UPDATE AppleLoginFlowModel m SET m.consumedAt = :#{#handoff.now}, m.handoffCodeHash = :#{#handoff.codeHash}, " +
+            "m.userId = :#{#handoff.userId}, m.handoffExpiresAt = :#{#handoff.expiresAt} " +
+            "WHERE m.id = :#{#handoff.flowId} AND m.consumedAt IS NULL",
     )
-    fun saveHandoffIfNonceUnused(
-        @Param("id") id: Long,
-        @Param("now") now: Instant,
-        @Param("handoffCodeHash") handoffCodeHash: String,
-        @Param("userId") userId: Long,
-        @Param("handoffExpiresAt") handoffExpiresAt: Instant,
-    ): Int
+    fun saveHandoffIfNonceUnused(@Param("handoff") handoff: AppleLoginHandoff): Int
 
     @Modifying
     @Transactional

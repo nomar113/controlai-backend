@@ -2,16 +2,20 @@ package br.com.nomar.controlai.domain.auth.usecase
 
 import br.com.nomar.controlai.domain.auth.OpaqueTokens
 import br.com.nomar.controlai.domain.auth.TokenHasher
+import br.com.nomar.controlai.domain.auth.entity.AppleCallback
 import br.com.nomar.controlai.domain.auth.entity.AppleLoginCommand
 import br.com.nomar.controlai.domain.auth.entity.AppleLoginFlow
+import br.com.nomar.controlai.domain.auth.entity.AppleLoginHandoff
 import br.com.nomar.controlai.domain.auth.entity.AppleLoginPlatform
 import br.com.nomar.controlai.domain.auth.exception.InvalidAppleLoginFlowException
 import br.com.nomar.controlai.domain.auth.gateway.FindAppleLoginFlowByNonceDigestGateway
+import br.com.nomar.controlai.domain.auth.gateway.FindAppleLoginFlowByStateGateway
 import br.com.nomar.controlai.domain.auth.gateway.ReadUnverifiedNonceClaimGateway
 import br.com.nomar.controlai.domain.auth.gateway.SaveAppleLoginHandoffGateway
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
 
@@ -22,48 +26,58 @@ import java.time.Instant
 class CompleteAppleLoginUseCase(
     private val readUnverifiedNonceClaimGateway: ReadUnverifiedNonceClaimGateway,
     private val findAppleLoginFlowByNonceDigestGateway: FindAppleLoginFlowByNonceDigestGateway,
+    private val findAppleLoginFlowByStateGateway: FindAppleLoginFlowByStateGateway,
     private val saveAppleLoginHandoffGateway: SaveAppleLoginHandoffGateway,
     private val appleLoginUseCase: AppleLoginUseCase,
     @Value("\${apple.return-uri.android}") private val androidReturnUri: String,
     @Value("\${app.web-url}") private val appWebUrl: String,
 ) {
 
-    // Always returns a redirect target. On success it carries the handoff code; on failure an error code.
-    // The state is echoed in both, so the app can refuse a return it did not start.
-    fun execute(authorizationCode: String?, identityToken: String?, fullName: String?, state: String?): String {
-        val flow = identityToken?.let(::findFlowFor)
-        val returnUri = returnUriFor(flow?.platform)
+    // Always returns a redirect target. On success it carries the handoff code and the state; on failure only an
+    // error code, plus the state stored for the flow when it matches what Apple returned.
+    fun execute(callback: AppleCallback): String {
+        val flow = callback.identityToken?.let(::findFlowFor)
+        // Apple sends no identity token when the user cancels, so the state is the only way to know the platform
+        val platformFlow = flow ?: callback.state?.let(::findFlowByState)
+        val returnUri = returnUriFor(platformFlow?.platform)
 
         return runCatching {
-            val code = authorizationCode ?: throw InvalidAppleLoginFlowException()
-            val token = identityToken ?: throw InvalidAppleLoginFlowException()
+            val code = callback.authorizationCode ?: throw InvalidAppleLoginFlowException()
+            val token = callback.identityToken ?: throw InvalidAppleLoginFlowException()
             val openFlow = flow ?: throw InvalidAppleLoginFlowException()
             val now = Instant.now()
             if (!openFlow.isOpenForCallback(now)) throw InvalidAppleLoginFlowException()
-            if (!stateMatches(openFlow, state)) throw InvalidAppleLoginFlowException()
+            if (!stateMatches(openFlow, callback.state)) throw InvalidAppleLoginFlowException()
 
             val user = appleLoginUseCase.resolveUser(
                 AppleLoginCommand(
                     identityToken = token,
                     authorizationCode = code,
                     nonce = openFlow.nonce,
-                    fullName = fullName,
+                    fullName = callback.fullName,
                 ),
             ).getOrThrow()
 
             val handoffCode = OpaqueTokens.urlSafe()
             val saved = saveAppleLoginHandoffGateway.execute(
-                openFlow.id,
-                TokenHasher.sha256(handoffCode),
-                user.id!!,
-                now.plus(HANDOFF_TTL),
+                AppleLoginHandoff(
+                    flowId = openFlow.id,
+                    now = now,
+                    codeHash = TokenHasher.sha256(handoffCode),
+                    userId = user.id!!,
+                    expiresAt = now.plus(HANDOFF_TTL),
+                ),
             ).getOrThrow()
             if (!saved) throw InvalidAppleLoginFlowException()
 
             "$returnUri?code=$handoffCode&state=${openFlow.state}"
         }.getOrElse {
             logger.warn("Apple callback failed: {}", it::class.simpleName)
-            "$returnUri?error=apple_login_failed&state=${state.orEmpty()}"
+            // Only the state stored on the server is echoed, and only when it matches what came back. Nothing
+            // sent by the caller reaches the redirect URL.
+            val echoedState = platformFlow?.state?.takeIf { it == callback.state }
+            if (echoedState == null) "$returnUri?error=apple_login_failed"
+            else "$returnUri?error=apple_login_failed&state=$echoedState"
         }
     }
 
@@ -71,11 +85,14 @@ class CompleteAppleLoginUseCase(
         readUnverifiedNonceClaimGateway.execute(identityToken).getOrNull()
             ?.let { findAppleLoginFlowByNonceDigestGateway.execute(it).getOrNull() }
 
-    // Constant-time comparison: the state is a secret tied to this browser's login attempt
+    private fun findFlowByState(state: String): AppleLoginFlow? =
+        findAppleLoginFlowByStateGateway.execute(state).getOrNull()
+
+    // The state is a fixed-length hex value, so comparing lengths first reveals nothing secret
     private fun stateMatches(flow: AppleLoginFlow, returnedState: String?): Boolean {
         val expected = flow.state ?: return false
         val returned = returnedState ?: return false
-        return java.security.MessageDigest.isEqual(expected.toByteArray(), returned.toByteArray())
+        return MessageDigest.isEqual(expected.toByteArray(), returned.toByteArray())
     }
 
     private fun returnUriFor(platform: AppleLoginPlatform?): String = when (platform) {

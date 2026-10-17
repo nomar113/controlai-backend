@@ -5,6 +5,7 @@ import br.com.nomar.controlai.application.auth.entrypoint.rest.request.AppleLogi
 import br.com.nomar.controlai.application.auth.entrypoint.rest.request.AppleSessionRequest
 import br.com.nomar.controlai.application.auth.entrypoint.rest.response.AppleLoginStartResponse
 import br.com.nomar.controlai.application.auth.entrypoint.rest.response.AuthResponse
+import br.com.nomar.controlai.domain.auth.entity.AppleCallback
 import br.com.nomar.controlai.domain.auth.usecase.CompleteAppleLoginUseCase
 import br.com.nomar.controlai.domain.auth.usecase.ExchangeAppleLoginCodeUseCase
 import br.com.nomar.controlai.domain.auth.usecase.StartAppleLoginUseCase
@@ -40,14 +41,14 @@ class AppleLoginFlowController(
 
     // Apple posts form-encoded data here. Always answers with a redirect, including on failure or cancel.
     @PostMapping("/callback")
-    fun callback(
-        @RequestParam(name = "code", required = false) code: String?,
-        @RequestParam(name = "id_token", required = false) idToken: String?,
-        @RequestParam(name = "user", required = false) user: String?,
-        @RequestParam(name = "state", required = false) state: String?,
-    ): ResponseEntity<Void> {
-        val fullName = appleUserFieldParser.parse(user)?.fullName
-        val location = completeAppleLoginUseCase.execute(code, idToken, fullName, state)
+    fun callback(@RequestParam params: Map<String, String>): ResponseEntity<Void> {
+        val callback = AppleCallback(
+            authorizationCode = params["code"],
+            identityToken = params["id_token"],
+            fullName = appleUserFieldParser.parse(params["user"])?.fullName,
+            state = params["state"],
+        )
+        val location = completeAppleLoginUseCase.execute(callback)
         return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(location)).build()
     }
 
