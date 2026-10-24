@@ -108,4 +108,18 @@ class CancelPurchaseInvoiceProviderTest {
         // Cleanup
         jdbcTemplate.update("DELETE FROM purchase_invoices WHERE id = ?", invoice.id)
     }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice failed to be read`() {
+        val invoice = createInvoice(status = InvoiceStatus.READ_FAILED)
+
+        val result = provider.execute(invoice.id!!)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertNull(repository.findById(invoice.id!!).get().cancelledAt)
+
+        // Cleanup
+        jdbcTemplate.update("DELETE FROM purchase_invoices WHERE id = ?", invoice.id)
+    }
 }

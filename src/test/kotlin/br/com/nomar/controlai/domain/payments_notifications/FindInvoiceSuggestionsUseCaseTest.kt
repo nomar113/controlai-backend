@@ -6,9 +6,11 @@ import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database
 import br.com.nomar.controlai.domain.auth.RequestContext
 import br.com.nomar.controlai.domain.payments_notifications.gateway.FindInvoiceSuggestionsGateway
 import br.com.nomar.controlai.domain.payments_notifications.usecase.FindInvoiceSuggestionsUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
 import java.time.Duration
@@ -27,7 +29,7 @@ class FindInvoiceSuggestionsUseCaseTest {
     private val invoiceDate = OffsetDateTime.of(2025, 5, 20, 14, 30, 0, 0, ZoneOffset.UTC).toInstant()
     private val invoiceTotal = BigDecimal("150.00")
 
-    private fun createInvoice(id: Long = 1L) = PurchaseInvoiceModel(
+    private fun createInvoice(id: Long = 1L, status: InvoiceStatus = InvoiceStatus.PROCESSED) = PurchaseInvoiceModel(
         id = id,
         date = invoiceDate,
         merchantName = "Supermercado X",
@@ -40,6 +42,7 @@ class FindInvoiceSuggestionsUseCaseTest {
         total = invoiceTotal,
         taxes = null,
         discount = null,
+        status = status,
     )
 
     private fun createNotification(id: Long, minutesDelta: Long = 0) = PaymentNotification(
@@ -100,5 +103,18 @@ class FindInvoiceSuggestionsUseCaseTest {
         val suggestionsResult = result.getOrNull()!!
         assertTrue(suggestionsResult.notifications.isEmpty())
         assertEquals(invoiceDate, suggestionsResult.invoiceDate)
+    }
+
+    @Test
+    fun `should return failure with IllegalStateException and skip the gateway for an invoice that is not processed`() {
+        listOf(InvoiceStatus.PENDING, InvoiceStatus.READ_FAILED).forEach { status ->
+            `when`(purchaseInvoiceRepository.findByIdAndGroupId(1L, 1L)).thenReturn(createInvoice(status = status))
+
+            val result = useCase.execute(1L)
+
+            assertTrue(result.isFailure, "status $status")
+            assertTrue(result.exceptionOrNull() is IllegalStateException, "status $status")
+        }
+        verifyNoInteractions(findSuggestionsGateway)
     }
 }

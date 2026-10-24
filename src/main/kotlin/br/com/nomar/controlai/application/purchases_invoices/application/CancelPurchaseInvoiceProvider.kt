@@ -21,8 +21,8 @@ class CancelPurchaseInvoiceProvider(
             val model = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
                 ?: throw NoSuchElementException("PurchaseInvoice not found: $id")
 
-            if (model.status == InvoiceStatus.PENDING) {
-                throw IllegalStateException("PurchaseInvoice is pending: $id")
+            if (model.status != InvoiceStatus.PROCESSED) {
+                throw IllegalStateException("PurchaseInvoice is not processed: $id")
             }
 
             if (model.cancelledAt != null) {

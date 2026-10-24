@@ -24,8 +24,8 @@ class FindInvoiceSuggestionsUseCase(
             val invoice = purchaseInvoiceRepository.findByIdAndGroupId(invoiceId, requestContext.groupId)
                 ?: throw NoSuchElementException("Invoice not found: $invoiceId")
 
-            if (invoice.status == InvoiceStatus.PENDING) {
-                throw IllegalStateException("Invoice $invoiceId is pending")
+            if (invoice.status != InvoiceStatus.PROCESSED) {
+                throw IllegalStateException("Invoice $invoiceId is not processed")
             }
 
             val amount = invoice.total

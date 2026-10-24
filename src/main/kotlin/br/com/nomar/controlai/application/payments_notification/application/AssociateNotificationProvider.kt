@@ -33,8 +33,8 @@ class AssociateNotificationProvider(
             val invoice = purchaseInvoiceRepository.findByIdAndGroupId(purchaseInvoiceId, groupId)
                 ?: throw NoSuchElementException("PurchaseInvoice not found: $purchaseInvoiceId")
 
-            if (invoice.status == InvoiceStatus.PENDING) {
-                throw IllegalStateException("PurchaseInvoice is pending: $purchaseInvoiceId")
+            if (invoice.status != InvoiceStatus.PROCESSED) {
+                throw IllegalStateException("PurchaseInvoice is not processed: $purchaseInvoiceId")
             }
 
             if (invoice.cancelledAt != null) {

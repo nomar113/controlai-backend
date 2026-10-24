@@ -33,8 +33,8 @@ class SearchNotificationsProvider(
                 throw NoSuchElementException("PurchaseInvoice is deleted: $invoiceId")
             }
 
-            if (invoice.status == InvoiceStatus.PENDING) {
-                throw IllegalStateException("PurchaseInvoice is pending: $invoiceId")
+            if (invoice.status != InvoiceStatus.PROCESSED) {
+                throw IllegalStateException("PurchaseInvoice is not processed: $invoiceId")
             }
 
             if (invoice.cancelledAt != null) {

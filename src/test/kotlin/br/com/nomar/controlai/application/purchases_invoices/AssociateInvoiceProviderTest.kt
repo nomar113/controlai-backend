@@ -211,4 +211,16 @@ class AssociateInvoiceProviderTest {
         assertTrue(result.exceptionOrNull() is IllegalStateException)
         assertNull(notificationRepository.findById(notification.id).get().purchaseInvoiceId)
     }
+
+    @Test
+    fun `should fail with IllegalStateException when invoice failed to be read`() {
+        val invoice = createInvoice(status = InvoiceStatus.READ_FAILED)
+        val notification = createNotification()
+
+        val result = provider.execute(invoice.id!!, notification.id)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertNull(notificationRepository.findById(notification.id).get().purchaseInvoiceId)
+    }
 }
