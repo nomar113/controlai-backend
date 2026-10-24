@@ -138,9 +138,11 @@ class AccountPurgeIntegrationTest {
         insertFinancialData(groupId, "1111")
         insertGroupAccessData(groupId, userId)
         insertSessions(userId)
+        insertInvoiceView(userId, groupId)
         val otherGroupId = insertGroup("Purge Untouched Group")
         val notDueId = insertUser("Not Due", notDueEmail, otherGroupId, notDue)
         insertFinancialData(otherGroupId, "2222")
+        insertInvoiceView(notDueId, otherGroupId)
 
         purgeDueAccountsUseCase.execute().getOrThrow()
 
@@ -149,8 +151,10 @@ class AccountPurgeIntegrationTest {
         assertEquals(0, count("SELECT COUNT(*) FROM `groups` WHERE id = ?", groupId))
         assertEquals(0, count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = ?", userId))
         assertEquals(0, count("SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = ?", userId))
+        assertEquals(0, count("SELECT COUNT(*) FROM invoice_views WHERE user_id = ?", userId))
         // Accounts not due yet, and other groups, are left alone
         assertEquals(1, count("SELECT COUNT(*) FROM users WHERE id = ?", notDueId))
+        assertEquals(1, count("SELECT COUNT(*) FROM invoice_views WHERE user_id = ?", notDueId))
         assertEquals(1, count("SELECT COUNT(*) FROM payment_notifications WHERE group_id = ?", otherGroupId))
         assertEquals(1, count("SELECT COUNT(*) FROM purchase_items WHERE purchase_invoice_id IN (SELECT id FROM purchase_invoices WHERE group_id = ?)", otherGroupId))
     }
@@ -180,6 +184,8 @@ class AccountPurgeIntegrationTest {
         insertFinancialData(groupId, "3333")
         insertSessions(leavingId)
         insertSessions(stayingId)
+        insertInvoiceView(leavingId, groupId)
+        insertInvoiceView(stayingId, groupId)
         insertInvite(groupId, leavingId, "someone-else@controlai.test", "PENDING")
         insertInvite(groupId, leavingId, "accepted-guest@controlai.test", "ACCEPTED")
         val pendingToLeaving = insertInvite(groupId, stayingId, leavingEmail, "PENDING")
@@ -195,8 +201,10 @@ class AccountPurgeIntegrationTest {
         assertEquals(0, count("SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = ?", leavingId))
         assertEquals(0, count("SELECT COUNT(*) FROM group_invites WHERE inviter_user_id = ?", leavingId))
         assertEquals(0, count("SELECT COUNT(*) FROM group_invites WHERE id = ?", pendingToLeaving))
-        // Cards, purchases, budget and holders stay with the partner, who keeps their session
-        assertEquals(snapshotBefore, groupSnapshot(groupId))
+        assertEquals(0, count("SELECT COUNT(*) FROM invoice_views WHERE user_id = ?", leavingId))
+        // Cards, purchases, budget and holders stay with the partner, who keeps their session and invoice views
+        assertEquals(snapshotBefore + ("invoice_views" to 1), groupSnapshot(groupId))
+        assertEquals(1, count("SELECT COUNT(*) FROM invoice_views WHERE user_id = ?", stayingId))
         assertEquals(1, count("SELECT COUNT(*) FROM `groups` WHERE id = ?", groupId))
         assertEquals(1, count("SELECT COUNT(*) FROM group_members WHERE user_id = ?", stayingId))
         assertEquals(2, count("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = ?", stayingId))
@@ -388,6 +396,15 @@ class AccountPurgeIntegrationTest {
         )
     }
 
+    // The user opened the group's invoice (the "Nova" badge is gone for them)
+    private fun insertInvoiceView(userId: Long, groupId: Long) {
+        jdbcTemplate.update(
+            "INSERT INTO invoice_views (user_id, purchase_invoice_id, viewed_at) SELECT ?, id, NOW(6) FROM purchase_invoices WHERE group_id = ?",
+            userId,
+            groupId,
+        )
+    }
+
     private fun insertGroupAccessData(groupId: Long, userId: Long) {
         jdbcTemplate.update(
             "INSERT INTO api_keys (group_id, key_hash, label) VALUES (?, ?, 'Purge Test Key')",
@@ -461,6 +478,7 @@ class AccountPurgeIntegrationTest {
     companion object {
         // (child table, FK column, parent table) for the tables without group_id
         private val CHILD_TABLES = listOf(
+            Triple("invoice_views", "purchase_invoice_id", "purchase_invoices"),
             Triple("purchase_payments", "purchase_invoices_id", "purchase_invoices"),
             Triple("purchase_items", "purchase_invoice_id", "purchase_invoices"),
             Triple("budget_payment_periods", "budget_id", "budgets"),

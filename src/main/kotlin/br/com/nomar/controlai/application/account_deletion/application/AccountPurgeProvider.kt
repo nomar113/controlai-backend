@@ -115,6 +115,7 @@ class AccountPurgeProvider(
         private const val BY_GROUP_BUDGET = "budget_id IN (SELECT id FROM budgets WHERE group_id = ?)"
 
         private val PURCHASE_TABLES = listOf(
+            PurgeTable("invoice_views", "purchase_invoice_id $BY_GROUP_PURCHASE"),
             PurgeTable("installments", BY_GROUP_ID),
             PurgeTable("payment_notifications", BY_GROUP_ID),
             PurgeTable("purchase_payments", "purchase_invoices_id $BY_GROUP_PURCHASE"),
@@ -149,7 +150,10 @@ class AccountPurgeProvider(
 
         // password_reset_tokens already cascades from users; deleting it here keeps the purge
         // independent of that FK option. user_identities and apple_login_flows have RESTRICT FKs, so they must go before users.
+        // invoice_views cascades from both users and purchase_invoices; same reasoning as password_reset_tokens:
+        // a member who leaves a shared group takes only their own views with them.
         val PERSONAL_DATA_IN_FK_ORDER: List<PurgeTable> = listOf(
+            PurgeTable("invoice_views", BY_USER_ID),
             PurgeTable("group_members", BY_USER_ID),
             PurgeTable("refresh_tokens", BY_USER_ID),
             PurgeTable("password_reset_tokens", BY_USER_ID),

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component
 @Component
 class TestDatabaseCleaner(private val jdbcTemplate: JdbcTemplate) {
 
-    // Deletes every group's financial data (purchases, cards, holders, budgets, categories),
+    // Deletes every group's financial data (purchases and their views, cards, holders, budgets, categories),
     // including the rows seeded by migrations (e.g. the store reviewer's demo data, V40/V42).
     // Groups, users, memberships, subscriptions and API keys are kept, so the seeded group 1
     // and its active subscription remain usable by the tests.
