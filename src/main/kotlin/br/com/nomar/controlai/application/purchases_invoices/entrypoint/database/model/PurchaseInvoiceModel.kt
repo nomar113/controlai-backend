@@ -78,6 +78,16 @@ data class PurchaseInvoiceModel (
     @Column(name = "status", nullable = false, length = 20)
     val status: InvoiceStatus = InvoiceStatus.PROCESSED,
 
+    // Failed reads of a PENDING invoice; last_read_failure holds the reason code of the last one
+    @Column(name = "read_attempts", nullable = false)
+    val readAttempts: Int = 0,
+
+    @Column(name = "last_read_failure", length = 40)
+    val lastReadFailure: String? = null,
+
+    @Column(name = "processed_at")
+    val processedAt: Instant? = null,
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime? = LocalDateTime.now(),

@@ -71,7 +71,7 @@ Environment variables have sensible defaults for local development in `applicati
 
 ## Database
 
-Flyway migrations live in `src/main/resources/db/migration/`. Tables: `payment_notifications`, `purchase_invoices`, `purchase_payments`, `purchase_items`.
+Flyway migrations live in `src/main/resources/db/migration/`. Tables: `payment_notifications`, `purchase_invoices`, `purchase_payments`, `purchase_items`, `invoice_views`. A `purchase_invoices` row is `PENDING` (scanned link only), `PROCESSED` (a purchase) or `READ_FAILED` (the NFC-e processor gave up reading it); only `PROCESSED` invoices can be cancelled, associated or suggested.
 
 ## Testing
 
