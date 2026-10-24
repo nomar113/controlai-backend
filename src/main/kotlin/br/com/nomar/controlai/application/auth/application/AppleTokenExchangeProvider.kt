@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClient
 import java.security.KeyFactory
 import java.security.interfaces.ECPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
+import java.time.Clock
 import java.util.Base64
 import java.util.Date
 
@@ -25,6 +26,7 @@ class AppleTokenExchangeProvider(
     @Value("\${apple.team-id}") private val teamId: String,
     @Value("\${apple.key-id}") private val keyId: String,
     @Value("\${apple.private-key}") private val privateKeyPem: String,
+    private val clock: Clock,
 ) : AppleTokenExchangeGateway {
 
     private val restClient: RestClient = restClientBuilder.baseUrl(APPLE_BASE_URL).build()
@@ -71,7 +73,7 @@ class AppleTokenExchangeProvider(
 
     // The Apple client_secret is a JWT signed with ES256; it is generated per call with a short lifetime
     private fun buildClientSecret(clientId: String): String {
-        val now = Date()
+        val now = Date.from(clock.instant())
         val header = JWSHeader.Builder(JWSAlgorithm.ES256).keyID(keyId).build()
         val claims = JWTClaimsSet.Builder()
             .issuer(teamId)
