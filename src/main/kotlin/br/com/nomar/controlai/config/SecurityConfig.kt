@@ -55,6 +55,8 @@ class SecurityConfig(
                     .requestMatchers("/auth/logout").authenticated()
                     .requestMatchers("/auth/**", "/actuator/health", "/health").permitAll()
                     .requestMatchers("/webhooks/kiwify").permitAll()
+                    // NFC-e processor run by the operator: open by decision, see CLAUDE.md ("NFC-e processor")
+                    .requestMatchers("/internal/nfce-processor/**").permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt(Customizer.withDefaults()) }

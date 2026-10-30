@@ -1,7 +1,10 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository
 
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
+import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceStatus
+import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
@@ -39,4 +42,33 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
         @Param("purchasedAt") purchasedAt: Instant,
         @Param("groupId") groupId: Long,
     ): List<PurchaseInvoiceModel>
+
+    // NFC-e processor queue (all groups); soft deleted invoices are excluded by @SQLRestriction
+    fun findByStatusOrderByCreatedAtAscIdAsc(status: InvoiceStatus, limit: Limit): List<PurchaseInvoiceModel>
+
+    fun countByStatus(status: InvoiceStatus): Long
+
+    // Conditional on PENDING + access key, so a stale or forged failure changes nothing (0 rows).
+    // MySQL evaluates single-table SET assignments left to right with the updated values, so status
+    // is decided before read_attempts is incremented and both use read_attempts + 1.
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = """
+            UPDATE purchase_invoices
+            SET status = CASE WHEN read_attempts + 1 >= :maxAttempts THEN 'READ_FAILED' ELSE status END,
+                read_attempts = read_attempts + 1,
+                last_read_failure = :reason
+            WHERE id = :id
+              AND access_key = :accessKey
+              AND status = 'PENDING'
+              AND deleted_at IS NULL
+        """,
+        nativeQuery = true
+    )
+    fun registerReadFailure(
+        @Param("id") id: Long,
+        @Param("accessKey") accessKey: String,
+        @Param("reason") reason: String,
+        @Param("maxAttempts") maxAttempts: Int,
+    ): Int
 }

@@ -52,6 +52,14 @@ The project follows **Hexagonal Architecture (Ports & Adapters)** with two bound
 - `POST /payments/notification` — Enqueue payment notification text for parsing
 - `GET /purchases` — List all purchases (UNION of `payment_notifications` and `purchase_invoices`)
 - `POST /purchases/invoices/pending` — Register a scanned NFC-e QR Code as a `PENDING` invoice (sync; `201`, `400` invalid QR, `409` duplicate in the group)
+- `GET /internal/nfce-processor/invoices/pending?limit=50` — NFC-e processor queue: `PENDING`, not deleted invoices of all groups, oldest first (`created_at ASC`); returns `{ items: [{ id, invoiceUrl, accessKey, scannedAt }], remaining }`, never group or user data; `limit` 1–200, else `400`
+- `POST /internal/nfce-processor/invoices/{id}/failure` — `{ accessKey, reason }` (an `InvoiceReadFailureReason`, else `400`) counts a failed read; returns `{ outcome: RETRY_SCHEDULED | READ_FAILED | DISCARDED, attempts }`. Conditional on `PENDING` + same `accessKey` + not deleted (else `DISCARDED`, nothing changes); at `nfce.processor.max-read-attempts` (default 3) the invoice becomes `READ_FAILED`
+
+### NFC-e processor (`/internal/nfce-processor/**`)
+
+The processor (`controlai-nfce-processor` repo) runs on demand on the operator's Mac, reads each `PENDING` invoice from the SEFAZ in a real Chrome and reports back through these endpoints. They are in `permitAll` (`SecurityConfig`) and in `PUBLIC_ROUTE_PATTERNS` (`PublicRoutes.kt`), so the subscription (402) and account deletion (423) guards skip them.
+
+**Known risk — open without credential.** By the operator's decision the endpoints have no authentication, deviating from the PRD (`prd-processamento-nfce-pendentes`), which asks for a service credential. Anyone who finds the route can list the links and access keys of pending NFC-e (a SEFAZ link may lead to the consumer's CPF), write fake data into a known `PENDING` invoice or burn its attempts into `READ_FAILED`. Mitigations: isolated prefix, minimal responses, writes conditional on `PENDING` + `accessKey`, server-side revalidation of read results, and the user can retry or delete a failed invoice. **Recommendation:** require a simple `X-Service-Token` header (secret in the server env) before having paying users in volume; it does not change the rest of the design. Logs never include the invoice URL or access key. Metrics: counter `controlai.invoices.read{outcome}` and gauge `controlai.invoices.pending` (queue size at the last listing).
 
 ### Data Flows
 
