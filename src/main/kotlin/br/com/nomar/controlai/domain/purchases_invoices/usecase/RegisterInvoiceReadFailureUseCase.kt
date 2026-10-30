@@ -40,19 +40,14 @@ class RegisterInvoiceReadFailureUseCase(
 
     private fun recordMetric(outcome: FailureOutcome.Outcome) {
         val tag = when (outcome) {
-            FailureOutcome.Outcome.RETRY_SCHEDULED -> OUTCOME_FAILED
-            FailureOutcome.Outcome.READ_FAILED -> OUTCOME_READ_FAILED
-            FailureOutcome.Outcome.DISCARDED -> OUTCOME_DISCARDED
+            FailureOutcome.Outcome.RETRY_SCHEDULED -> InvoiceReadMetric.FAILED
+            FailureOutcome.Outcome.READ_FAILED -> InvoiceReadMetric.READ_FAILED
+            FailureOutcome.Outcome.DISCARDED -> InvoiceReadMetric.DISCARDED
         }
-        meterRegistry.counter(METRIC_NAME, "outcome", tag).increment()
+        meterRegistry.counter(InvoiceReadMetric.NAME, InvoiceReadMetric.TAG, tag).increment()
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(RegisterInvoiceReadFailureUseCase::class.java)
-
-        const val METRIC_NAME = "controlai.invoices.read"
-        const val OUTCOME_FAILED = "failed"
-        const val OUTCOME_READ_FAILED = "read_failed"
-        const val OUTCOME_DISCARDED = "discarded"
     }
 }

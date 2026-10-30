@@ -1,13 +1,19 @@
 package br.com.nomar.controlai.application.nfce_processor.entrypoint.rest
 
+import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.request.InvoiceReadResultRequest
 import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.request.RegisterInvoiceReadFailureRequest
 import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.response.InvoiceReadFailureResponse
+import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.response.InvoiceReadRejectedResponse
+import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.response.InvoiceReadResultResponse
 import br.com.nomar.controlai.application.nfce_processor.entrypoint.rest.response.PendingInvoicesForProcessingResponse
+import br.com.nomar.controlai.domain.purchases_invoices.exception.InvoiceReadRejectedException
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPendingInvoicesForProcessingUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.ProcessInvoiceReadResultUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterInvoiceReadFailureUseCase
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -25,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException
 @RequestMapping("/internal/nfce-processor")
 class NfceProcessorController(
     private val listPendingInvoicesForProcessingUseCase: ListPendingInvoicesForProcessingUseCase,
+    private val processInvoiceReadResultUseCase: ProcessInvoiceReadResultUseCase,
     private val registerInvoiceReadFailureUseCase: RegisterInvoiceReadFailureUseCase,
 ) {
 
@@ -36,6 +43,25 @@ class NfceProcessorController(
         listPendingInvoicesForProcessingUseCase.execute(limit)
             .map(PendingInvoicesForProcessingResponse::from)
             .getOrElse { throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, it.message) }
+
+    // The 422 body is built here because ResponseStatusException reasons are not exposed
+    // (server.error.include-message=never) and the processor needs the reason to report the failure
+    @PostMapping("/invoices/{id}/result")
+    fun processResult(
+        @PathVariable id: Long,
+        @Validated @RequestBody request: InvoiceReadResultRequest,
+    ): ResponseEntity<Any> =
+        processInvoiceReadResultUseCase.execute(id, request.toReadData()).fold(
+            onSuccess = { ResponseEntity.ok(InvoiceReadResultResponse(it)) },
+            onFailure = { ex ->
+                when (ex) {
+                    is InvoiceReadRejectedException ->
+                        ResponseEntity.unprocessableEntity().body(InvoiceReadRejectedResponse.from(ex))
+                    is IllegalArgumentException -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+                    else -> throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message)
+                }
+            },
+        )
 
     @PostMapping("/invoices/{id}/failure")
     fun registerFailure(

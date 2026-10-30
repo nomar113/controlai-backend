@@ -21,6 +21,34 @@ class ValueObjectsTest {
     }
 
     @Test
+    fun `should create cnpj with valid value`() {
+        val cnpj = Cnpj.of("12.345.678/0001-90")
+
+        assertEquals("12.345.678/0001-90", cnpj.value)
+    }
+
+    @Test
+    fun `should create alphanumeric cnpj`() {
+        val cnpj = Cnpj.of("12.ABC.345/01DE-35")
+
+        assertEquals("12.ABC.345/01DE-35", cnpj.value)
+    }
+
+    @Test
+    fun `should fail when cnpj check digits are not numeric`() {
+        assertFailsWith<IllegalArgumentException> {
+            Cnpj.of("12.ABC.345/01DE-3A")
+        }
+    }
+
+    @Test
+    fun `should fail when cnpj format is invalid`() {
+        assertFailsWith<IllegalArgumentException> {
+            Cnpj.of("12345678000190")
+        }
+    }
+
+    @Test
     fun `should create invoice url with valid value`() {
         val invoiceUrl = InvoiceUrl.of("https://example.com/invoice/123")
 
@@ -41,6 +69,20 @@ class ValueObjectsTest {
     fun `should fail when invoice url is blank`() {
         assertFailsWith<IllegalArgumentException> {
             InvoiceUrl.of("   ")
+        }
+    }
+
+    @Test
+    fun `should create total items with positive value`() {
+        val totalItems = TotalItems.of(3)
+
+        assertEquals(3, totalItems.asInt())
+    }
+
+    @Test
+    fun `should fail when total items is zero`() {
+        assertFailsWith<IllegalArgumentException> {
+            TotalItems.of(0)
         }
     }
 }

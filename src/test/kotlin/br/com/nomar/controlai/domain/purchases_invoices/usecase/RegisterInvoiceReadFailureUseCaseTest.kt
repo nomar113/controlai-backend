@@ -3,7 +3,6 @@ package br.com.nomar.controlai.domain.purchases_invoices.usecase
 import br.com.nomar.controlai.domain.purchases_invoices.entity.FailureOutcome
 import br.com.nomar.controlai.domain.purchases_invoices.entity.InvoiceReadFailureReason
 import br.com.nomar.controlai.domain.purchases_invoices.gateway.RegisterInvoiceReadFailureGateway
-import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterInvoiceReadFailureUseCase.Companion.METRIC_NAME
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,7 +16,7 @@ class RegisterInvoiceReadFailureUseCaseTest {
     private val meterRegistry = SimpleMeterRegistry()
 
     private fun counter(outcome: String) =
-        meterRegistry.find(METRIC_NAME).tags("outcome", outcome).counter()?.count()
+        meterRegistry.find(InvoiceReadMetric.NAME).tags("outcome", outcome).counter()?.count()
 
     private fun useCase(gateway: RegisterInvoiceReadFailureGateway) =
         RegisterInvoiceReadFailureUseCase(gateway, meterRegistry, maxReadAttempts = MAX_ATTEMPTS)
@@ -89,7 +88,7 @@ class RegisterInvoiceReadFailureUseCaseTest {
         val result = useCase.execute(10L, ACCESS_KEY, InvoiceReadFailureReason.TIMEOUT)
 
         assertEquals(error, result.exceptionOrNull())
-        assertNull(meterRegistry.find(METRIC_NAME).counter())
+        assertNull(meterRegistry.find(InvoiceReadMetric.NAME).counter())
     }
 
     private companion object {
