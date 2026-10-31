@@ -21,6 +21,36 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
 
     fun findByIdAndGroupId(id: Long, groupId: Long): PurchaseInvoiceModel?
 
+    fun existsByIdAndGroupId(id: Long, groupId: Long): Boolean
+
+    // 1 when the invoice was processed after the user last saw the notice and the user has not opened it
+    @Query(
+        value = """
+            SELECT COALESCE(pi.processed_at > u.invoice_notice_seen_at
+                AND NOT EXISTS (SELECT 1 FROM invoice_views iv WHERE iv.user_id = u.id AND iv.purchase_invoice_id = pi.id), 0)
+            FROM purchase_invoices pi
+            JOIN users u ON u.id = :userId
+            WHERE pi.id = :id AND pi.deleted_at IS NULL
+        """,
+        nativeQuery = true
+    )
+    fun isNewForUser(@Param("id") id: Long, @Param("userId") userId: Long): Long?
+
+    // Back to the processor queue with a clean slate; 0 rows when the invoice is not READ_FAILED in the group
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = """
+            UPDATE purchase_invoices
+            SET status = 'PENDING', read_attempts = 0, last_read_failure = NULL
+            WHERE id = :id
+              AND group_id = :groupId
+              AND status = 'READ_FAILED'
+              AND deleted_at IS NULL
+        """,
+        nativeQuery = true
+    )
+    fun requeueReadFailed(@Param("id") id: Long, @Param("groupId") groupId: Long): Int
+
     @Query(
         value = """
             SELECT * FROM purchase_invoices pi

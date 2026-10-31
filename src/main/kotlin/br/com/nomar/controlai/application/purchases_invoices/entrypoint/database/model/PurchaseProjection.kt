@@ -15,3 +15,9 @@ interface PurchaseProjection {
     fun getCancelledAt(): LocalDateTime?
     fun getStatus(): String
 }
+
+// Invoice rows of the app list: adds what depends on the caller (isNew) and on the reading state
+interface InvoiceListProjection : PurchaseProjection {
+    fun getIsNew(): Int
+    fun getReadFailureReason(): String?
+}

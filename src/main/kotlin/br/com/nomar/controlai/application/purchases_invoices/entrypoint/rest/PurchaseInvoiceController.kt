@@ -2,6 +2,7 @@ package br.com.nomar.controlai.application.purchases_invoices.entrypoint.rest
 
 import br.com.nomar.controlai.application.payments_notification.entrypoint.database.repository.PaymentNotificationRepository
 import br.com.nomar.controlai.application.payments_notification.entrypoint.rest.request.UpdateDescriptionRequest
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseInvoiceRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchaseItemRepository
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository.PurchasePaymentRepository
@@ -20,7 +21,11 @@ import br.com.nomar.controlai.domain.purchases_invoices.exception.DuplicateInvoi
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.AssociateInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.CancelPurchaseInvoiceUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DeactivatePurchaseInvoiceUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.DismissProcessedInvoicesNoticeUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.DisassociateInvoiceUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.GetProcessedInvoicesNoticeUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.MarkInvoiceViewedUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.RetryInvoiceReadUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUseCase
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterPendingInvoiceUseCase
 import br.com.nomar.controlai.domain.auth.RequestContext
@@ -56,6 +61,10 @@ class PurchaseInvoiceController(
     private val associateInvoiceUseCase: AssociateInvoiceUseCase,
     private val disassociateInvoiceUseCase: DisassociateInvoiceUseCase,
     private val searchNotificationsUseCase: SearchNotificationsUseCase,
+    private val getProcessedInvoicesNoticeUseCase: GetProcessedInvoicesNoticeUseCase,
+    private val dismissProcessedInvoicesNoticeUseCase: DismissProcessedInvoicesNoticeUseCase,
+    private val markInvoiceViewedUseCase: MarkInvoiceViewedUseCase,
+    private val retryInvoiceReadUseCase: RetryInvoiceReadUseCase,
     private val purchaseRepository: PurchaseRepository,
     private val purchaseInvoiceRepository: PurchaseInvoiceRepository,
     private val purchaseItemRepository: PurchaseItemRepository,
@@ -80,7 +89,7 @@ class PurchaseInvoiceController(
         val (resolvedStart, resolvedEnd) = resolveDateRange(month, startDate, endDate)
         val groupId = requestContext.groupId
         val offset = page * size
-        val items = purchaseRepository.findInvoicesByDateRange(groupId, resolvedStart, resolvedEnd, size, offset, categoryId)
+        val items = purchaseRepository.findInvoicesByDateRange(groupId, requestContext.userId, resolvedStart, resolvedEnd, size, offset, categoryId)
             .map { projection ->
                 PurchaseResponse.from(
                     Purchase(
@@ -94,6 +103,8 @@ class PurchaseInvoiceController(
                         categoryId = projection.getCategoryId(),
                         cancelledAt = projection.getCancelledAt(),
                         status = InvoiceStatus.valueOf(projection.getStatus()),
+                        isNew = projection.getIsNew() != 0,
+                        readFailureReason = projection.getReadFailureReason(),
                     )
                 )
             }
@@ -136,10 +147,37 @@ class PurchaseInvoiceController(
     fun getInvoice(@PathVariable id: Long): PurchaseInvoiceDetailResponse {
         val invoice = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found")
+        return detailOf(invoice)
+    }
+
+    private fun detailOf(invoice: PurchaseInvoiceModel): PurchaseInvoiceDetailResponse {
         val items = purchaseItemRepository.findByPurchaseInvoiceId(invoice.id!!)
         val payments = purchasePaymentRepository.findByPurchaseInvoiceId(invoice.id!!)
         val associatedPayment = paymentNotificationRepository.findByPurchaseInvoiceId(invoice.id!!)
-        return PurchaseInvoiceDetailResponse.from(invoice, items, payments, associatedPayment)
+        val isNew = purchaseInvoiceRepository.isNewForUser(invoice.id!!, requestContext.userId) == 1L
+        return PurchaseInvoiceDetailResponse.from(invoice, items, payments, associatedPayment, isNew)
+    }
+
+    @GetMapping("/invoices/processed-notice")
+    fun getProcessedNotice(): Map<String, Int> =
+        mapOf("count" to getProcessedInvoicesNoticeUseCase.execute().getOrThrow())
+
+    @PostMapping("/invoices/processed-notice/dismiss")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun dismissProcessedNotice() {
+        dismissProcessedInvoicesNoticeUseCase.execute().getOrThrow()
+    }
+
+    @PostMapping("/invoices/{id}/view")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun markInvoiceViewed(@PathVariable id: Long) {
+        markInvoiceViewedUseCase.execute(id).getOrElse { ex -> throw mapAssociationError(ex) }
+    }
+
+    @PostMapping("/invoices/{id}/retry")
+    fun retryInvoiceRead(@PathVariable id: Long): PurchaseInvoiceDetailResponse {
+        retryInvoiceReadUseCase.execute(id).getOrElse { ex -> throw mapAssociationError(ex) }
+        return getInvoice(id)
     }
 
     @PatchMapping("/invoices/{id}/description")
@@ -149,11 +187,7 @@ class PurchaseInvoiceController(
     ): PurchaseInvoiceDetailResponse {
         val invoice = purchaseInvoiceRepository.findByIdAndGroupId(id, requestContext.groupId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found")
-        val updated = purchaseInvoiceRepository.save(invoice.copy(description = request.description))
-        val items = purchaseItemRepository.findByPurchaseInvoiceId(updated.id!!)
-        val payments = purchasePaymentRepository.findByPurchaseInvoiceId(updated.id!!)
-        val associatedPayment = paymentNotificationRepository.findByPurchaseInvoiceId(updated.id!!)
-        return PurchaseInvoiceDetailResponse.from(updated, items, payments, associatedPayment)
+        return detailOf(purchaseInvoiceRepository.save(invoice.copy(description = request.description)))
     }
 
     @PatchMapping("/invoices/{id}/cancel")

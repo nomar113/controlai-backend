@@ -1,6 +1,7 @@
 package br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.repository
 
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseInvoiceModel
+import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.InvoiceListProjection
 import br.com.nomar.controlai.application.purchases_invoices.entrypoint.database.model.PurchaseProjection
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -40,9 +41,13 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
 
     @Query(
         """
-        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt, pi.status
+        SELECT pi.id, pi.date, pi.total, pi.merchant_name AS merchantName, pi.total_items AS totalItems, pi.description, c.name AS categoryName, pi.category_id AS categoryId, pi.cancelled_at AS cancelledAt, pi.status,
+               COALESCE(pi.processed_at > u.invoice_notice_seen_at
+                 AND NOT EXISTS (SELECT 1 FROM invoice_views iv WHERE iv.user_id = :userId AND iv.purchase_invoice_id = pi.id), 0) AS isNew,
+               CASE WHEN pi.status = 'READ_FAILED' THEN pi.last_read_failure END AS readFailureReason
         FROM purchase_invoices pi
         LEFT JOIN categories c ON pi.category_id = c.id
+        LEFT JOIN users u ON u.id = :userId
         WHERE pi.deleted_at IS NULL
           AND pi.group_id = :groupId
           AND pi.date >= :startDate
@@ -55,12 +60,13 @@ interface PurchaseRepository : JpaRepository<PurchaseInvoiceModel, Long> {
     )
     fun findInvoicesByDateRange(
         groupId: Long,
+        userId: Long,
         startDate: String,
         endDate: String,
         limit: Int,
         offset: Int,
         categoryId: Long? = null,
-    ): List<PurchaseProjection>
+    ): List<InvoiceListProjection>
 
     @Query(
         """

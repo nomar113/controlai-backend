@@ -14,4 +14,6 @@ class Purchase(
     val categoryId: Long? = null,
     val cancelledAt: LocalDateTime? = null,
     val status: InvoiceStatus,
+    val isNew: Boolean = false,
+    val readFailureReason: String? = null,
 )

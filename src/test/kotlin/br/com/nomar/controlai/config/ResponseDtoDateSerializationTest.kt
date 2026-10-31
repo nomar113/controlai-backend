@@ -80,6 +80,8 @@ class ResponseDtoDateSerializationTest {
             description = null,
             cancelledAt = instant,
             status = InvoiceStatus.PROCESSED,
+            isNew = false,
+            readFailureReason = null,
             items = emptyList(),
             payments = emptyList(),
             associatedPayment = null,

@@ -25,6 +25,8 @@ data class PurchaseInvoiceDetailResponse(
     val description: String?,
     val cancelledAt: Instant?,
     val status: InvoiceStatus,
+    val isNew: Boolean,
+    val readFailureReason: String?,
     val items: List<PurchaseItemResponse>,
     val payments: List<PurchasePaymentResponse>,
     val associatedPayment: AssociatedPaymentResponse?,
@@ -35,6 +37,7 @@ data class PurchaseInvoiceDetailResponse(
             items: List<PurchaseItemModel>,
             payments: List<PurchasePaymentModel>,
             associatedPayment: PaymentNotification? = null,
+            isNew: Boolean = false,
         ) = PurchaseInvoiceDetailResponse(
             id = invoice.id!!,
             date = invoice.date,
@@ -54,6 +57,8 @@ data class PurchaseInvoiceDetailResponse(
             // so its wall-clock value is already the UTC instant.
             cancelledAt = invoice.cancelledAt?.atZone(ZoneOffset.UTC)?.toInstant(),
             status = invoice.status,
+            isNew = isNew,
+            readFailureReason = invoice.lastReadFailure.takeIf { invoice.status == InvoiceStatus.READ_FAILED },
             items = items.map(PurchaseItemResponse::from),
             payments = payments.map(PurchasePaymentResponse::from),
             associatedPayment = associatedPayment?.let(AssociatedPaymentResponse::from),

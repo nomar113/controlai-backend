@@ -23,6 +23,14 @@ import br.com.nomar.controlai.domain.purchases_invoices.usecase.ListPurchasesUse
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.RegisterPendingInvoiceUseCase
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import br.com.nomar.controlai.domain.purchases_invoices.usecase.SearchNotificationsUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.DismissProcessedInvoicesNoticeGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.GetProcessedInvoicesNoticeGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.MarkInvoiceViewedGateway
+import br.com.nomar.controlai.domain.purchases_invoices.gateway.RetryInvoiceReadGateway
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.DismissProcessedInvoicesNoticeUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.GetProcessedInvoicesNoticeUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.MarkInvoiceViewedUseCase
+import br.com.nomar.controlai.domain.purchases_invoices.usecase.RetryInvoiceReadUseCase
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,6 +96,10 @@ class PurchaseInvoiceControllerTest {
             associateInvoiceUseCase = associateInvoiceUseCase,
             disassociateInvoiceUseCase = disassociateInvoiceUseCase,
             searchNotificationsUseCase = searchNotificationsUseCase,
+            getProcessedInvoicesNoticeUseCase = GetProcessedInvoicesNoticeUseCase(GetProcessedInvoicesNoticeGateway { Result.success(0) }),
+            dismissProcessedInvoicesNoticeUseCase = DismissProcessedInvoicesNoticeUseCase(DismissProcessedInvoicesNoticeGateway { Result.success(Unit) }),
+            markInvoiceViewedUseCase = MarkInvoiceViewedUseCase(MarkInvoiceViewedGateway { Result.success(Unit) }),
+            retryInvoiceReadUseCase = RetryInvoiceReadUseCase(RetryInvoiceReadGateway { Result.success(Unit) }),
             purchaseRepository = stubOf(PurchaseRepository::class.java),
             purchaseInvoiceRepository = stubOf(PurchaseInvoiceRepository::class.java),
             purchaseItemRepository = stubOf(PurchaseItemRepository::class.java),

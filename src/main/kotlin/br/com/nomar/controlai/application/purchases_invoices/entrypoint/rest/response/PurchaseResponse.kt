@@ -17,6 +17,8 @@ data class PurchaseResponse(
     val categoryId: Long? = null,
     val cancelledAt: Instant? = null,
     val status: InvoiceStatus,
+    val isNew: Boolean = false,
+    val readFailureReason: String? = null,
 ) {
     companion object {
         // Purchase.date/cancelledAt are still LocalDateTime (task 2.0 didn't cover this projection),
@@ -34,6 +36,8 @@ data class PurchaseResponse(
             categoryId = purchase.categoryId,
             cancelledAt = purchase.cancelledAt?.atZone(ZoneOffset.UTC)?.toInstant(),
             status = purchase.status,
+            isNew = purchase.isNew,
+            readFailureReason = purchase.readFailureReason,
         )
     }
 }
