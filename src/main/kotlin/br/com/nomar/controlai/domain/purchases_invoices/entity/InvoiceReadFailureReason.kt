@@ -1,7 +1,7 @@
 package br.com.nomar.controlai.domain.purchases_invoices.entity
 
 // Why the NFC-e processor could not read an invoice from the SEFAZ; stored in last_read_failure.
-// A SEFAZ block or outage is not a reason: it stops the processor run without consuming an attempt.
+// A SEFAZ outage is not a reason: it stops the processor run without consuming an attempt.
 enum class InvoiceReadFailureReason {
     TIMEOUT,
     UNEXPECTED_LAYOUT,
@@ -9,4 +9,8 @@ enum class InvoiceReadFailureReason {
     INCOMPLETE_DATA,
     INCONSISTENT_DATA,
     CHALLENGE_NOT_SOLVED,
+
+    // The SEFAZ page refused this invoice. The processor reports it and tries the next invoice;
+    // a second refusal in a row is a block of the whole site and stops the run with no attempt consumed.
+    BLOCKED,
 }
