@@ -73,8 +73,9 @@ interface PurchaseInvoiceRepository : JpaRepository<PurchaseInvoiceModel, Long> 
         @Param("groupId") groupId: Long,
     ): List<PurchaseInvoiceModel>
 
-    // NFC-e processor queue (all groups); soft deleted invoices are excluded by @SQLRestriction
-    fun findByStatusOrderByCreatedAtAscIdAsc(status: InvoiceStatus, limit: Limit): List<PurchaseInvoiceModel>
+    // NFC-e processor queue (all groups); soft deleted invoices are excluded by @SQLRestriction.
+    // Fewest failed reads first, so an invoice that keeps failing does not lead every run
+    fun findByStatusOrderByReadAttemptsAscCreatedAtAscIdAsc(status: InvoiceStatus, limit: Limit): List<PurchaseInvoiceModel>
 
     fun countByStatus(status: InvoiceStatus): Long
 

@@ -19,7 +19,7 @@ class ListPendingInvoicesForProcessingProvider(
     @Transactional(readOnly = true)
     override fun execute(limit: Int): Result<PendingInvoiceQueue> = runCatching {
         val items = purchaseInvoiceRepository
-            .findByStatusOrderByCreatedAtAscIdAsc(InvoiceStatus.PENDING, Limit.of(limit))
+            .findByStatusOrderByReadAttemptsAscCreatedAtAscIdAsc(InvoiceStatus.PENDING, Limit.of(limit))
             .mapNotNull(::toItem)
         val total = purchaseInvoiceRepository.countByStatus(InvoiceStatus.PENDING)
         PendingInvoiceQueue(items = items, remaining = (total - items.size).coerceAtLeast(0))

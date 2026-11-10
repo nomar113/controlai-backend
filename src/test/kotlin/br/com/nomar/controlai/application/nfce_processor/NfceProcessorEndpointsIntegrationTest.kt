@@ -79,13 +79,14 @@ class NfceProcessorEndpointsIntegrationTest {
         status: String = "PENDING",
         groupId: Long = 1L,
         deleted: Boolean = false,
+        readAttempts: Int = 0,
     ): Long {
         jdbcTemplate.update(
             """INSERT INTO purchase_invoices
-               (date, invoice_url, access_key, status, group_id, created_at, deleted_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (date, invoice_url, access_key, status, group_id, created_at, deleted_at, read_attempts)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             createdAt, "$SEFAZ_URL$accessKey|2|1|1|hash", accessKey, status, groupId, createdAt,
-            if (deleted) createdAt else null,
+            if (deleted) createdAt else null, readAttempts,
         )
         return lastInsertId()
     }
@@ -140,6 +141,29 @@ class NfceProcessorEndpointsIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceUrl").value("$SEFAZ_URL${key(2)}|2|1|1|hash"))
             .andExpect(jsonPath("$.items[0].scannedAt").value("2026-10-01T12:00:00Z"))
             .andExpect(jsonPath("$.remaining").value(0))
+    }
+
+    @Test
+    fun `pending should list invoices with fewer failed reads first, then oldest`() {
+        val base = LocalDateTime.of(2026, 10, 1, 12, 0)
+        val oldestTwoFailures = insertInvoice(key(1), base, readAttempts = 2)
+        val oldestOneFailure = insertInvoice(key(2), base.plusHours(1), readAttempts = 1)
+        val newestNoFailure = insertInvoice(key(3), base.plusHours(3))
+        val olderNoFailure = insertInvoice(key(4), base.plusHours(2))
+
+        listPending()
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items[0].id").value(olderNoFailure))
+            .andExpect(jsonPath("$.items[1].id").value(newestNoFailure))
+            .andExpect(jsonPath("$.items[2].id").value(oldestOneFailure))
+            .andExpect(jsonPath("$.items[3].id").value(oldestTwoFailures))
+
+        // With a limit, an invoice that keeps failing stays out while there are fresher ones
+        listPending(limit = 2)
+            .andExpect(jsonPath("$.items.length()").value(2))
+            .andExpect(jsonPath("$.items[0].id").value(olderNoFailure))
+            .andExpect(jsonPath("$.items[1].id").value(newestNoFailure))
+            .andExpect(jsonPath("$.remaining").value(2))
     }
 
     @Test
