@@ -5,6 +5,7 @@ import br.com.nomar.controlai.domain.account_deletion.usecase.ResolveUserDeletio
 import br.com.nomar.controlai.domain.auth.gateway.FindApiKeyByHashGateway
 import br.com.nomar.controlai.domain.billing.gateway.FindActiveSubscriptionByGroupIdGateway
 import io.micrometer.core.instrument.MeterRegistry
+import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.Customizer
@@ -51,6 +52,9 @@ class SecurityConfig(
             )
             .authorizeHttpRequests {
                 it
+                    // Spring Boot forwards errors to /error in an ERROR dispatch. Requiring auth there turned
+                    // every 400/500 of an open route into 401; the dispatch only renders an error already decided
+                    .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                     // Logout revokes the device's refresh token, so it requires a valid session
                     .requestMatchers("/auth/logout").authenticated()
                     .requestMatchers("/auth/**", "/actuator/health", "/health").permitAll()
