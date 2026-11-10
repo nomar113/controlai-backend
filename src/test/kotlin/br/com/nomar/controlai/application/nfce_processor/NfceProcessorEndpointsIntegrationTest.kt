@@ -232,7 +232,7 @@ class NfceProcessorEndpointsIntegrationTest {
     fun `failure should answer 400 for an unknown reason or an invalid access key`() {
         val id = insertInvoice(key(1), LocalDateTime.of(2026, 10, 1, 12, 0))
 
-        failure(id, key(1), reason = "BLOCKED").andExpect(status().isBadRequest)
+        failure(id, key(1), reason = "NOT_A_REASON").andExpect(status().isBadRequest)
         failure(id, "123").andExpect(status().isBadRequest)
 
         assertEquals(0, readState(id)["read_attempts"])
